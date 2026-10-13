@@ -178,7 +178,7 @@ def analisar(captura: dict, wo: str | None = None) -> tuple[dict, list[str]]:
     relatorio = [f"{len(chamadas)} consulta(s) de dados encontradas na captura."]
     if not chamadas:
         raise AnaliseFalhou("Nenhuma consulta de dados foi capturada. Refaça a descoberta "
-                            "executando o processo completo no navegador do agente.")
+                            "executando o processo completo na aba do SAP enquanto a descoberta estiver ativa.")
 
     if not wo:
         for c in chamadas:

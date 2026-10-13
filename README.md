@@ -5,24 +5,29 @@ coleta os dados da janela "Mensagens" e gera um Excel com aba de Log.
 ## Como usar (Windows)
 
 1. Dê duplo clique em **`Abrir Agente BTP.bat`** (na 1ª vez ele prepara o ambiente).
-2. A interface abre em `http://127.0.0.1:8765`. Clique em **Conectar ao sistema**.
-3. No navegador dedicado que abrir, faça o login e aprove o MFA.
-4. **Somente na 1ª vez:** *Iniciar descoberta* → faça o processo com UMA WO (Monitor de alertas →
-   filtrar a WO → clicar na linha → janela "Mensagens") → *Salvar descoberta*.
-   O agente analisa a captura, **configura a API sozinho** (`config/api.json`) e valida com a
-   mesma WO, mostrando as linhas no Registro. Confira com a janela "Mensagens".
-   Se o sistema for atualizado e der "HTTP 404", basta refazer a descoberta.
-5. Cole as WOs (uma por linha) ou envie uma planilha com a coluna **WO** → **Executar**.
-6. Baixe a planilha gerada (também salva em `saidas/`).
+   A tela do agente abre em `http://127.0.0.1:8767`. Deixe a janela preta aberta.
+2. **Uma vez só:** arraste o botão verde **Agente BTP** da tela para a barra de favoritos do Chrome.
+3. Abra o SAP como sempre (login + MFA) e, **na aba já logada**, clique no favorito **Agente BTP**.
+   Se o Chrome perguntar sobre *acesso à rede local*, clique **Permitir**.
+   Um selo "Agente BTP: conectado" aparece no canto da aba.
+4. **Somente na 1ª vez:** *Iniciar descoberta* → na aba do SAP, faça o processo com UMA WO
+   (Monitor de alertas → filtrar a WO → clicar na linha → janela "Mensagens") → *Salvar descoberta*.
+   O agente configura a API sozinho e valida com a mesma WO. Confira com a janela "Mensagens".
+5. Cole as WOs (uma por linha) ou envie uma planilha com a coluna **WO** → **Executar** → baixe o Excel.
 
-Pré-requisito: Python 3.10+ instalado. O navegador usado é o Edge (ou Chrome) já instalado.
+Se o favorito for bloqueado pela política da empresa: copie o código pelo botão
+*"Copiar código para o Console"* e cole no Console (F12) da aba do SAP, ou use
+*"Abrir navegador separado"* (o agente abre um Edge próprio e você faz login nele).
+
+Pré-requisito: Python 3.10+ instalado.
 
 ## Arquitetura
 
 | Módulo | Função |
 |---|---|
 | `analisador.py` | Lê a captura da descoberta e gera a configuração da API automaticamente |
-| `navegador.py` | Navegador dedicado (Playwright), detecção de login, GET same-origin, Modo Descoberta |
+| `ponte.py` + `web/agente_btp.js` | Conexão com a **aba já aberta** (favorito), no modelo do Agente Atlas |
+| `navegador.py` | Alternativa: navegador dedicado (Playwright) |
 | `cliente.py` | Cliente OData **somente GET** + classificação de erros |
 | `processador.py` | Fluxo por WO, estados, retentativa de rede, lote |
 | `exportacao.py` | Excel (Resultado + Log), identificadores como texto |

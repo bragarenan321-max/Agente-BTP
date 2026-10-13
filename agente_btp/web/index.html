@@ -27,18 +27,38 @@
          height:240px; overflow:auto; font:13px Consolas,monospace; white-space:pre-wrap; }
   progress { width:100%; height:10px; }
   a { color:#7fb6ff; }
+  a.favorito { display:inline-block; background:#2e7d32; color:#fff; padding:8px 16px; border-radius:5px;
+               text-decoration:none; font-weight:600; cursor:grab; }
+  details summary { cursor:pointer; margin-top:8px; }
 </style>
 </head>
 <body>
 <header>AGENTE BTP</header>
 <main>
   <section>
-    <h2>1. Conexão</h2>
+    <h2>1. Conexão com a aba do SAP</h2>
     <div class="linha">
       <span class="ponto" id="pt"></span><span id="conexao">Não conectado</span>
     </div>
-    <p class="dica">Abre um navegador dedicado. Faça o login e aprove o MFA no celular; o agente detecta sozinho.</p>
-    <button id="bConectar">Conectar ao sistema</button>
+    <div id="instrAba">
+      <p class="dica"><b>Primeira vez:</b> arraste o botão abaixo para a <b>barra de favoritos</b> do Chrome
+        (se ela não aparece, tecle <b>Ctrl+Shift+B</b>).</p>
+      <p><a id="favorito" class="favorito" href="#" onclick="return false">Agente BTP</a></p>
+      <p class="dica"><b>Sempre:</b> abra o SAP (já logado) e clique no favorito <b>Agente BTP</b>.
+        Se o Chrome perguntar sobre <b>acesso à rede local</b>, clique em <b>Permitir</b>.
+        Um selo verde "Agente BTP: conectado" aparece no canto da aba.</p>
+      <details class="dica">
+        <summary>O favorito não funcionou?</summary>
+        <p>1) Na aba do SAP, tecle F12 → aba <b>Console</b> → cole o código copiado abaixo → Enter.</p>
+        <button id="bCopiar" class="sec">Copiar código para o Console</button>
+        <p>2) Ou use um navegador separado aberto pelo agente (exige novo login):</p>
+        <button id="bConectar" class="sec">Abrir navegador separado</button>
+      </details>
+    </div>
+    <div id="instrNav" style="display:none">
+      <p class="dica">Modo navegador separado: faça o login na janela aberta pelo agente.</p>
+      <button id="bUsarAba" class="sec">Voltar a usar a aba já aberta</button>
+    </div>
   </section>
 
   <section id="secDescoberta">
@@ -74,6 +94,16 @@ const $ = id => document.getElementById(id);
 const post = (url, body) => fetch(url, { method: "POST", body }).then(r => r.json());
 
 $("bConectar").onclick = () => post("/api/conectar");
+$("bUsarAba").onclick = () => post("/api/usar_aba");
+let codigoConsole = "";
+fetch("/api/favorito").then(r => r.json()).then(f => {
+  $("favorito").setAttribute("href", f.favorito);
+  codigoConsole = f.console;
+});
+$("bCopiar").onclick = async () => {
+  try { await navigator.clipboard.writeText(codigoConsole); alert("Código copiado. Cole no Console da aba do SAP."); }
+  catch (_) { prompt("Copie o código abaixo:", codigoConsole); }
+};
 $("bDescIni").onclick = () => post("/api/descoberta/iniciar");
 $("bDescSalvar").onclick = () => post("/api/descoberta/salvar");
 $("bParar").onclick = () => post("/api/parar");
@@ -85,11 +115,16 @@ $("bExecutar").onclick = async () => {
   if (!r.ok) alert(r.erro);
 };
 
-const ROTULO = { desconectado: "Não conectado", aguardando_login: "Aguardando login/MFA…", conectado: "Conectado" };
+const ROTULO = {
+  aba: { desconectado: "Aba do SAP não conectada", aguardando_login: "Aba conectada, mas sem login no SAP", conectado: "Conectado à aba do SAP" },
+  navegador: { desconectado: "Não conectado", aguardando_login: "Aguardando login/MFA…", conectado: "Conectado (navegador separado)" },
+};
 async function atualizar() {
   try {
     const e = await fetch("/api/estado").then(r => r.json());
-    $("conexao").textContent = ROTULO[e.conexao];
+    $("conexao").textContent = ROTULO[e.modo][e.conexao];
+    $("instrAba").style.display = e.modo === "aba" ? "" : "none";
+    $("instrNav").style.display = e.modo === "navegador" ? "" : "none";
     $("pt").className = "ponto" + (e.conexao === "conectado" ? " ok" : e.conexao === "aguardando_login" ? " esp" : "");
     const con = e.conexao === "conectado";
     $("bConectar").disabled = e.ocupado;

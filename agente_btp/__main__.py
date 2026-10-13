@@ -8,7 +8,8 @@ import webbrowser
 from .agente import RAIZ, Agente
 from .servidor import criar_app
 
-HOST, PORTA = "127.0.0.1", 8765
+# 8767: não colide com o Agente Atlas (8765), que pode estar aberto ao mesmo tempo.
+HOST, PORTA = "127.0.0.1", 8767
 
 
 def configurar_log() -> None:
@@ -29,7 +30,7 @@ def main() -> None:
     url = f"http://{HOST}:{PORTA}"
     logging.getLogger("agente_btp").info("Agente BTP iniciado em %s", url)
     threading.Timer(1.0, webbrowser.open, args=[url]).start()
-    app.run(host=HOST, port=PORTA, debug=False, use_reloader=False)
+    app.run(host=HOST, port=PORTA, debug=False, use_reloader=False, threaded=True)
 
 
 if __name__ == "__main__":

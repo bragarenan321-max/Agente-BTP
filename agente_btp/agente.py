@@ -1,4 +1,9 @@
-"""Orquestrador: uma thread dedicada executa todos os comandos (exigência do Playwright)."""
+"""Orquestrador: uma thread dedicada executa todos os comandos (exigência do Playwright).
+
+Dois canais de conexão com o SAP, com a mesma interface:
+  - "aba" (padrão): a aba JÁ ABERTA e logada no navegador do usuário, via favorito;
+  - "navegador": um navegador dedicado aberto pelo agente (alternativa).
+"""
 from __future__ import annotations
 
 import json
@@ -14,6 +19,7 @@ from .analisador import AnaliseFalhou, analisar
 from .cliente import ClienteBTP
 from .exportacao import gerar_planilha, nome_padrao
 from .navegador import Navegador
+from .ponte import PonteAba
 from .processador import processar_lote, processar_wo
 
 log = logging.getLogger("agente_btp")
@@ -33,6 +39,8 @@ class Agente:
         self._parar = threading.Event()
         self._salvar_descoberta = threading.Event()
         self.navegador = Navegador(PASTA_PERFIL)
+        self.ponte = PonteAba()
+        self._modo = "aba"
         self._estado = {
             "conexao": "desconectado",  # desconectado | aguardando_login | conectado
             "ocupado": False,
@@ -49,10 +57,22 @@ class Agente:
             copia = dict(self._estado)
             copia["mensagens"] = list(self._estado["mensagens"][-200:])
         copia["api_configurada"] = cfg.ARQUIVO_CONFIG.exists()
+        copia["modo"] = self._modo
+        if self._modo == "aba":
+            copia["conexao"] = ("conectado" if self.ponte.autenticado() else
+                                "aguardando_login" if self.ponte.conectada else "desconectado")
         return copia
+
+    @property
+    def conexao(self):
+        return self.ponte if self._modo == "aba" else self.navegador
 
     def enviar(self, comando: str, *args) -> None:
         self._fila.put((comando, args))
+
+    def aba_conectada(self) -> None:
+        if self._modo == "aba":
+            self._msg("Aba do SAP conectada pelo favorito.")
 
     def parar(self) -> None:
         self._parar.set()
@@ -71,7 +91,13 @@ class Agente:
             finally:
                 self._definir(ocupado=False)
 
+    def _cmd_usar_aba(self) -> None:
+        self._modo = "aba"
+        self._msg("Modo: aba já aberta. Na aba do SAP logada, clique no favorito 'Agente BTP'.")
+
     def _cmd_conectar(self) -> None:
+        """Alternativa: abre um navegador dedicado (quando o favorito não puder ser usado)."""
+        self._modo = "navegador"
         self.navegador.abrir()
         if self.navegador.autenticado():
             self._conectado()
@@ -91,9 +117,9 @@ class Agente:
         if not self._exigir_sessao():
             return
         self._salvar_descoberta.clear()
-        self.navegador.iniciar_captura()
+        self.conexao.iniciar_captura()
         self._definir(descoberta_ativa=True)
-        self._msg("Descoberta iniciada. No navegador, faça o processo completo com UMA WO: "
+        self._msg("Descoberta iniciada. Na aba do SAP, faça o processo completo com UMA WO: "
                   "abrir Monitor de alertas, filtrar a WO, clicar na linha e abrir 'Mensagens'. "
                   "Depois clique em 'Salvar descoberta'.")
         # Mantém o navegador "bombeando" eventos até o usuário pedir para salvar.
@@ -102,9 +128,9 @@ class Agente:
             if time.monotonic() > limite:
                 self._msg("Tempo da descoberta esgotado; salvando o que foi capturado.")
                 break
-            self.navegador.aguardar(300)
-        self.navegador.aguardar(1000)  # respostas que ainda estejam chegando
-        destino = self.navegador.salvar_captura(PASTA_DESCOBERTA)
+            self.conexao.aguardar(300)
+        self.conexao.aguardar(2000)  # respostas que ainda estejam chegando
+        destino = self.conexao.salvar_captura(PASTA_DESCOBERTA)
         self._definir(descoberta_ativa=False)
         self._msg(f"Descoberta salva em: {destino}")
         self._configurar_por_descoberta(destino)
@@ -130,7 +156,7 @@ class Agente:
 
         wo = next((l.split(": ", 1)[1] for l in relatorio if l.startswith("WO usada")), None)
         try:
-            resultado = processar_wo(ClienteBTP(cfg.carregar(), self.navegador.get), wo)
+            resultado = processar_wo(ClienteBTP(cfg.carregar(), self.conexao.get), wo)
         except Exception as exc:  # noqa: BLE001
             self._msg(f"Validação falhou: {exc}")
             return
@@ -150,7 +176,7 @@ class Agente:
         self._parar.clear()
         self._definir(progresso={"atual": 0, "total": len(wos)}, ultimo_arquivo=None)
         self._msg(f"Iniciando processamento de {len(wos)} WO(s).")
-        cliente = ClienteBTP(api, self.navegador.get)
+        cliente = ClienteBTP(api, self.conexao.get)
 
         def ao_progredir(atual, total, resultado):
             self._definir(progresso={"atual": atual, "total": total})
@@ -159,17 +185,24 @@ class Agente:
                       + (f" — {resultado.observacao}" if resultado.observacao not in ("", "OK") else ""))
 
         resultados = processar_lote(cliente, wos, ao_progredir, self._parar.is_set)
+        expiradas = [r for r in resultados if r.status.name == "SESSAO_EXPIRADA"]
+        if expiradas:
+            self._msg(f"ATENÇÃO: a sessão do SAP caiu; {len(expiradas)} WO(s) não processada(s). "
+                      "Faça login de novo na aba, clique no favorito 'Agente BTP' e execute novamente.")
         arquivo = gerar_planilha(resultados, nome_padrao(PASTA_SAIDAS))
         self._definir(ultimo_arquivo=arquivo.name)
         self._msg(f"Planilha gerada: {arquivo.name}")
 
     # ---------- auxiliares ----------
     def _exigir_sessao(self) -> bool:
-        if self.navegador.autenticado():
+        if self.conexao.autenticado():
             self._definir(conexao="conectado")
             return True
         self._definir(conexao="desconectado")
-        self._msg("Sessão não autenticada. Clique em 'Conectar ao sistema' e faça o login.")
+        if self._modo == "aba":
+            self._msg("A aba do SAP não está conectada. Abra o SAP já logado e clique no favorito 'Agente BTP'.")
+        else:
+            self._msg("Sessão não autenticada. Clique em 'Abrir navegador separado' e faça o login.")
         return False
 
     def _conectado(self) -> None:

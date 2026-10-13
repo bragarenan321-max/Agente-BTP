@@ -14,16 +14,24 @@ MSGS = {
 PAGINA = """<html><body>Launchpad falso<script>
 window.sap = {ushell:{Container:{}}, ui:{core:{Component:{registry:{forEach(f){f({getManifestEntry(){
   return {id:'monitor.alertas', dataSources:{mainService:{uri:'/srv/', type:'OData', settings:{odataVersion:'2.0'}}}}}})}}}}}};
+function corpoBatch(gets){
+  return gets.map(g=>'--b\\r\\nContent-Type: application/http\\r\\n\\r\\nGET '+g+' HTTP/1.1\\r\\nAccept: application/json\\r\\n\\r\\n\\r\\n').join('')+'--b--';
+}
 async function batch(gets){
-  const body = gets.map(g=>'--b\\r\\nContent-Type: application/http\\r\\n\\r\\nGET '+g+' HTTP/1.1\\r\\nAccept: application/json\\r\\n\\r\\n\\r\\n').join('')+'--b--';
-  await fetch('/srv/$batch',{method:'POST',headers:{'Content-Type':'multipart/mixed; boundary=b'},body});
+  await fetch('/srv/$batch',{method:'POST',headers:{'Content-Type':'multipart/mixed; boundary=b'},body:corpoBatch(gets)});
+}
+function batchXHR(gets){
+  return new Promise(ok=>{const x=new XMLHttpRequest(); x.open('POST','/srv/$batch'); x.setRequestHeader('Content-Type','multipart/mixed; boundary=b'); x.onloadend=ok; x.send(corpoBatch(gets));});
 }
 async function usuario(){  // simula: filtrar a WO e abrir 'Mensagens'
   await batch(["AlertaSet?$skip=0&$top=20&$filter=Wo%20eq%20'88412%7C126579742'&$inlinecount=allpages"]);
-  await batch(["MensagemSet?$filter=ConsolidadoNum%20eq%20'105012-20260916-mEeF%2BOw%2FDh'"]);
+  await batchXHR(["MensagemSet?$filter=ConsolidadoNum%20eq%20'105012-20260916-mEeF%2BOw%2FDh'"]);
 }
 setInterval(usuario, 2000);
 </script></body></html>"""
+
+ESTADO = {"expirada": False}
+
 
 def consulta(url):
     caminho, _, q = url.partition("?")
@@ -43,6 +51,9 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/site"):
             return self._envia(200, "text/html", PAGINA)
+        if self.path.startswith("/srv/") and ESTADO["expirada"]:
+            self.send_response(302); self.send_header("Location", "https://ipc.claro.com.br/idp/SSO.saml2")
+            self.end_headers(); return
         if self.path.startswith("/srv/"):
             r = consulta(self.path[len("/srv/"):])
             return self._envia(200, "application/json", json.dumps(r)) if r else self._envia(404, "text/plain", "")
