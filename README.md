@@ -1,4 +1,35 @@
 # Agente-BTP
+Automação **somente leitura** do *Monitor de alertas* (SAP BTP / Fiori): recebe WOs,
+coleta os dados da janela "Mensagens" e gera um Excel com aba de Log.
+
+## Como usar (Windows)
+
+1. Dê duplo clique em **`Abrir Agente BTP.bat`** (na 1ª vez ele prepara o ambiente).
+2. A interface abre em `http://127.0.0.1:8765`. Clique em **Conectar ao sistema**.
+3. No navegador dedicado que abrir, faça o login e aprove o MFA.
+4. **Somente na 1ª vez:** *Iniciar descoberta* → faça o processo com UMA WO → *Salvar descoberta*.
+   O arquivo gerado em `descoberta/` é usado para configurar `config/api.json`.
+5. Cole as WOs (uma por linha) ou envie uma planilha com a coluna **WO** → **Executar**.
+6. Baixe a planilha gerada (também salva em `saidas/`).
+
+Pré-requisito: Python 3.10+ instalado. O navegador usado é o Edge (ou Chrome) já instalado.
+
+## Arquitetura
+
+| Módulo | Função |
+|---|---|
+| `navegador.py` | Navegador dedicado (Playwright), detecção de login, GET same-origin, Modo Descoberta |
+| `cliente.py` | Cliente OData **somente GET** + classificação de erros |
+| `processador.py` | Fluxo por WO, estados, retentativa de rede, lote |
+| `exportacao.py` | Excel (Resultado + Log), identificadores como texto |
+| `servidor.py` / `web/` | Interface web local |
+
+Mapeamento funcional do processo: [`docs/mapeamento-processo.md`](docs/mapeamento-processo.md).
+Testes: `python -m pytest testes`.
+
+---
+
+## Especificação original
 Automação destinada à coleta e análise de informações em um sistema web corporativo, executada a partir de uma interface web local.
 
 Status: Em fase de levantamento e especificação do processo manual.

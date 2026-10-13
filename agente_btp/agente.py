@@ -1,0 +1,152 @@
+"""Orquestrador: uma thread dedicada executa todos os comandos (exigência do Playwright)."""
+from __future__ import annotations
+
+import logging
+import queue
+import threading
+import time
+from datetime import datetime
+from pathlib import Path
+
+from . import config as cfg
+from .cliente import ClienteBTP
+from .exportacao import gerar_planilha, nome_padrao
+from .navegador import Navegador
+from .processador import processar_lote
+
+log = logging.getLogger("agente_btp")
+
+RAIZ = cfg.RAIZ
+PASTA_SAIDAS = RAIZ / "saidas"
+PASTA_DESCOBERTA = RAIZ / "descoberta"
+PASTA_PERFIL = RAIZ / ".perfil_navegador"
+ESPERA_LOGIN_SEG = 600
+
+
+class Agente:
+    def __init__(self):
+        self._fila: queue.Queue = queue.Queue()
+        self._trava = threading.Lock()
+        self._parar = threading.Event()
+        self.navegador = Navegador(PASTA_PERFIL)
+        self._estado = {
+            "conexao": "desconectado",  # desconectado | aguardando_login | conectado
+            "ocupado": False,
+            "descoberta_ativa": False,
+            "progresso": {"atual": 0, "total": 0},
+            "ultimo_arquivo": None,
+            "mensagens": [],
+        }
+        threading.Thread(target=self._laco, name="agente-btp", daemon=True).start()
+
+    # ---------- API pública (chamada pelo servidor web) ----------
+    def estado(self) -> dict:
+        with self._trava:
+            copia = dict(self._estado)
+            copia["mensagens"] = list(self._estado["mensagens"][-200:])
+        copia["api_configurada"] = cfg.ARQUIVO_CONFIG.exists()
+        return copia
+
+    def enviar(self, comando: str, *args) -> None:
+        self._fila.put((comando, args))
+
+    def parar(self) -> None:
+        self._parar.set()
+        self._msg("Interrupção solicitada; a WO atual será concluída.")
+
+    # ---------- execução ----------
+    def _laco(self) -> None:
+        while True:
+            comando, args = self._fila.get()
+            self._definir(ocupado=True)
+            try:
+                getattr(self, f"_cmd_{comando}")(*args)
+            except Exception as exc:  # noqa: BLE001
+                log.exception("Falha no comando %s", comando)
+                self._msg(f"ERRO: {exc}")
+            finally:
+                self._definir(ocupado=False)
+
+    def _cmd_conectar(self) -> None:
+        self.navegador.abrir()
+        if self.navegador.autenticado():
+            self._conectado()
+            return
+        self._definir(conexao="aguardando_login")
+        self._msg("Navegador aberto. Faça o login e aprove o MFA no celular.")
+        limite = time.monotonic() + ESPERA_LOGIN_SEG
+        while time.monotonic() < limite:
+            time.sleep(2)
+            if self.navegador.autenticado():
+                self._conectado()
+                return
+        self._definir(conexao="desconectado")
+        self._msg("Tempo de espera do login esgotado. Clique em 'Conectar' novamente.")
+
+    def _cmd_descoberta_iniciar(self) -> None:
+        if not self._exigir_sessao():
+            return
+        self.navegador.iniciar_captura()
+        self._definir(descoberta_ativa=True)
+        self._msg("Descoberta iniciada. No navegador, faça o processo completo com UMA WO: "
+                  "abrir Monitor de alertas, filtrar a WO, clicar na linha e abrir 'Mensagens'. "
+                  "Depois clique em 'Salvar descoberta'.")
+
+    def _cmd_descoberta_salvar(self) -> None:
+        destino = self.navegador.salvar_captura(PASTA_DESCOBERTA)
+        self._definir(descoberta_ativa=False)
+        self._msg(f"Descoberta salva em: {destino}")
+
+    def _cmd_executar(self, wos: list[str]) -> None:
+        if not self._exigir_sessao():
+            return
+        try:
+            api = cfg.carregar()
+        except (FileNotFoundError, ValueError) as exc:
+            self._msg(f"ERRO: {exc}")
+            return
+        self._parar.clear()
+        self._definir(progresso={"atual": 0, "total": len(wos)}, ultimo_arquivo=None)
+        self._msg(f"Iniciando processamento de {len(wos)} WO(s).")
+        cliente = ClienteBTP(api, self.navegador.get)
+
+        def ao_progredir(atual, total, resultado):
+            self._definir(progresso={"atual": atual, "total": total})
+            self._msg(f"[{atual}/{total}] WO {resultado.wo} — {resultado.status.value} — "
+                      f"{resultado.registros} registro(s)"
+                      + (f" — {resultado.observacao}" if resultado.observacao not in ("", "OK") else ""))
+
+        resultados = processar_lote(cliente, wos, ao_progredir, self._parar.is_set)
+        arquivo = gerar_planilha(resultados, nome_padrao(PASTA_SAIDAS))
+        self._definir(ultimo_arquivo=arquivo.name)
+        self._msg(f"Planilha gerada: {arquivo.name}")
+
+    # ---------- auxiliares ----------
+    def _exigir_sessao(self) -> bool:
+        if self.navegador.autenticado():
+            self._definir(conexao="conectado")
+            return True
+        self._definir(conexao="desconectado")
+        self._msg("Sessão não autenticada. Clique em 'Conectar ao sistema' e faça o login.")
+        return False
+
+    def _conectado(self) -> None:
+        self._definir(conexao="conectado")
+        self._msg("Sessão autenticada. Agente conectado ao sistema.")
+
+    def _definir(self, **valores) -> None:
+        with self._trava:
+            self._estado.update(valores)
+
+    def _msg(self, texto: str) -> None:
+        log.info(texto)
+        with self._trava:
+            self._estado["mensagens"].append(f"{datetime.now():%H:%M:%S}  {texto}")
+
+
+def caminho_saida(nome: str) -> Path | None:
+    """Resolve um arquivo de saída sem permitir sair da pasta (../)."""
+    caminho = (PASTA_SAIDAS / nome).resolve()
+    if caminho.parent != PASTA_SAIDAS.resolve() or not caminho.is_file():
+        return None
+    return caminho

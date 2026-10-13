@@ -1,0 +1,24 @@
+{
+  "_comentario": "MODELO. Os nomes abaixo são ilustrativos; os reais vêm da captura do Modo Descoberta. Copie para config/api.json.",
+  "servico": "/caminho/do/servico/odata/",
+  "lista": {
+    "caminho": "AlertasSet",
+    "filtro": "WO eq '{wo}'",
+    "extras": { "$top": "500" }
+  },
+  "campo_consolidado_lista": "Consolidado",
+  "mensagens": {
+    "caminho": "MensagensSet",
+    "filtro": "Consolidado eq '{linha[Consolidado]}'",
+    "extras": {}
+  },
+  "campo_mensagens_expandidas": null,
+  "campos": {
+    "consolidado": "Consolidado",
+    "wo": "WO",
+    "material": "Material",
+    "fornecedor": "Fornecedor",
+    "quantidade_faltante": "QuantidadeFaltante",
+    "mensagem": "Mensagem"
+  }
+}

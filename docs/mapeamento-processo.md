@@ -65,14 +65,15 @@ O agente **nunca** aciona:
 Observação: o Monitor de alertas só lista WOs **com pendência**. Por isso não é possível
 afirmar "WO inexistente" a partir dele — o estado correto é `NAO_ENCONTRADA`.
 
-## Saída Excel (proposta, a aprovar)
+## Saída Excel (confirmada pelo usuário — igual ao Download da janela "Mensagens")
 
-- Aba **Resultado**: uma linha por linha do diálogo "Mensagens".
+- Aba **Resultado**: uma linha por linha do diálogo "Mensagens", colunas:
+  `Consolidado · WO · Nº do Material · Fornecedor · Quantidade faltante · Mensagem`.
 - Aba **Log**: WO · Data/Hora · Status · Registros · Observação.
 
 ## Pendências
 
 - [ ] Confirmar endpoints OData (Network, filtro `batch`)
-- [ ] Confirmar colunas ocultas no diálogo "Mensagens"
+- [x] Colunas finais definidas (modelo do Download)
 - [ ] Modelo da planilha de entrada (onde estão as WOs)
 - [ ] WO com mais de um "Consolidado nº": processar todas as linhas?

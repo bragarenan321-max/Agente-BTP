@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agente BTP</title>
+<style>
+  :root { --fundo:#1c1d1f; --painel:#26282b; --borda:#3a3d41; --texto:#e8e8e8; --suave:#a0a4a8;
+          --verm:#b0191e; --verde:#2fbf71; --amar:#e0a526; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--fundo); color:var(--texto); font:15px/1.45 "Segoe UI",Arial,sans-serif; }
+  header { background:var(--verm); padding:14px 24px; font-size:20px; font-weight:600; }
+  main { max-width:960px; margin:24px auto; padding:0 16px; display:grid; gap:16px; }
+  section { background:var(--painel); border:1px solid var(--borda); border-radius:8px; padding:16px 20px; }
+  h2 { margin:0 0 12px; font-size:16px; }
+  button { background:var(--verm); color:#fff; border:0; border-radius:5px; padding:9px 16px;
+           font-size:14px; cursor:pointer; margin-right:8px; }
+  button.sec { background:transparent; border:1px solid var(--borda); color:var(--texto); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  textarea { width:100%; min-height:130px; background:var(--fundo); color:var(--texto);
+             border:1px solid var(--borda); border-radius:5px; padding:8px; font-family:Consolas,monospace; }
+  .linha { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .ponto { width:11px; height:11px; border-radius:50%; background:var(--verm); display:inline-block; }
+  .ponto.ok { background:var(--verde); } .ponto.esp { background:var(--amar); }
+  .dica { color:var(--suave); font-size:13px; margin:6px 0 12px; }
+  #log { background:var(--fundo); border:1px solid var(--borda); border-radius:5px; padding:8px;
+         height:240px; overflow:auto; font:13px Consolas,monospace; white-space:pre-wrap; }
+  progress { width:100%; height:10px; }
+  a { color:#7fb6ff; }
+</style>
+</head>
+<body>
+<header>AGENTE BTP</header>
+<main>
+  <section>
+    <h2>1. Conexão</h2>
+    <div class="linha">
+      <span class="ponto" id="pt"></span><span id="conexao">Não conectado</span>
+    </div>
+    <p class="dica">Abre um navegador dedicado. Faça o login e aprove o MFA no celular; o agente detecta sozinho.</p>
+    <button id="bConectar">Conectar ao sistema</button>
+  </section>
+
+  <section id="secDescoberta">
+    <h2>2. Descoberta (uma única vez)</h2>
+    <p class="dica" id="dicaApi"></p>
+    <button id="bDescIni" class="sec">Iniciar descoberta</button>
+    <button id="bDescSalvar" class="sec">Salvar descoberta</button>
+  </section>
+
+  <section>
+    <h2>3. WOs a processar</h2>
+    <p class="dica">Uma WO por linha, no formato <b>02235|230771207</b> — ou envie uma planilha com a coluna <b>WO</b>.</p>
+    <textarea id="texto" placeholder="42340|231184065&#10;88412|126579742"></textarea>
+    <div class="linha" style="margin-top:10px">
+      <input type="file" id="arquivo" accept=".xlsx">
+    </div>
+    <div class="linha" style="margin-top:12px">
+      <button id="bExecutar">Executar</button>
+      <button id="bParar" class="sec">Parar</button>
+      <span id="baixar"></span>
+    </div>
+    <progress id="prog" value="0" max="1" style="margin-top:12px"></progress>
+    <div class="dica" id="progTxt"></div>
+  </section>
+
+  <section>
+    <h2>Registro</h2>
+    <div id="log"></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const post = (url, body) => fetch(url, { method: "POST", body }).then(r => r.json());
+
+$("bConectar").onclick = () => post("/api/conectar");
+$("bDescIni").onclick = () => post("/api/descoberta/iniciar");
+$("bDescSalvar").onclick = () => post("/api/descoberta/salvar");
+$("bParar").onclick = () => post("/api/parar");
+$("bExecutar").onclick = async () => {
+  const fd = new FormData();
+  fd.append("texto", $("texto").value);
+  if ($("arquivo").files[0]) fd.append("arquivo", $("arquivo").files[0]);
+  const r = await post("/api/executar", fd);
+  if (!r.ok) alert(r.erro);
+};
+
+const ROTULO = { desconectado: "Não conectado", aguardando_login: "Aguardando login/MFA…", conectado: "Conectado" };
+async function atualizar() {
+  try {
+    const e = await fetch("/api/estado").then(r => r.json());
+    $("conexao").textContent = ROTULO[e.conexao];
+    $("pt").className = "ponto" + (e.conexao === "conectado" ? " ok" : e.conexao === "aguardando_login" ? " esp" : "");
+    const con = e.conexao === "conectado";
+    $("bConectar").disabled = e.ocupado;
+    $("bDescIni").disabled = e.ocupado || !con || e.descoberta_ativa;
+    $("bDescSalvar").disabled = e.ocupado || !e.descoberta_ativa;
+    $("bExecutar").disabled = e.ocupado || !con || !e.api_configurada;
+    $("bParar").disabled = !e.ocupado;
+    $("dicaApi").textContent = e.api_configurada
+      ? "API configurada. A descoberta só é necessária se o sistema mudar."
+      : "API ainda não configurada: inicie a descoberta, faça o processo com UMA WO no navegador e salve. Envie o arquivo gerado na pasta 'descoberta'.";
+    const p = e.progresso;
+    $("prog").max = Math.max(p.total, 1); $("prog").value = p.atual;
+    $("progTxt").textContent = p.total ? `${p.atual} de ${p.total} WO(s)` : "";
+    $("baixar").innerHTML = e.ultimo_arquivo
+      ? `<a href="/api/download/${encodeURIComponent(e.ultimo_arquivo)}">Baixar ${e.ultimo_arquivo}</a>` : "";
+    const log = $("log"), noFim = log.scrollTop + log.clientHeight >= log.scrollHeight - 5;
+    log.textContent = e.mensagens.join("\n");
+    if (noFim) log.scrollTop = log.scrollHeight;
+  } catch (_) { $("conexao").textContent = "Agente encerrado"; }
+}
+setInterval(atualizar, 1000); atualizar();
+</script>
+</body>
+</html>
