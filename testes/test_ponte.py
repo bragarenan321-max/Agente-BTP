@@ -79,3 +79,12 @@ def test_inicio_da_descoberta_acorda_a_aba():
     assert resultado["r"]["capturar"] is True and resultado["t"] < 2
     p.adicionar_captura([{"url": "u"}])
     assert p.capturando
+
+
+def test_arquivo_do_favorito_esta_atualizado():
+    """O arquivo ao lado do .bat precisa ser idêntico ao favorito gerado pelo programa."""
+    from agente_btp.config import RAIZ
+    from agente_btp.servidor import codigo_carregador
+
+    texto = (RAIZ / "FAVORITO - Agente BTP.txt").read_text(encoding="utf-8")
+    assert "javascript:" + codigo_carregador("http://127.0.0.1:8767") in texto

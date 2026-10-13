@@ -41,9 +41,18 @@
       <span class="ponto" id="pt"></span><span id="conexao">Não conectado</span>
     </div>
     <div id="instrAba">
-      <p class="dica"><b>Primeira vez:</b> arraste o botão abaixo para a <b>barra de favoritos</b> do Chrome
-        (se ela não aparece, tecle <b>Ctrl+Shift+B</b>).</p>
-      <p><a id="favorito" class="favorito" href="#" onclick="return false">Agente BTP</a></p>
+      <p class="dica"><b>Primeira vez — criar o favorito (uma vez só):</b></p>
+      <ol class="dica">
+        <li>Clique em <b>Copiar URL do favorito</b>.</li>
+        <li>No Chrome, tecle <b>Ctrl+Shift+O</b> (Favoritos) → menu <b>⋮</b> → <b>Adicionar novo favorito</b>.</li>
+        <li>Nome: <b>Agente BTP</b>. URL: cole (<b>Ctrl+V</b>). Salve.</li>
+      </ol>
+      <div class="linha">
+        <button id="bCopiarUrl">Copiar URL do favorito</button>
+        <span class="dica" style="margin:0">ou arraste para a barra de favoritos:</span>
+        <a id="favorito" class="favorito" href="#" onclick="return false">Agente BTP</a>
+      </div>
+      <textarea id="urlFavorito" readonly rows="2" style="min-height:0;margin-top:8px;font-size:12px"></textarea>
       <p class="dica"><b>Sempre:</b> abra o SAP (já logado) e clique no favorito <b>Agente BTP</b>.
         Se o Chrome perguntar sobre <b>acesso à rede local</b>, clique em <b>Permitir</b>.
         Um selo verde "Agente BTP: conectado" aparece no canto da aba.</p>
@@ -90,8 +99,14 @@ const post = (url, body) => fetch(url, { method: "POST", body }).then(r => r.jso
 let codigoConsole = "";
 fetch("/api/favorito").then(r => r.json()).then(f => {
   $("favorito").setAttribute("href", f.favorito);
+  $("urlFavorito").value = f.favorito;
   codigoConsole = f.console;
 });
+$("bCopiarUrl").onclick = async () => {
+  const url = $("urlFavorito").value;
+  try { await navigator.clipboard.writeText(url); alert("URL copiada. Crie o favorito com Ctrl+Shift+O e cole no campo URL."); }
+  catch (_) { $("urlFavorito").select(); document.execCommand("copy"); alert("URL copiada."); }
+};
 $("bCopiar").onclick = async () => {
   try { await navigator.clipboard.writeText(codigoConsole); alert("Código copiado. Cole no Console da aba do SAP."); }
   catch (_) { prompt("Copie o código abaixo:", codigoConsole); }
