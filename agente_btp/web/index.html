@@ -49,15 +49,9 @@
         Um selo verde "Agente BTP: conectado" aparece no canto da aba.</p>
       <details class="dica">
         <summary>O favorito não funcionou?</summary>
-        <p>1) Na aba do SAP, tecle F12 → aba <b>Console</b> → cole o código copiado abaixo → Enter.</p>
+        <p>Na aba do SAP, tecle F12 → aba <b>Console</b> → cole o código copiado abaixo → Enter.</p>
         <button id="bCopiar" class="sec">Copiar código para o Console</button>
-        <p>2) Ou use um navegador separado aberto pelo agente (exige novo login):</p>
-        <button id="bConectar" class="sec">Abrir navegador separado</button>
       </details>
-    </div>
-    <div id="instrNav" style="display:none">
-      <p class="dica">Modo navegador separado: faça o login na janela aberta pelo agente.</p>
-      <button id="bUsarAba" class="sec">Voltar a usar a aba já aberta</button>
     </div>
   </section>
 
@@ -93,8 +87,6 @@
 const $ = id => document.getElementById(id);
 const post = (url, body) => fetch(url, { method: "POST", body }).then(r => r.json());
 
-$("bConectar").onclick = () => post("/api/conectar");
-$("bUsarAba").onclick = () => post("/api/usar_aba");
 let codigoConsole = "";
 fetch("/api/favorito").then(r => r.json()).then(f => {
   $("favorito").setAttribute("href", f.favorito);
@@ -123,11 +115,9 @@ async function atualizar() {
   try {
     const e = await fetch("/api/estado").then(r => r.json());
     $("conexao").textContent = ROTULO[e.modo][e.conexao];
-    $("instrAba").style.display = e.modo === "aba" ? "" : "none";
-    $("instrNav").style.display = e.modo === "navegador" ? "" : "none";
+
     $("pt").className = "ponto" + (e.conexao === "conectado" ? " ok" : e.conexao === "aguardando_login" ? " esp" : "");
     const con = e.conexao === "conectado";
-    $("bConectar").disabled = e.ocupado;
     $("bDescIni").disabled = e.ocupado || !con || e.descoberta_ativa;
     $("bDescSalvar").disabled = !e.descoberta_ativa;
     $("bExecutar").disabled = e.ocupado || !con || !e.api_configurada;

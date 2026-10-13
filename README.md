@@ -15,9 +15,9 @@ coleta os dados da janela "Mensagens" e gera um Excel com aba de Log.
    O agente configura a API sozinho e valida com a mesma WO. Confira com a janela "Mensagens".
 5. Cole as WOs (uma por linha) ou envie uma planilha com a coluna **WO** → **Executar** → baixe o Excel.
 
-Se o favorito for bloqueado pela política da empresa: copie o código pelo botão
-*"Copiar código para o Console"* e cole no Console (F12) da aba do SAP, ou use
-*"Abrir navegador separado"* (o agente abre um Edge próprio e você faz login nele).
+O agente **não abre o SAP** nem pede login: usa a aba que você já tem aberta.
+Se o favorito for bloqueado pela política da empresa, copie o código pelo botão
+*"Copiar código para o Console"* e cole no Console (F12) da aba do SAP.
 
 Pré-requisito: Python 3.10+ instalado.
 
@@ -27,7 +27,7 @@ Pré-requisito: Python 3.10+ instalado.
 |---|---|
 | `analisador.py` | Lê a captura da descoberta e gera a configuração da API automaticamente |
 | `ponte.py` + `web/agente_btp.js` | Conexão com a **aba já aberta** (favorito), no modelo do Agente Atlas |
-| `navegador.py` | Alternativa: navegador dedicado (Playwright) |
+| `navegador.py` | Reserva, fora da interface: navegador dedicado (Playwright, opcional) |
 | `cliente.py` | Cliente OData **somente GET** + classificação de erros |
 | `processador.py` | Fluxo por WO, estados, retentativa de rede, lote |
 | `exportacao.py` | Excel (Resultado + Log), identificadores como texto |
