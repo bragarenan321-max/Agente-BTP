@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import time
 import re
 from datetime import datetime
 from pathlib import Path
@@ -21,7 +23,10 @@ from .modelos import FalhaComunicacao
 
 log = logging.getLogger("agente_btp")
 
-URL_LAUNCHPAD = "https://claro-prd.launchpad.cfapps.br10.hana.ondemand.com/site#Shell-home"
+URL_LAUNCHPAD = os.environ.get(
+    "AGENTE_BTP_URL", "https://claro-prd.launchpad.cfapps.br10.hana.ondemand.com/site#Shell-home")
+# Somente para testes automatizados; em uso real a janela precisa ficar visível (login/MFA).
+HEADLESS = os.environ.get("AGENTE_BTP_HEADLESS") == "1"
 HOST_LAUNCHPAD = urlparse(URL_LAUNCHPAD).hostname
 
 _JS_GET = """
@@ -77,47 +82,66 @@ class Navegador:
     # ---------- ciclo de vida ----------
     @property
     def aberto(self) -> bool:
+        """Contexto vivo e com ao menos uma aba (o usuário pode ter fechado a janela)."""
         if not self.contexto:
             return False
         try:
-            _ = self.contexto.pages
-            return True
+            return len(self.contexto.pages) > 0
         except Exception:  # noqa: BLE001
             return False
 
     def abrir(self) -> None:
         if self.aberto:
-            self._pagina().bring_to_front()
-            return
+            try:
+                self._pagina().bring_to_front()
+                return
+            except Exception:  # noqa: BLE001 — janela fechada: reabre abaixo
+                pass
+        self.fechar()
         from playwright.sync_api import sync_playwright
 
         self.pasta_perfil.mkdir(parents=True, exist_ok=True)
-        self._pw = self._pw or sync_playwright().start()
+        self._pw = sync_playwright().start()
         ultimo_erro = None
         # Prefere o Edge/Chrome já instalados (dispensa download do Chromium).
         for canal in ("msedge", "chrome", None):
             try:
                 self.contexto = self._pw.chromium.launch_persistent_context(
-                    str(self.pasta_perfil), channel=canal, headless=False, no_viewport=True)
+                    str(self.pasta_perfil), channel=canal, headless=HEADLESS, no_viewport=True)
                 log.info("Navegador aberto (%s).", canal or "chromium")
                 break
             except Exception as exc:  # noqa: BLE001
                 ultimo_erro = exc
         else:
+            self.fechar()
             raise RuntimeError(f"Não foi possível abrir o navegador: {ultimo_erro}")
         self.contexto.on("response", self._ao_receber_resposta)
         pagina = self.contexto.pages[0] if self.contexto.pages else self.contexto.new_page()
         pagina.goto(URL_LAUNCHPAD, wait_until="domcontentloaded")
 
     def fechar(self) -> None:
+        for acao in (lambda: self.contexto and self.contexto.close(),
+                     lambda: self._pw and self._pw.stop()):
+            try:
+                acao()
+            except Exception:  # noqa: BLE001 — já fechado pelo usuário
+                pass
+        self.contexto = None
+        self._pw = None
+
+    def aguardar(self, ms: int) -> None:
+        """Espera mantendo o Playwright ativo, para que os eventos (respostas) sejam processados.
+
+        No modo síncrono, eventos só são entregues durante chamadas ao Playwright; um
+        time.sleep() comum deixaria a captura da descoberta parada.
+        """
         try:
-            if self.contexto:
-                self.contexto.close()
-        finally:
-            self.contexto = None
-            if self._pw:
-                self._pw.stop()
-                self._pw = None
+            if self.aberto:
+                self.contexto.pages[0].wait_for_timeout(ms)
+                return
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(ms / 1000)
 
     # ---------- sessão ----------
     def _pagina(self):

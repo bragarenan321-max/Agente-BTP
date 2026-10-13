@@ -94,7 +94,7 @@ async function atualizar() {
     const con = e.conexao === "conectado";
     $("bConectar").disabled = e.ocupado;
     $("bDescIni").disabled = e.ocupado || !con || e.descoberta_ativa;
-    $("bDescSalvar").disabled = e.ocupado || !e.descoberta_ativa;
+    $("bDescSalvar").disabled = !e.descoberta_ativa;
     $("bExecutar").disabled = e.ocupado || !con || !e.api_configurada;
     $("bParar").disabled = !e.ocupado;
     $("dicaApi").textContent = e.api_configurada

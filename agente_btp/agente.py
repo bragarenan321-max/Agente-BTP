@@ -23,6 +23,7 @@ PASTA_SAIDAS = RAIZ / "saidas"
 PASTA_DESCOBERTA = RAIZ / "descoberta"
 PASTA_PERFIL = RAIZ / ".perfil_navegador"
 ESPERA_LOGIN_SEG = 600
+LIMITE_DESCOBERTA_SEG = 1800
 
 
 class Agente:
@@ -30,6 +31,7 @@ class Agente:
         self._fila: queue.Queue = queue.Queue()
         self._trava = threading.Lock()
         self._parar = threading.Event()
+        self._salvar_descoberta = threading.Event()
         self.navegador = Navegador(PASTA_PERFIL)
         self._estado = {
             "conexao": "desconectado",  # desconectado | aguardando_login | conectado
@@ -78,7 +80,7 @@ class Agente:
         self._msg("Navegador aberto. Faça o login e aprove o MFA no celular.")
         limite = time.monotonic() + ESPERA_LOGIN_SEG
         while time.monotonic() < limite:
-            time.sleep(2)
+            self.navegador.aguardar(2000)
             if self.navegador.autenticado():
                 self._conectado()
                 return
@@ -88,17 +90,27 @@ class Agente:
     def _cmd_descoberta_iniciar(self) -> None:
         if not self._exigir_sessao():
             return
+        self._salvar_descoberta.clear()
         self.navegador.iniciar_captura()
         self._definir(descoberta_ativa=True)
         self._msg("Descoberta iniciada. No navegador, faça o processo completo com UMA WO: "
                   "abrir Monitor de alertas, filtrar a WO, clicar na linha e abrir 'Mensagens'. "
                   "Depois clique em 'Salvar descoberta'.")
-
-    def _cmd_descoberta_salvar(self) -> None:
+        # Mantém o navegador "bombeando" eventos até o usuário pedir para salvar.
+        limite = time.monotonic() + LIMITE_DESCOBERTA_SEG
+        while not self._salvar_descoberta.is_set():
+            if time.monotonic() > limite:
+                self._msg("Tempo da descoberta esgotado; salvando o que foi capturado.")
+                break
+            self.navegador.aguardar(300)
+        self.navegador.aguardar(1000)  # respostas que ainda estejam chegando
         destino = self.navegador.salvar_captura(PASTA_DESCOBERTA)
         self._definir(descoberta_ativa=False)
         self._msg(f"Descoberta salva em: {destino}")
         self._configurar_por_descoberta(destino)
+
+    def salvar_descoberta(self) -> None:
+        self._salvar_descoberta.set()
 
     def _configurar_por_descoberta(self, arquivo: Path) -> None:
         captura = json.loads(arquivo.read_text(encoding="utf-8"))

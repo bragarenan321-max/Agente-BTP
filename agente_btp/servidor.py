@@ -36,7 +36,7 @@ def criar_app(agente: Agente) -> Flask:
 
     @app.post("/api/descoberta/salvar")
     def descoberta_salvar():
-        agente.enviar("descoberta_salvar")
+        agente.salvar_descoberta()
         return jsonify(ok=True)
 
     @app.post("/api/executar")
