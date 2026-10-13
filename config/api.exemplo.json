@@ -1,17 +1,8 @@
 {
-  "_comentario": "MODELO. Os nomes abaixo são ilustrativos; os reais vêm da captura do Modo Descoberta. Copie para config/api.json.",
-  "servico": "/caminho/do/servico/odata/",
-  "lista": {
-    "caminho": "AlertasSet",
-    "filtro": "WO eq '{wo}'",
-    "extras": { "$top": "500" }
-  },
+  "_comentario": "MODELO ILUSTRATIVO. O config/api.json real é gerado automaticamente pelo botão 'Salvar descoberta'.",
+  "url_lista": "/caminho/servico/odata/AlertasSet?$filter=WO eq '{wo}'",
   "campo_consolidado_lista": "Consolidado",
-  "mensagens": {
-    "caminho": "MensagensSet",
-    "filtro": "Consolidado eq '{linha[Consolidado]}'",
-    "extras": {}
-  },
+  "url_mensagens": "/caminho/servico/odata/MensagensSet?$filter=Consolidado eq '{linha[Consolidado]}'",
   "campo_mensagens_expandidas": null,
   "campos": {
     "consolidado": "Consolidado",

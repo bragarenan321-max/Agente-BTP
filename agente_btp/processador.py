@@ -34,7 +34,7 @@ def processar_wo(cliente: ClienteBTP, wo: str) -> ResultadoWO:
     linhas = []
     for alerta in alertas:
         mensagens = _com_retentativa(lambda a=alerta: cliente.buscar_mensagens(a))
-        linhas.extend(cliente.converter(alerta, m) for m in mensagens)
+        linhas.extend(cliente.converter(wo, alerta, m) for m in mensagens)
 
     if not linhas:
         return ResultadoWO(wo, Status.SEM_REGISTROS,

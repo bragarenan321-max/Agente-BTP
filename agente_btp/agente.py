@@ -1,6 +1,7 @@
 """Orquestrador: uma thread dedicada executa todos os comandos (exigência do Playwright)."""
 from __future__ import annotations
 
+import json
 import logging
 import queue
 import threading
@@ -9,10 +10,11 @@ from datetime import datetime
 from pathlib import Path
 
 from . import config as cfg
+from .analisador import AnaliseFalhou, analisar
 from .cliente import ClienteBTP
 from .exportacao import gerar_planilha, nome_padrao
 from .navegador import Navegador
-from .processador import processar_lote
+from .processador import processar_lote, processar_wo
 
 log = logging.getLogger("agente_btp")
 
@@ -96,6 +98,34 @@ class Agente:
         destino = self.navegador.salvar_captura(PASTA_DESCOBERTA)
         self._definir(descoberta_ativa=False)
         self._msg(f"Descoberta salva em: {destino}")
+        self._configurar_por_descoberta(destino)
+
+    def _configurar_por_descoberta(self, arquivo: Path) -> None:
+        captura = json.loads(arquivo.read_text(encoding="utf-8"))
+        try:
+            dados, relatorio = analisar(captura)
+        except AnaliseFalhou as exc:
+            self._msg(f"Configuração automática não concluída: {exc}")
+            return
+        for linha in relatorio:
+            self._msg(linha)
+        if cfg.ARQUIVO_CONFIG.exists():
+            backup = cfg.ARQUIVO_CONFIG.with_suffix(f".{datetime.now():%Y%m%d_%H%M%S}.bak")
+            cfg.ARQUIVO_CONFIG.replace(backup)
+            self._msg(f"Configuração anterior guardada em {backup.name}")
+        cfg.salvar(dados)
+        self._msg("API configurada automaticamente. Validando com a mesma WO...")
+
+        wo = next((l.split(": ", 1)[1] for l in relatorio if l.startswith("WO usada")), None)
+        try:
+            resultado = processar_wo(ClienteBTP(cfg.carregar(), self.navegador.get), wo)
+        except Exception as exc:  # noqa: BLE001
+            self._msg(f"Validação falhou: {exc}")
+            return
+        self._msg(f"Validação: WO {wo} -> {resultado.status.value}, {resultado.registros} linha(s).")
+        for linha in resultado.linhas[:10]:
+            self._msg("   " + " | ".join("" if v is None else str(v) for v in linha.como_lista()))
+        self._msg("Confira se as linhas acima batem com a janela 'Mensagens'. Se sim, o agente está pronto.")
 
     def _cmd_executar(self, wos: list[str]) -> None:
         if not self._exigir_sessao():

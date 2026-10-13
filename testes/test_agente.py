@@ -9,7 +9,7 @@ from agente_btp.cliente import ClienteBTP, Resposta
 from agente_btp.entrada import ler_wos_planilha, ler_wos_texto, wo_valida
 from agente_btp.exportacao import gerar_planilha
 from agente_btp.modelos import COLUNAS_RESULTADO, Status
-from agente_btp.odata import como_quantidade, extrair_registros, montar_url
+from agente_btp.odata import como_quantidade, extrair_registros, preencher_modelo
 from agente_btp.processador import processar_lote
 
 CONFIG = cfg.a_partir_de_dict(json.loads(
@@ -67,9 +67,23 @@ def test_extrair_registros_v2_e_v4():
     assert extrair_registros('{"value":[{"a":1}]}') == [{"a": 1}]
 
 
-def test_montar_url_codifica_barra_e_aspas():
-    url = montar_url("/srv/", "AlertasSet", "WO eq '02235|230771207'")
+def test_preencher_modelo_codifica_valores():
+    url = preencher_modelo("/srv/AlertasSet?$filter=WO eq '{wo}'", wo="02235|230771207")
     assert url == "/srv/AlertasSet?$filter=WO%20eq%20'02235%7C230771207'"
+    url = preencher_modelo("/srv/Msg?$filter=C eq '{linha[C]}'", linha={"C": "16vp6+Z4/0CW'x"})
+    assert url == "/srv/Msg?$filter=C%20eq%20'16vp6%2BZ4%2F0CW%27%27x'"
+
+
+def test_paginacao_segue_next():
+    paginas = {
+        "AlertasSet?": Resposta(200, "application/json", json.dumps(
+            {"d": {"results": [ALERTA], "__next": "AlertasSet?$skiptoken=2"}})),
+        "skiptoken=2": Resposta(200, "application/json", json.dumps(
+            {"d": {"results": [dict(ALERTA, Consolidado="segundo")]}})),
+    }
+    t = TransporteFalso({"skiptoken": paginas["skiptoken=2"], "AlertasSet": paginas["AlertasSet?"]})
+    alertas = ClienteBTP(CONFIG, t).buscar_alertas("88412|126579742")
+    assert [a["Consolidado"] for a in alertas] == ["105012-20260916-abc", "segundo"]
 
 
 def test_quantidade_decimal_odata():
@@ -155,5 +169,5 @@ def test_planilha_preserva_zeros_e_tipos(tmp_path):
 
 def test_config_exige_campos():
     with pytest.raises(ValueError):
-        cfg.a_partir_de_dict({"servico": "/", "lista": {}, "campo_consolidado_lista": "C",
-                              "mensagens": {"caminho": "M"}, "campos": {"wo": "WO"}})
+        cfg.a_partir_de_dict({"url_lista": "/s/A?$filter=WO eq '{wo}'", "url_mensagens": "/s/M",
+                              "campos": {"wo": "WO"}})

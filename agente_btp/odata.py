@@ -13,22 +13,35 @@ def literal(valor) -> str:
     return str(valor).replace("'", "''")
 
 
-def montar_url(servico: str, caminho: str, filtro: str | None = None,
-               extras: dict[str, str] | None = None) -> str:
-    base = servico if servico.endswith("/") else servico + "/"
-    parametros = []
-    if filtro:
-        parametros.append("$filter=" + quote(filtro, safe="'()"))
-    for chave, valor in (extras or {}).items():
-        parametros.append(f"{chave}=" + quote(str(valor), safe="'(),"))
-    url = base + caminho.lstrip("/")
-    if parametros:
-        url += ("&" if "?" in url else "?") + "&".join(parametros)
-    return url
+# Caracteres do modelo que ficam como estão (estrutura da URL + marcadores {..}[..]).
+_SEGUROS_MODELO = "/?=&$'(),:;@!*+-._~{}[]%"
+
+
+def codificar_valor(valor) -> str:
+    """Valor de dado dentro da URL: escapa aspas OData e codifica TUDO (|, +, /, espaço...)."""
+    return quote(literal(valor), safe="")
+
+
+def preencher_modelo(modelo: str, wo: str | None = None, linha: dict | None = None) -> str:
+    """Substitui {wo} e {linha[Campo]} no modelo de URL, com os valores codificados."""
+    base = quote(modelo, safe=_SEGUROS_MODELO)
+    valores = {k: codificar_valor(v) for k, v in (linha or {}).items()
+               if not isinstance(v, (dict, list))}
+    try:
+        return base.format(wo=codificar_valor(wo) if wo is not None else "", linha=valores)
+    except KeyError as exc:
+        raise ErroConsulta(f"Campo {exc} ausente na linha do alerta.") from exc
 
 
 def extrair_registros(corpo: str) -> list[dict]:
-    """Aceita V2 ({d:{results:[...]}} ou {d:{...}}) e V4 ({value:[...]} ou entidade única)."""
+    return extrair_pagina(corpo)[0]
+
+
+def extrair_pagina(corpo: str) -> tuple[list[dict], str | None]:
+    """Aceita V2 ({d:{results:[...]}} ou {d:{...}}) e V4 ({value:[...]} ou entidade única).
+
+    Devolve (registros, link da próxima página ou None).
+    """
     try:
         dados = json.loads(corpo)
     except (json.JSONDecodeError, TypeError) as exc:
@@ -43,14 +56,16 @@ def extrair_registros(corpo: str) -> list[dict]:
     if isinstance(dados, dict) and "d" in dados:
         d = dados["d"]
         if isinstance(d, dict) and "results" in d:
-            return list(d["results"])
-        return [d] if isinstance(d, dict) else []
+            return list(d["results"]), d.get("__next")
+        if isinstance(d, list):
+            return d, None
+        return ([d] if isinstance(d, dict) else []), None
 
     if isinstance(dados, dict) and "value" in dados:
-        return list(dados["value"])
+        return list(dados["value"]), dados.get("@odata.nextLink")
 
     if isinstance(dados, dict):
-        return [dados]
+        return [dados], None
     raise ErroConsulta("Formato de resposta OData não reconhecido.")
 
 

@@ -1,66 +1,62 @@
 """Configuração da camada de dados (endpoints OData e nomes dos campos).
 
-Os valores reais são preenchidos a partir da captura do Modo Descoberta e ficam em
+Gerada automaticamente pelo analisador da descoberta (analisador.py) e gravada em
 config/api.json (fora do controle de versão). Ver config/api.exemplo.json.
+
+As URLs são MODELOS: caminho + query string, com marcadores substituídos a cada consulta:
+  {wo}               -> WO informada
+  {linha[Campo]}     -> valor do Campo na linha do alerta (consulta de mensagens)
 """
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 ARQUIVO_CONFIG = RAIZ / "config" / "api.json"
 
-CAMPOS_OBRIGATORIOS = ("wo", "material", "fornecedor", "quantidade_faltante", "mensagem")
-
-
-@dataclass
-class ConsultaConfig:
-    caminho: str = ""
-    filtro: str = ""
-    extras: dict[str, str] = field(default_factory=dict)
+CAMPOS_OBRIGATORIOS = ("material", "fornecedor", "quantidade_faltante", "mensagem")
 
 
 @dataclass
 class ApiConfig:
-    servico: str
-    lista: ConsultaConfig
-    # Campo da linha da lista que contém o nº do consolidado.
+    url_lista: str
     campo_consolidado_lista: str
-    # Mensagens: ou consulta própria (mensagens.caminho) ou vindas expandidas
-    # dentro da linha da lista (campo_mensagens_expandidas).
-    mensagens: ConsultaConfig | None
+    # Mensagens: consulta própria (url_mensagens) ou expandidas dentro da linha da lista.
+    url_mensagens: str | None
     campo_mensagens_expandidas: str | None
-    # Campos de cada mensagem -> colunas da planilha.
     campos: dict[str, str]
 
 
 def carregar(caminho: Path = ARQUIVO_CONFIG) -> ApiConfig:
     if not caminho.exists():
         raise FileNotFoundError(
-            f"Configuração da API não encontrada em {caminho}. "
-            "Execute o Modo Descoberta e envie a captura para configurar."
+            "API ainda não configurada. Use 'Iniciar descoberta', faça o processo com uma WO "
+            "e clique em 'Salvar descoberta'."
         )
-    dados = json.loads(caminho.read_text(encoding="utf-8"))
-    return a_partir_de_dict(dados)
+    return a_partir_de_dict(json.loads(caminho.read_text(encoding="utf-8")))
+
+
+def salvar(dados: dict, caminho: Path = ARQUIVO_CONFIG) -> None:
+    a_partir_de_dict(dados)  # valida antes de gravar
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    caminho.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def a_partir_de_dict(dados: dict) -> ApiConfig:
-    lista = ConsultaConfig(**dados["lista"])
-    mensagens = ConsultaConfig(**dados["mensagens"]) if dados.get("mensagens") else None
-    expandidas = dados.get("campo_mensagens_expandidas")
-    if not mensagens and not expandidas:
-        raise ValueError("Informe 'mensagens' ou 'campo_mensagens_expandidas' na configuração.")
-    campos = dados["campos"]
-    faltando = [c for c in CAMPOS_OBRIGATORIOS if c not in campos]
+    if "{wo}" not in dados.get("url_lista", ""):
+        raise ValueError("'url_lista' precisa conter o marcador {wo}.")
+    if not dados.get("url_mensagens") and not dados.get("campo_mensagens_expandidas"):
+        raise ValueError("Informe 'url_mensagens' ou 'campo_mensagens_expandidas'.")
+    campos = dados.get("campos", {})
+    faltando = [c for c in CAMPOS_OBRIGATORIOS if not campos.get(c)]
     if faltando:
         raise ValueError(f"Campos ausentes na configuração: {', '.join(faltando)}")
     return ApiConfig(
-        servico=dados["servico"],
-        lista=lista,
-        campo_consolidado_lista=dados["campo_consolidado_lista"],
-        mensagens=mensagens,
-        campo_mensagens_expandidas=expandidas,
+        url_lista=dados["url_lista"],
+        campo_consolidado_lista=dados.get("campo_consolidado_lista") or "",
+        url_mensagens=dados.get("url_mensagens"),
+        campo_mensagens_expandidas=dados.get("campo_mensagens_expandidas"),
         campos=campos,
     )
