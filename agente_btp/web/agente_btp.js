@@ -237,6 +237,19 @@
                                  '&capturando=' + (estado.capturando ? 1 : 0) + '&versao=' + VERSAO +
                                  '&pagina=' + encodeURIComponent(location.pathname + location.hash));
         falhas = 0;
+        // Pedido de atualização: no máximo UMA recarga por minuto. Se a versão continuar
+        // diferente (ex.: extensão de outra pasta), segue com esta mesma — nunca em laço.
+        const podeRecarregar = Date.now() - (principal.__btpUltimaRecarga || 0) > 60000;
+        if (r.atualizar && podeRecarregar) principal.__btpUltimaRecarga = Date.now();
+        if (r.atualizar && !podeRecarregar && VIA_EXTENSAO) {
+          // A recarga não resolveu: o programa aberto é de outra versão que a extensão.
+          aviso('o programa aberto é de outra versão. Feche a janela preta e abra o ' +
+                '"Abrir Agente BTP.bat" da MESMA pasta da extensão.', '#b0191e');
+          parar();
+          principal.__btpSubstituido = true;     // não reconectar sozinho até recarregar a página
+          return;
+        }
+        if (r.atualizar && !podeRecarregar) r.atualizar = false;
         if (r.atualizar && VIA_EXTENSAO) {       // a extensão injeta a versão nova (sem eval)
           parar();
           principal.postMessage({ agenteBtp: 'reinjetar' }, location.origin);

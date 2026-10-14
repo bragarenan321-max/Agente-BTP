@@ -72,7 +72,10 @@ class Agente:
         self._fila.put((comando, args))
 
     def aba_conectada(self) -> None:
-        self._msg("Aba do BTP conectada.")
+        agora = time.monotonic()
+        if agora - getattr(self, "_ultimo_aviso_conexao", -60) > 30:   # sem repetir no log
+            self._msg("Aba do BTP conectada.")
+            self._ultimo_aviso_conexao = agora
         self._candidatos = []   # nova aba/página: o que foi lido antes pode não valer mais
         if not cfg.ARQUIVO_CONFIG.exists():
             self.ponte.iniciar_captura()   # aprende em silêncio enquanto o usuário usa o Monitor

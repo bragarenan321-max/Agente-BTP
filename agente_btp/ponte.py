@@ -40,6 +40,7 @@ class PonteAba:
         self.observador = None
         # Versão do agente_btp.js servido agora; abas com versão diferente se recarregam.
         self.versao_agente: str | None = None
+        self._versoes_avisadas: set[str] = set()
         self.observadas = 0
 
     # ------------------------------------------------ lado da aba (threads HTTP)
@@ -71,8 +72,11 @@ class PonteAba:
                        capturando_na_aba: bool = False, espera: float = ESPERA_LONG_POLL,
                        versao: str | None = None) -> dict:
         with self._cond:
-            if self.versao_agente and versao not in (self.versao_agente, "ext"):
-                # Script antigo na aba: o novo se recarrega; o antigo (sem 'atualizar') para.
+            if (self.versao_agente and versao not in (self.versao_agente, "ext")
+                    and versao not in self._versoes_avisadas):
+                # Script de outra versão na aba: pede UMA recarga. Se a mesma versão voltar
+                # (a recarga não a mudou), aceita e segue — nunca entra em laço.
+                self._versoes_avisadas.add(versao)
                 return {"atualizar": True, "substituido": True}
             if agente != self.agente_id:
                 return {"substituido": True}

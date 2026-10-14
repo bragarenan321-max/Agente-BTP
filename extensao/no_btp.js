@@ -7,6 +7,7 @@
 (() => {
   if (window.__agenteBtpExtensao) return;      // já rodando nesta aba
   window.__agenteBtpExtensao = true;
+  let ultimaReinjecao = 0;
 
   function conectar(forcar) {
     chrome.runtime.sendMessage({ tipo: 'conectar', forcar: !!forcar }, (r) => {
@@ -22,7 +23,10 @@
 
   // O agente pede para ser recarregado quando o programa foi atualizado.
   window.addEventListener('message', (ev) => {
-    if (ev.source === window && ev.data && ev.data.agenteBtp === 'reinjetar') conectar(true);
+    if (ev.source !== window || !ev.data || ev.data.agenteBtp !== 'reinjetar') return;
+    if (Date.now() - ultimaReinjecao < 60000) return;   // nunca em laço
+    ultimaReinjecao = Date.now();
+    conectar(true);
   });
 
   function avisar(texto) {

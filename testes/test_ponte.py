@@ -129,3 +129,14 @@ def test_copia_do_agente_na_extensao_e_identica():
     from agente_btp.config import RAIZ
     original = (RAIZ / "agente_btp" / "web" / "agente_btp.js").read_text(encoding="utf-8")
     assert (RAIZ / "extensao" / "agente_btp.js").read_text(encoding="utf-8") == original
+
+
+def test_versao_diferente_nao_entra_em_laco():
+    """Aba com outra versão: pede recarga UMA vez; se voltar igual, aceita (sem laço)."""
+    p = PonteAba()
+    p.versao_agente = "nova"
+    p.registrar_agente("a1", "/site")
+    assert p.proxima_tarefa("a1", True, "/site", espera=0, versao="velha").get("atualizar")
+    p.registrar_agente("a2", "/site")                      # recarregou, mas veio a mesma versão
+    r = p.proxima_tarefa("a2", True, "/site", espera=0, versao="velha")
+    assert "atualizar" not in r and "substituido" not in r
