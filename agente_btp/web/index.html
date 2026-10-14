@@ -56,6 +56,23 @@
   #log { margin-top:10px; background:#FAFAFA; border:1px solid var(--borda); border-radius:8px; padding:10px;
          max-height:220px; overflow:auto; font:12px Consolas, monospace; white-space:pre-wrap; color:#444; }
   .oculto { display:none !important; }
+  nav { max-width:900px; margin:0 auto; padding:0 16px; display:flex; gap:22px; }
+  nav button { background:none; color:rgba(255,255,255,.8); border-radius:0; padding:8px 2px 10px;
+               border-bottom:3px solid transparent; font-size:14px; }
+  nav button:hover { background:none; color:#fff; }
+  nav button.ativa { color:#fff; border-bottom-color:#fff; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th { text-align:left; font-size:12px; color:var(--suave); font-weight:600; padding:8px 6px; border-bottom:1px solid var(--borda); }
+  td { padding:9px 6px; border-bottom:1px solid #F0F0F0; vertical-align:top; }
+  tr.clicavel { cursor:pointer; } tr.clicavel:hover td { background:#FFF6F5; }
+  tr.selecionada td { background:#FFEFED; }
+  .num { text-align:right; white-space:nowrap; }
+  .tag { border-radius:999px; padding:2px 10px; font-size:12px; white-space:nowrap; background:#F2F2F2; }
+  .tag.ok { background:#E6F6EE; color:#13683C; } .tag.amb { background:#FFF3DC; color:#8A5A00; }
+  .tag.err { background:#FDE8E7; color:#A1150C; }
+  .rolagem { max-height:420px; overflow:auto; margin-top:10px; }
+  select { font:14px "Segoe UI", Arial, sans-serif; padding:6px 8px; border:1px solid var(--borda); border-radius:6px; }
+  .vazio { color:var(--suave); text-align:center; padding:30px 0; }
 </style>
 </head>
 <body>
@@ -64,9 +81,13 @@
     <div class="marca">Agente BTP<small>Monitor de alertas → Excel</small></div>
     <div class="pilula"><span class="ponto" id="pt"></span><span id="conexao">Aguardando o SAP</span></div>
   </div>
+  <nav>
+    <button class="ativa" id="abaAnalise">Nova análise</button>
+    <button id="abaHistorico">Histórico</button>
+  </nav>
 </header>
 
-<main>
+<main id="vistaAnalise">
   <!-- Só aparece enquanto a aba do SAP não estiver conectada -->
   <section class="cartao alerta" id="cartaoConexao">
     <h2>Conecte a aba do SAP</h2>
@@ -110,6 +131,8 @@
     <h2 id="tituloProg">Processando</h2>
     <div class="barra" id="barra"><div id="barraFill"></div></div>
     <div class="numeros"><span id="progTxt"></span><span id="etaTxt"></span></div>
+    <p class="suave oculto" id="prepInfo" style="margin:8px 0 0">Consultas da aba observadas: <b id="observadas">0</b>
+      · <a href="/api/diagnostico" style="color:var(--vermelho)">Baixar diagnóstico</a></p>
     <div class="chips" id="chips"></div>
     <div class="linha" style="margin-top:16px">
       <a id="baixar" class="botao oculto" href="#">Baixar planilha</a>
@@ -120,6 +143,43 @@
     <summary>Detalhes</summary>
     <div id="log"></div>
   </details>
+</main>
+
+<main id="vistaHistorico" class="oculto">
+  <section class="cartao">
+    <div class="linha">
+      <h2 style="margin:0">Histórico de análises</h2>
+      <button class="link" id="bLimpar" style="margin-left:auto">Limpar histórico</button>
+    </div>
+    <p class="suave" style="margin-top:6px">Clique em uma análise para ver o resultado de cada WO.</p>
+    <div class="rolagem" style="max-height:none">
+      <table>
+        <thead><tr><th>Data</th><th>Origem</th><th class="num">WOs</th><th class="num">Processadas</th>
+          <th class="num">Linhas no Excel</th><th class="num">Duração</th><th>Situação</th><th></th></tr></thead>
+        <tbody id="tabHist"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="cartao oculto" id="detalheHist">
+    <div class="linha">
+      <h2 id="detTitulo" style="margin:0">Detalhes</h2>
+      <a id="detBaixar" class="botao oculto" href="#" style="margin-left:auto;padding:8px 16px;font-size:14px">Baixar planilha</a>
+      <button class="sec" id="detApagar" style="padding:7px 14px;font-size:14px">Apagar</button>
+    </div>
+    <p class="suave" id="detResumo" style="margin-top:6px"></p>
+    <div class="chips" id="detChips"></div>
+    <div class="linha" style="margin-top:14px">
+      <select id="detFiltro"><option value="">Todos os resultados</option></select>
+      <span class="contador" id="detConta"></span>
+    </div>
+    <div class="rolagem">
+      <table>
+        <thead><tr><th>WO</th><th>Resultado</th><th class="num">Linhas</th><th>Observação</th></tr></thead>
+        <tbody id="tabDet"></tbody>
+      </table>
+    </div>
+  </section>
 </main>
 
 <script>
@@ -192,6 +252,8 @@ async function atualizar() {
     $("tituloProg").textContent = e.fase === "preparando" ? "Preparando (só na primeira vez)…"
       : e.fase === "concluido" ? "Concluído" : "Processando";
     $("barra").classList.toggle("indef", e.fase === "preparando");
+    $("prepInfo").classList.toggle("oculto", e.fase !== "preparando");
+    $("observadas").textContent = e.observadas;
     $("barraFill").style.width = (e.fase === "concluido" ? 100 : pct) + "%";
     $("progTxt").textContent = p.total ? `${p.atual} de ${p.total} WOs · ${pct}%` : "";
     $("etaTxt").textContent = (e.fase === "processando" && p.atual > 0 && p.atual < p.total)
@@ -210,6 +272,84 @@ async function atualizar() {
   if (fim) log.scrollTop = log.scrollHeight;
 }
 setInterval(atualizar, 1000); atualizar();
+
+// ---------------------------------------------------------------- histórico
+function abrirAba(nome) {
+  $("abaAnalise").classList.toggle("ativa", nome === "analise");
+  $("abaHistorico").classList.toggle("ativa", nome === "historico");
+  $("vistaAnalise").classList.toggle("oculto", nome !== "analise");
+  $("vistaHistorico").classList.toggle("oculto", nome !== "historico");
+  if (nome === "historico") carregarHistorico();
+}
+$("abaAnalise").onclick = () => abrirAba("analise");
+$("abaHistorico").onclick = () => abrirAba("historico");
+
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const dataBR = iso => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+const duracao = s => s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${Math.floor(s / 3600)} h ${Math.round(s % 3600 / 60)} min`;
+const classeSit = s => s === "Concluída" ? "ok" : s === "Interrompida" ? "amb" : "err";
+const classeStatus = s => s === "Processada" ? "ok" : ["Sem registros"].includes(s) ? "" :
+  ["Não encontrada no monitor", "WO inválida"].includes(s) ? "amb" : "err";
+let selecionada = null, detalheAtual = null;
+
+async function carregarHistorico() {
+  const lista = await fetch("/api/historico").then(r => r.json());
+  $("tabHist").innerHTML = lista.length ? lista.map(a => `
+    <tr class="clicavel ${a.id === selecionada ? "selecionada" : ""}" data-id="${a.id}">
+      <td>${dataBR(a.inicio)}</td><td>${esc(a.origem)}</td><td class="num">${a.total}</td>
+      <td class="num">${a.contagem["Processada"] || 0}</td><td class="num">${a.linhas_excel}</td>
+      <td class="num">${duracao(a.duracao_seg)}</td>
+      <td><span class="tag ${classeSit(a.situacao)}">${esc(a.situacao)}</span></td>
+      <td style="white-space:nowrap">${a.arquivo ? `<a href="/api/download/${encodeURIComponent(a.arquivo)}" onclick="event.stopPropagation()" style="color:var(--vermelho);font-weight:600">Excel</a>` : ""}
+        <button class="link apagar" data-id="${a.id}" title="Apagar esta análise" style="margin-left:10px;color:var(--suave)">✕</button></td>
+    </tr>`).join("") : `<tr><td colspan="8" class="vazio">Nenhuma análise ainda.</td></tr>`;
+  document.querySelectorAll("#tabHist tr.clicavel").forEach(tr => tr.onclick = () => abrirDetalhe(tr.dataset.id));
+  document.querySelectorAll("#tabHist button.apagar").forEach(b => b.onclick = ev => { ev.stopPropagation(); apagar(b.dataset.id); });
+}
+
+async function abrirDetalhe(id) {
+  selecionada = id;
+  document.querySelectorAll("#tabHist tr").forEach(tr => tr.classList.toggle("selecionada", tr.dataset.id === id));
+  detalheAtual = await fetch("/api/historico/" + encodeURIComponent(id)).then(r => r.json());
+  const a = detalheAtual;
+  $("detalheHist").classList.remove("oculto");
+  $("detTitulo").textContent = `Análise de ${dataBR(a.inicio)}`;
+  $("detResumo").textContent = `${a.origem} · ${a.total} WOs · ${a.linhas_excel} linhas no Excel · duração ${duracao(a.duracao_seg)} · ${a.situacao}`;
+  $("detChips").innerHTML = Object.entries(a.contagem).map(([s, n]) =>
+    `<span class="chip ${classeStatus(s)}">${esc(s)}<b>${n}</b></span>`).join("");
+  $("detBaixar").classList.toggle("oculto", !a.arquivo);
+  if (a.arquivo) $("detBaixar").href = "/api/download/" + encodeURIComponent(a.arquivo);
+  $("detFiltro").innerHTML = `<option value="">Todos os resultados</option>` +
+    Object.keys(a.contagem).map(s => `<option>${esc(s)}</option>`).join("");
+  desenharDetalhe();
+  $("detalheHist").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function desenharDetalhe() {
+  const f = $("detFiltro").value;
+  const wos = detalheAtual.wos.filter(w => !f || w.status === f);
+  $("detConta").textContent = `${wos.length} WO(s)`;
+  $("tabDet").innerHTML = wos.length ? wos.map(w => `
+    <tr><td style="font-family:Consolas,monospace">${esc(w.wo)}</td>
+      <td><span class="tag ${classeStatus(w.status)}">${esc(w.status)}</span></td>
+      <td class="num">${w.registros}</td><td>${esc(w.observacao === "OK" ? "" : w.observacao)}</td></tr>`).join("")
+    : `<tr><td colspan="4" class="vazio">Nenhuma WO processada nesta análise.</td></tr>`;
+}
+$("detFiltro").onchange = desenharDetalhe;
+
+async function apagar(id) {
+  if (!confirm("Apagar esta análise do histórico? A planilha Excel dela também será apagada.")) return;
+  await fetch("/api/historico/" + encodeURIComponent(id), { method: "DELETE" });
+  if (id === selecionada) { selecionada = null; $("detalheHist").classList.add("oculto"); }
+  carregarHistorico();
+}
+$("detApagar").onclick = () => selecionada && apagar(selecionada);
+$("bLimpar").onclick = async () => {
+  if (!confirm("Apagar TODO o histórico e as planilhas geradas? Isso não pode ser desfeito.")) return;
+  const r = await fetch("/api/historico", { method: "DELETE" }).then(r => r.json());
+  if (!r.ok) return alert(r.erro);
+  selecionada = null; $("detalheHist").classList.add("oculto"); carregarHistorico();
+};
 </script>
 </body>
 </html>

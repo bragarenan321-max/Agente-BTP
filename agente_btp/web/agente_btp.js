@@ -18,6 +18,7 @@
   if (principal.__agenteBTP && principal.__agenteBTP.parar) principal.__agenteBTP.parar();
 
   const ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const VERSAO = principal.__BTP_VERSAO || '';
   const LOOPBACK = { targetAddressSpace: 'loopback' }; // Chrome: acesso à rede local
   const IGNORAR = /user-api|userinfo|currentuser|\/resources\/|theming/i;
   const TIPOS = /json|xml|multipart\/mixed/i;
@@ -144,6 +145,17 @@
         });
       } catch (e) { /* frame de outra origem */ }
     });
+    // Registro de rede do próprio navegador: consultas feitas ANTES de o agente ser conectado.
+    janelas.forEach((w) => {
+      try {
+        w.performance.getEntriesByType('resource').forEach((e) => {
+          if (/xmlhttprequest|fetch/.test(e.initiatorType) && /odata|\$batch|\$metadata/i.test(e.name)) {
+            const u = new URL(e.name, location.href);
+            if (u.host === location.host) out.push({ recurso: u.pathname + u.search });
+          }
+        });
+      } catch (e) {}
+    });
     return out;
   }
 
@@ -189,9 +201,15 @@
     while (estado.ativo) {
       try {
         const r = await servidor('/api/agente/tarefa?agente=' + ID + '&autenticado=' + (autenticado() ? 1 : 0) +
-                                 '&capturando=' + (estado.capturando ? 1 : 0) +
+                                 '&capturando=' + (estado.capturando ? 1 : 0) + '&versao=' + VERSAO +
                                  '&pagina=' + encodeURIComponent(location.pathname + location.hash));
         falhas = 0;
+        if (r.atualizar) {                       // o programa local foi atualizado: recarrega este script
+          parar();
+          const novo = await fetchOriginal(SERVIDOR + '/agente_btp.js', Object.assign({ cache: 'no-store' }, LOOPBACK));
+          (0, eval)(await novo.text());
+          return;
+        }
         if (r.substituido) { aviso('desconectado (outra aba assumiu).', '#666'); parar(); return; }
         estado.capturando = principal.__btpCapturando = !!r.capturar;
         aviso('conectado');

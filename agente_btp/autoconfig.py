@@ -12,6 +12,7 @@ quando acontece, tem prioridade por se basear em consultas reais.
 """
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from urllib.parse import urlsplit
 
@@ -125,27 +126,54 @@ def configurar(servico: str, metadata_xml: str) -> tuple[dict, list[str]]:
     return dados, relatorio
 
 
-def configurar_pela_aba(conexao) -> tuple[dict, list[str]]:
+_RAIZES = (
+    re.compile(r"^(.*?/sap/opu/odata4?/[^/?]+/[^/?]+/)"),   # Gateway V2: /sap/opu/odata/sap/ZSRV/
+    re.compile(r"^(.*?/odata/v[24]/[^/?]+/)"),              # CAP: /odata/v4/servico/
+    re.compile(r"^(.*/)\$(?:batch|metadata)"),              # qualquer serviço: tudo antes de $batch
+)
+
+
+def raiz_servico(url: str) -> str | None:
+    """Raiz do serviço OData a partir de qualquer URL de consulta a ele."""
+    caminho = urlsplit(url).path if "://" in url else url.split("?", 1)[0]
+    for padrao in _RAIZES:
+        m = padrao.match(caminho)
+        if m:
+            return m.group(1)
+    return None
+
+
+def configurar_pela_aba(conexao, diag: dict | None = None) -> tuple[dict, list[str]]:
     """Pergunta à aba os serviços em uso e tenta cada $metadata até um servir."""
+    diag = diag if diag is not None else {}
     fontes = conexao.fontes()
-    servicos = []
+    diag["fontes"] = fontes[:50]
+    servicos: list[str] = []
     for f in fontes:
-        try:
-            s = caminho_servico(f.get("url", ""))
-        except MetadataSemCorrespondencia:
-            continue
-        if s not in servicos:
-            servicos.append(s)
+        candidatos = []
+        if f.get("url"):
+            try:
+                candidatos.append(caminho_servico(f["url"]))
+            except MetadataSemCorrespondencia:
+                pass
+        if f.get("recurso"):
+            candidatos.append(raiz_servico(f["recurso"]))
+        for s in candidatos:
+            if s and s not in servicos:
+                servicos.append(s)
+    diag["servicos"] = []
     if not servicos:
-        raise MetadataSemCorrespondencia("o Monitor de alertas não está aberto na aba")
+        raise MetadataSemCorrespondencia("nenhum serviço de dados encontrado na aba (o Monitor está aberto?)")
     motivos = []
-    for servico in servicos:
+    for servico in servicos[:15]:
         try:
             r = conexao.get(servico + "$metadata", accept="application/xml")
             if r.status != 200:
-                motivos.append(f"{servico}: HTTP {r.status}")
-                continue
-            return configurar(servico, r.corpo)
-        except (MetadataSemCorrespondencia, ET.ParseError) as exc:
+                raise MetadataSemCorrespondencia(f"HTTP {r.status}")
+            dados, relatorio = configurar(servico, r.corpo)
+            diag["servicos"].append({"servico": servico, "resultado": "ok"})
+            return dados, relatorio
+        except (MetadataSemCorrespondencia, ET.ParseError, Exception) as exc:  # noqa: BLE001
+            diag["servicos"].append({"servico": servico, "resultado": str(exc)[:200]})
             motivos.append(f"{servico}: {exc}")
     raise MetadataSemCorrespondencia("; ".join(motivos))

@@ -1,6 +1,8 @@
 """Interface web local (http://127.0.0.1:8767) e canal com a aba do SAP."""
 from __future__ import annotations
 
+import hashlib
+import json
 import tempfile
 from pathlib import Path
 
@@ -8,6 +10,7 @@ from urllib.parse import urlsplit
 
 from flask import Flask, Response, abort, jsonify, request, send_file
 
+from . import historico
 from .agente import Agente, caminho_saida
 from .entrada import ler_wos_planilha, ler_wos_texto
 from .config import URL_LAUNCHPAD
@@ -27,6 +30,9 @@ def codigo_carregador(origem_local: str) -> str:
 
 def criar_app(agente: Agente) -> Flask:
     app = Flask(__name__)
+    codigo_agente = (PASTA_WEB / "agente_btp.js").read_text(encoding="utf-8")
+    versao = hashlib.sha1(codigo_agente.encode("utf-8")).hexdigest()[:10]
+    agente.ponte.versao_agente = versao
     app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
 
     @app.get("/")
@@ -54,8 +60,8 @@ def criar_app(agente: Agente) -> Flask:
     @app.get("/agente_btp.js")
     def agente_js():
         origem_local = request.host_url.rstrip("/")
-        codigo = (PASTA_WEB / "agente_btp.js").read_text(encoding="utf-8")
-        corpo = f"window.__BTP_SERVIDOR = '{origem_local}';\n" + codigo
+        corpo = (f"window.__BTP_SERVIDOR = '{origem_local}';\nwindow.__BTP_VERSAO = '{versao}';\n"
+                 + codigo_agente)
         return Response(corpo, mimetype="application/javascript",
                         headers={"Cache-Control": "no-store"})
 
@@ -72,7 +78,8 @@ def criar_app(agente: Agente) -> Flask:
         exigir_origem_sap()
         return jsonify(agente.ponte.proxima_tarefa(
             request.args.get("agente", ""), request.args.get("autenticado") == "1",
-            request.args.get("pagina", ""), request.args.get("capturando") == "1"))
+            request.args.get("pagina", ""), request.args.get("capturando") == "1",
+            versao=request.args.get("versao", "")))
 
     @app.post("/api/agente/resposta")
     def agente_resposta():
@@ -100,21 +107,60 @@ def criar_app(agente: Agente) -> Flask:
     @app.post("/api/executar")
     def executar():
         if agente.estado()["ocupado"]:
-            return jsonify(ok=False, erro="O agente já está executando uma tarefa."), 409
+            return jsonify(ok=False, erro="O agente já está executando uma análise."), 409
         wos = ler_wos_texto(request.form.get("texto", ""))
+        partes = [f"{len(wos)} WO(s) coladas"] if wos else []
         arquivo = request.files.get("arquivo")
         if arquivo and arquivo.filename:
             with tempfile.TemporaryDirectory() as pasta:
                 caminho = Path(pasta) / "entrada.xlsx"
                 arquivo.save(caminho)
                 try:
-                    wos += [w for w in ler_wos_planilha(caminho) if w not in wos]
+                    da_planilha = ler_wos_planilha(caminho)
                 except Exception as exc:  # noqa: BLE001
                     return jsonify(ok=False, erro=f"Planilha inválida: {exc}"), 400
+            novas = [w for w in da_planilha if w not in wos]
+            wos += novas
+            partes.append(f"planilha {arquivo.filename} ({len(da_planilha)} WOs)")
         if not wos:
             return jsonify(ok=False, erro="Informe ao menos uma WO."), 400
-        agente.enviar("executar", wos)
+        agente.enviar("executar", wos, " + ".join(partes))
         return jsonify(ok=True, total=len(wos))
+
+    @app.get("/api/historico")
+    def lista_historico():
+        return jsonify(historico.listar())
+
+    @app.get("/api/historico/<id_>")
+    def item_historico(id_: str):
+        item = historico.obter(id_)
+        if not item:
+            abort(404)
+        return jsonify(item)
+
+    def _apagar(ids):
+        removidas = historico.apagar(ids)
+        for a in removidas:                    # a planilha da análise vai junto
+            caminho = caminho_saida(a.get("arquivo") or "")
+            if caminho:
+                caminho.unlink(missing_ok=True)
+        return jsonify(ok=True, apagadas=len(removidas))
+
+    @app.delete("/api/historico/<id_>")
+    def apagar_historico(id_: str):
+        return _apagar([id_])
+
+    @app.delete("/api/historico")
+    def limpar_historico():
+        if agente.estado()["ocupado"]:
+            return jsonify(ok=False, erro="Aguarde a análise em andamento terminar."), 409
+        return _apagar(None)
+
+    @app.get("/api/diagnostico")
+    def diagnostico():
+        corpo = json.dumps(agente.diagnostico(), ensure_ascii=False, indent=1)
+        return Response(corpo, mimetype="application/json", headers={
+            "Content-Disposition": "attachment; filename=diagnostico_agente_btp.json"})
 
     @app.post("/api/parar")
     def parar():

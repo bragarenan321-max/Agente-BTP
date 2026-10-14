@@ -37,6 +37,9 @@ class PonteAba:
         self._captura: list[dict] | None = None
         # Chamado com as consultas observadas, para o agente aprender sozinho.
         self.observador = None
+        # Versão do agente_btp.js servido agora; abas com versão diferente se recarregam.
+        self.versao_agente: str | None = None
+        self.observadas = 0
 
     # ------------------------------------------------ lado da aba (threads HTTP)
     def registrar_agente(self, agente: str, pagina: str) -> None:
@@ -46,8 +49,12 @@ class PonteAba:
             self._visto_em = time.monotonic()
 
     def proxima_tarefa(self, agente: str, autenticado: bool, pagina: str,
-                       capturando_na_aba: bool = False, espera: float = ESPERA_LONG_POLL) -> dict:
+                       capturando_na_aba: bool = False, espera: float = ESPERA_LONG_POLL,
+                       versao: str | None = None) -> dict:
         with self._cond:
+            if self.versao_agente and versao != self.versao_agente:
+                # Script antigo na aba: o novo se recarrega; o antigo (sem 'atualizar') para.
+                return {"atualizar": True, "substituido": True}
             if agente != self.agente_id:
                 return {"substituido": True}
             self._visto_em = time.monotonic()
@@ -78,7 +85,9 @@ class PonteAba:
             self._visto_em = time.monotonic()
             if self._captura is None:
                 return
-            self._captura.extend(i for i in itens if isinstance(i, dict))
+            novos = [i for i in itens if isinstance(i, dict)]
+            self.observadas += len(novos)
+            self._captura.extend(novos)
             del self._captura[:-LIMITE_CAPTURA]   # memória limitada: só as mais recentes
             copia = list(self._captura)
         if self.observador:
@@ -148,6 +157,10 @@ class PonteAba:
                 return
             self._captura = []
             self._cond.notify_all()
+
+    def consultas_observadas(self) -> list[dict]:
+        with self._cond:
+            return list(self._captura or [])
 
     def parar_captura(self) -> None:
         with self._cond:

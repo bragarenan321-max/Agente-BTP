@@ -88,3 +88,11 @@ def test_arquivo_do_favorito_esta_atualizado():
 
     texto = (RAIZ / "FAVORITO - Agente BTP.txt").read_text(encoding="utf-8")
     assert "javascript:" + codigo_carregador("http://127.0.0.1:8767") in texto
+
+
+def test_aba_com_script_antigo_recebe_atualizar():
+    p = PonteAba()
+    p.versao_agente = "nova"
+    p.registrar_agente("a1", "/site")
+    assert p.proxima_tarefa("a1", True, "/site", espera=0, versao="velha")["atualizar"] is True
+    assert "atualizar" not in p.proxima_tarefa("a1", True, "/site", espera=0, versao="nova")

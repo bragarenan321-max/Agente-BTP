@@ -16,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import config as cfg
+from . import historico
 from .analisador import AnaliseFalhou, analisar
 from .autoconfig import MetadataSemCorrespondencia, configurar_pela_aba
 from .cliente import ClienteBTP
@@ -37,6 +38,7 @@ class Agente:
         self._trava = threading.Lock()
         self._trava_config = threading.Lock()
         self._parar = threading.Event()
+        self._diag: dict = {}
         self.ponte = PonteAba()
         self.ponte.observador = self._ao_observar
         self._estado = {
@@ -58,6 +60,7 @@ class Agente:
             copia["mensagens"] = list(self._estado["mensagens"][-200:])
             copia["contagem"] = dict(self._estado["contagem"])
         copia["pronto"] = cfg.ARQUIVO_CONFIG.exists()
+        copia["observadas"] = self.ponte.observadas
         copia["conexao"] = ("conectado" if self.ponte.autenticado() else
                             "sem_login" if self.ponte.conectada else "desconectado")
         copia["decorrido_seg"] = round(time.monotonic() - copia.pop("inicio"), 1) if copia["inicio"] else 0
@@ -92,11 +95,15 @@ class Agente:
     def _cmd_preparar(self) -> None:
         if cfg.ARQUIVO_CONFIG.exists() or not self.ponte.conectada:
             return
+        diag = {"quando": datetime.now().isoformat(timespec="seconds")}
         try:
-            dados, relatorio = configurar_pela_aba(self.ponte)
+            dados, relatorio = configurar_pela_aba(self.ponte, diag)
         except (MetadataSemCorrespondencia, Exception) as exc:  # noqa: BLE001
+            diag["erro"] = str(exc)[:500]
+            self._diag["dicionario"] = diag
             log.info("Preparação pelo dicionário de dados não concluída: %s", exc)
             return
+        self._diag["dicionario"] = diag
         self._gravar_config(dados, "dicionario", relatorio)
 
     def _ao_observar(self, consultas: list[dict]) -> None:
@@ -130,7 +137,20 @@ class Agente:
         except Exception:  # noqa: BLE001
             return ""
 
-    def _cmd_executar(self, wos: list[str]) -> None:
+    def diagnostico(self) -> dict:
+        """Tudo o que ajuda a entender por que a preparação não concluiu (sem senhas/cookies)."""
+        consultas = [dict(c, corpo_resposta=str(c.get("corpo_resposta", ""))[:3000],
+                          corpo_requisicao=str(c.get("corpo_requisicao", ""))[:3000])
+                     for c in self.ponte.consultas_observadas()[-60:]]
+        e = self.estado()
+        return {"gerado_em": datetime.now().isoformat(timespec="seconds"),
+                "conexao": e["conexao"], "pronto": e["pronto"], "versao_agente": self.ponte.versao_agente,
+                "pagina_da_aba": self.ponte.pagina, "consultas_observadas_total": self.ponte.observadas,
+                "preparacao": self._diag, "consultas_observadas": consultas,
+                "registro": e["mensagens"][-200:]}
+
+    def _cmd_executar(self, wos: list[str], descricao: str = "") -> None:
+        inicio_relogio = datetime.now()
         self._parar.clear()
         self._definir(fase="preparando", progresso={"atual": 0, "total": len(wos)}, contagem={},
                       ultimo_arquivo=None, aviso="", inicio=time.monotonic())
@@ -139,6 +159,8 @@ class Agente:
             return
         if not self._garantir_preparo():
             self._definir(fase="ocioso")
+            self._registrar_historico(inicio_relogio, descricao, wos, [], None,
+                                      "Interrompida" if self._parar.is_set() else "Não preparada")
             return
 
         self._definir(fase="processando", inicio=time.monotonic())
@@ -178,7 +200,33 @@ class Agente:
                      "de qualquer WO uma vez e execute de novo.")
         self._definir(fase="concluido", contagem=contagem, ultimo_arquivo=arquivo.name, aviso=aviso,
                       progresso={"atual": len(resultados), "total": len(wos)})
+        situacao = ("Sessão expirada" if any(r.status is Status.SESSAO_EXPIRADA for r in resultados) else
+                    "Interrompida" if self._parar.is_set() else "Concluída")
+        self._registrar_historico(inicio_relogio, descricao, wos, resultados, arquivo.name, situacao)
         self._msg(f"Concluído. Planilha: {arquivo.name}")
+
+    def _registrar_historico(self, inicio, descricao, wos, resultados, arquivo, situacao) -> None:
+        fim = datetime.now()
+        contagem: dict[str, int] = {}
+        for r in resultados:
+            contagem[r.status.value] = contagem.get(r.status.value, 0) + 1
+        try:
+            historico.registrar({
+                "id": inicio.strftime("%Y%m%d%H%M%S%f"),
+                "inicio": inicio.isoformat(timespec="seconds"),
+                "fim": fim.isoformat(timespec="seconds"),
+                "duracao_seg": round((fim - inicio).total_seconds()),
+                "origem": descricao or "WOs coladas",
+                "total": len(wos),
+                "linhas_excel": sum(r.registros for r in resultados),
+                "situacao": situacao,
+                "contagem": contagem,
+                "arquivo": arquivo,
+                "wos": [{"wo": r.wo, "status": r.status.value, "registros": r.registros,
+                         "observacao": r.observacao} for r in resultados],
+            })
+        except Exception:  # noqa: BLE001 — histórico nunca derruba a análise
+            log.exception("Falha ao gravar o histórico")
 
     def _garantir_preparo(self) -> bool:
         """Na primeira vez, prepara a conexão com o Monitor sem exigir nada técnico do usuário."""

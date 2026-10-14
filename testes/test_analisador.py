@@ -146,3 +146,11 @@ def test_metadata_um_conjunto_so():
     dados, _ = configurar("/srv/", xml)
     assert dados["url_lista"] == "/srv/Mensagens?$filter=Wo eq '{wo}'"
     assert dados["campo_mensagens_expandidas"] == "."
+
+
+def test_raiz_servico():
+    from agente_btp.autoconfig import raiz_servico
+    assert raiz_servico("/app/~1~/sap/opu/odata/sap/ZMON_SRV/AlertaSet?$top=1") == "/app/~1~/sap/opu/odata/sap/ZMON_SRV/"
+    assert raiz_servico("/odata/v4/monitor/Alertas?$filter=x") == "/odata/v4/monitor/"
+    assert raiz_servico("/qualquer/srv/$batch") == "/qualquer/srv/"
+    assert raiz_servico("/nada/aqui") is None
