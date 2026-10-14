@@ -43,6 +43,9 @@ async function usuarioSrv4(){  // Monitor cuja janela 'Mensagens' usa consulta f
   await fetch("/srv4/AlertaSet?$filter=Wo%20eq%20'88412%7C126579742'", {headers:{Accept:'application/json'}});
   await fetch("/srv4/DetalheItens?$filter=Chave%20eq%20'KEY-0001'", {headers:{Accept:'application/json'}});
 }
+if (PARAM.get('real')) {  // launchpad real: o app do Monitor roda num quadro interno
+  const f = document.createElement('iframe'); f.src = '/app-monitor'; document.body.appendChild(f);
+}
 if (PARAM.get('simular') === 'srv4') setTimeout(() => setInterval(usuarioSrv4, 2000), 8000);
 else if (PARAM.get('simular')) setInterval(usuario, 2000);  // usuário usando o Monitor
 </script></body></html>"""
@@ -176,6 +179,12 @@ class H(BaseHTTPRequestHandler):
         b = corpo.encode(); self.send_response(cod); self.send_header("Content-Type", tipo)
         self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
     def do_GET(self):
+        if self.path.startswith("/app-monitor"):   # app dentro do quadro: carrega o dicionário
+            return self._envia(200, "text/html", "<html><body>Monitor de pendencias<script>fetch('"
+                               + _real()[0] + "$metadata')</script></body></html>")
+        if self.path.startswith(_real()[0]):
+            r = _real()[1](self.path)
+            return self._envia(r.status, r.content_type, r.corpo)
         if self.path.startswith("/site"):
             if "csp=1" in self.path:   # página que PROÍBE eval (como muitos sistemas corporativos)
                 b = PAGINA.encode(); self.send_response(200); self.send_header("Content-Type", "text/html")
@@ -211,6 +220,21 @@ class H(BaseHTTPRequestHandler):
             "--x\r\nContent-Type: application/http\r\n\r\nHTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
             + json.dumps(consulta(g)) + "\r\n" for g in re.findall(r"^GET (\S+) HTTP", corpo, re.M)) + "--x--"
         self._envia(202, "multipart/mixed; boundary=x", partes)
+
+_REAL = []
+
+
+def _real():
+    """(raiz do serviço, get) do Monitor real simulado (testes/servico_real_falso.py)."""
+    if not _REAL:
+        import os
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        from servico_real_falso import SRV, servico_real
+        _REAL.extend([SRV, servico_real()[0]])
+    return _REAL
+
 
 def iniciar(porta):
     srv = ThreadingHTTPServer(("127.0.0.1", porta), H)

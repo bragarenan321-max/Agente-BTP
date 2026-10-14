@@ -21,6 +21,7 @@ from . import historico
 from .analisador import AnaliseFalhou, analisar
 from .autoconfig import candidatos_pela_aba
 from .cliente import ClienteBTP
+from .exploracao import Explorador
 from .exportacao import gerar_planilha, nome_analise
 from .entrada import wo_valida
 from .modelos import ErroConsulta, FalhaComunicacao, SessaoExpirada, Status
@@ -48,6 +49,8 @@ class Agente:
         self._testados: set[str] = set()
         self._achados: dict = {}
         self._sondadas: set[str] = set()
+        self._modelos: list = []
+        self._explorados: set[str] = set()
         self.ponte = PonteAba()
         self.ponte.observador = self._ao_observar
         self._estado = {
@@ -117,14 +120,18 @@ class Agente:
         self._buscar_candidatos()
 
     def _buscar_candidatos(self) -> list:
-        diag = {"quando": datetime.now().isoformat(timespec="seconds")}
+        anterior = self._diag.get("dicionario", {})
+        diag = {"quando": datetime.now().isoformat(timespec="seconds"),
+                "testes": anterior.get("testes", []), "exploracao": anterior.get("exploracao", [])}
+        modelos: list = []
         try:
-            self._candidatos = candidatos_pela_aba(self.ponte, diag)
+            self._candidatos = candidatos_pela_aba(self.ponte, diag, modelos)
             diag["candidatos"] = len(self._candidatos)
         except Exception as exc:  # noqa: BLE001
             self._candidatos = []
             diag["erro"] = str(exc)[:500]
             log.info("Dicionário de dados: %s", exc)
+        self._modelos = modelos
         self._diag["dicionario"] = diag
         return self._candidatos
 
@@ -183,6 +190,26 @@ class Agente:
         amostra = [w for w in wos if wo_valida(w)][:5]
         get = self._transporte_com_cache(self.ponte.get)
         testes = self._diag.setdefault("dicionario", {}).setdefault("testes", [])
+        # 1º) Pergunta direto aos dados: qual conjunto devolve os itens da janela "Mensagens"?
+        novos = [m for m in self._modelos if m[0] not in self._explorados]
+        if novos and amostra and not self._parar.is_set():
+            self._explorados.update(m[0] for m in novos)
+            explorador = Explorador(get, novos, amostra, lambda n: self._definir(
+                aviso=f"Identificando a origem dos itens da janela 'Mensagens' ({n} consultas)…"))
+            try:
+                achados = explorador.explorar()
+            finally:
+                self._diag["dicionario"].setdefault("exploracao", []).extend(explorador.relato)
+                self._definir(aviso="")
+            for dados, relatorio in achados[:15]:
+                if self._parar.is_set():
+                    break
+                nota = self._validar(dados, amostra, get, {})
+                testes.append({"lista": dados["url_lista"], "nota": nota, "exploracao": relatorio[0],
+                               "mensagens": dados.get("url_mensagens") or "mesmo conjunto"})
+                if nota == 2:
+                    self._gravar_config(dados, "exploracao", relatorio)
+                    return True
         fraca = None
         for dados, relatorio in candidatos[:LIMITE_CANDIDATOS]:
             chave = json.dumps(dados, sort_keys=True)
@@ -381,6 +408,7 @@ class Agente:
             return True
         self._msg("Preparando a conexão com o Monitor de alertas (só na primeira vez)…")
         self._testados, self._achados, self._sondadas = set(), {}, set()
+        self._explorados = set()
         self.ponte.iniciar_captura()
         try:
             if self._preparar_com_wos(wos):

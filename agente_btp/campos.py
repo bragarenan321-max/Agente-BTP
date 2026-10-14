@@ -10,17 +10,21 @@ import re
 
 ESSENCIAIS = ("material", "fornecedor", "quantidade_faltante", "mensagem")
 
+_QUALIFICA_WO = {"tipo", "type", "status", "desc", "descricao", "qtd", "qtde", "total", "count", "data", "date"}
+
 # Ordem = precedência (um campo recebe o primeiro tipo que casar).
 _VOCABULARIO = (
-    ("wo", lambda p, n: "wo" in p or "workorder" in n or ("work" in p and "order" in p)
-        or ("ordem" in p and ("servico" in p or "serv" in p or len(p) == 1))),
+    # "tipoWo", "statusWO", "qtdWo"... descrevem a WO, não são o número dela.
+    ("wo", lambda p, n: not _QUALIFICA_WO.intersection(p) and (
+        "wo" in p or "workorder" in n or ("work" in p and "order" in p)
+        or ("ordem" in p and ("servico" in p or "serv" in p or len(p) == 1)))),
     ("consolidado", lambda p, n: any(x.startswith("consol") for x in p)),
     ("material", lambda p, n: any(x in ("matnr", "material", "materiais", "mat", "produto", "sku")
                                   or x.startswith("materia") for x in p)),
     ("fornecedor", lambda p, n: any(x.startswith("fornec") or x in ("lifnr", "vendor", "supplier", "forn")
                                     for x in p)),
     ("quantidade_faltante", lambda p, n: any(x.startswith("quant") or x in ("qtd", "qtde", "qty", "menge",
-                                                                         "falta", "faltante") for x in p)),
+                                                                         "falta", "faltante", "saldo") for x in p)),
     ("mensagem", lambda p, n: any(x.startswith("mensag") or x in ("message", "msg", "texto", "text", "erro",
                                                                   "error", "descricao", "desc") for x in p)),
 )

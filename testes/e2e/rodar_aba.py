@@ -34,10 +34,10 @@ favorito = json.load(urllib.request.urlopen("http://127.0.0.1:8767/api/favorito"
 WOS = ["88412|126579742", "42340|231184065", "02235|230771207", "123"]
 
 
-SO = os.environ.get("CENARIOS", "ABCDE")
+SO = os.environ.get("CENARIOS", "ABCDEF")
 
 
-def cenario(nome, url_aba, b):
+def cenario(nome, url_aba, b, wos=None):
     if nome[0] not in SO:
         return
     print(f"\n===== {nome} =====")
@@ -55,7 +55,7 @@ def cenario(nome, url_aba, b):
         raise SystemExit("TIMEOUT\n" + json.dumps(agente.estado(), ensure_ascii=False, indent=1))
 
     esperar(lambda e: e["conexao"] == "conectado")
-    agente.enviar("executar", WOS)               # o usuário só clica em Executar
+    agente.enviar("executar", wos or WOS)               # o usuário só clica em Executar
     aba.wait_for_timeout(500)
     esperar(lambda e: e["fase"] == "concluido" and not e["ocupado"])
     e = agente.estado()
@@ -83,6 +83,8 @@ with sync_playwright() as p:
             "http://127.0.0.1:8798/site?srv=srv3#Shell-home", b)
     cenario("E: caso real — mensagens fora do dicionário; aprende com o clique em 'Mensagens'",
             "http://127.0.0.1:8798/site?srv=srv4&simular=srv4#Shell-home", b)
+    cenario("F: serviço real do diagnóstico (CAP V4, ~40 conjuntos, app em quadro interno)",
+            "http://127.0.0.1:8798/site?semfontes=1&real=1#Shell-home", b, ["06162|231715939", "123"])
     # Histórico: as duas análises aparecem; apagar uma remove também o Excel dela.
     hist = json.load(urllib.request.urlopen("http://127.0.0.1:8767/api/historico"))
     print("\nhistórico:", [(h["situacao"], h["total"], h["contagem"].get("Com itens faltantes")) for h in hist])

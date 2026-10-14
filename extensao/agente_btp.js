@@ -111,10 +111,20 @@
       w.__btpGanchos = true;
     } catch (e) { /* frame de outra origem: ignorado */ }
   }
+  // A janela e TODOS os quadros internos do mesmo site, em qualquer nível (o app do
+  // Monitor roda num quadro dentro do launchpad, que pode estar dentro de outro).
+  function janelas() {
+    const lista = [];
+    const visitar = (w, nivel) => {
+      lista.push(w);
+      if (nivel > 4) return;
+      try { for (let i = 0; i < w.frames.length; i++) visitar(w.frames[i], nivel + 1); } catch (e) {}
+    };
+    visitar(principal, 0);
+    return lista;
+  }
   instalarGanchos(principal);
-  const ganchosFrames = setInterval(() => {
-    for (let i = 0; i < principal.frames.length; i++) instalarGanchos(principal.frames[i]);
-  }, 2000);
+  const ganchosFrames = setInterval(() => janelas().forEach(instalarGanchos), 1000);
 
   const descarga = setInterval(async () => {
     if (!estado.buffer.length) return;
@@ -127,9 +137,8 @@
   // Quais serviços OData os apps abertos na aba usam (somente leitura da configuração).
   function fontesDeDados() {
     const out = [];
-    const janelas = [principal];
-    for (let i = 0; i < principal.frames.length; i++) janelas.push(principal.frames[i]);
-    janelas.forEach((w) => {
+    const todas = janelas();
+    todas.forEach((w) => {
       try {
         if (!w.sap || !w.sap.ui || !w.sap.ui.core || !w.sap.ui.core.Component) return;
         w.sap.ui.core.Component.registry.forEach((c) => {
@@ -157,7 +166,7 @@
       } catch (e) { /* frame de outra origem */ }
     });
     // Registro de rede do próprio navegador: consultas feitas ANTES de o agente ser conectado.
-    janelas.forEach((w) => {
+    todas.forEach((w) => {
       try {
         w.performance.getEntriesByType('resource').forEach((e) => {
           if (/xmlhttprequest|fetch/.test(e.initiatorType) && /odata|\$batch|\$metadata/i.test(e.name)) {

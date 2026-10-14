@@ -357,7 +357,8 @@ def raiz_servico(url: str) -> str | None:
     return None
 
 
-def candidatos_pela_aba(conexao, diag: dict | None = None) -> list[tuple[dict, list[str]]]:
+def candidatos_pela_aba(conexao, diag: dict | None = None,
+                        modelos_saida: list | None = None) -> list[tuple[dict, list[str]]]:
     """Pergunta à aba os serviços em uso e reúne os candidatos de todos os $metadata."""
     diag = diag if diag is not None else {}
     fontes = conexao.fontes()
@@ -392,6 +393,8 @@ def candidatos_pela_aba(conexao, diag: dict | None = None) -> list[tuple[dict, l
             diag["servicos"].append({"servico": servico, "resultado": f"{len(achados)} candidato(s)"})
         except Exception as exc:  # noqa: BLE001
             diag["servicos"].append({"servico": servico, "resultado": str(exc)[:200]})
+    if modelos_saida is not None:
+        modelos_saida.extend(modelos)
     if len(modelos) > 1:
         cruzados = candidatos_cruzados(modelos)
         todos.extend(cruzados)

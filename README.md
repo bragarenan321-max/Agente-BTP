@@ -12,8 +12,8 @@ coleta os itens da janela "Mensagens" de cada WO e gera o relatório Excel `Aná
    (`FAVORITO - Agente BTP.txt`).
 4. Cole as WOs (ou importe a planilha) → **Executar análise** → acompanhe a barra → **Baixar relatório**.
 
-Não há etapa técnica: na primeira execução o agente se prepara sozinho, pelo dicionário de
-dados do BTP (`$metadata`), pelos próprios dados da linha do alerta ou observando as consultas
+Não há etapa técnica: na primeira execução o agente se prepara sozinho — primeiro consultando
+direto os dados de cada conjunto pela WO; depois pelo dicionário de dados do BTP (`$metadata`), pelos próprios dados da linha do alerta ou observando as consultas
 da tela do Monitor. Um caminho só é aceito se trouxer de fato os itens da janela "Mensagens"
 (material, fornecedor, quantidade faltante, mensagem) da própria WO. Se, mesmo assim, quase
 todas as WOs voltarem sem itens, a configuração é refeita e, se necessário, o agente pede
@@ -36,6 +36,7 @@ Pré-requisito: Python 3.10+ instalado.
 |---|---|
 | `autoconfig.py` | Preparação automática pelo dicionário de dados do BTP (`$metadata`) |
 | `analisador.py` | Preparação automática observando as consultas reais da tela |
+| `exploracao.py` | Preparação pelos DADOS: consulta cada conjunto pela WO e escolhe o que devolve os itens da janela "Mensagens" (1º caminho tentado) |
 | `sondagem.py` | Preparação pelos dados da linha do alerta (link de navegação, itens embutidos, JSON) |
 | `extensao/` | Extensão do Chrome: conecta a aba do BTP sozinha (endereço do programa fixo, não alterável por páginas) |
 | `ponte.py` + `web/agente_btp.js` | Conexão com a **aba já aberta** (favorito), no modelo do Agente Atlas |

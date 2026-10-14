@@ -230,3 +230,52 @@ def test_lote_quase_todo_sem_registros_refaz_a_configuracao(agente):
     assert "Mensagens" in e["aviso"]
     assert e["ultimo_arquivo"] == "Análise 1 - 3 WOs.xlsx"
     assert historico.listar()[0]["numero"] == 1
+
+
+from servico_real_falso import SRV, servico_real  # noqa: E402
+
+
+def test_servico_real_acha_itens_pelos_dados(agente):
+    get, urls = servico_real()
+    agente.ponte.fontes = lambda: [{"recurso": SRV + "$metadata"}]
+    assert preparar(agente, get) is True
+    dados = gravada()
+    assert dados["origem"] == "exploracao"
+    assert "ErrosMaterial" in dados["url_lista"]
+    assert dados["campos"]["material"] == "material" and dados["campos"]["mensagem"] == "mensagem"
+    assert len(urls) < 120, len(urls)              # rápido: poucas consultas, não milhares
+    assert agente._diag["dicionario"]["exploracao"]  # o diagnóstico registra o que foi visto
+
+    from agente_btp.cliente import ClienteBTP
+    from agente_btp.processador import processar_lote
+    [r] = processar_lote(ClienteBTP(cfg.carregar(), get), [WO])
+    assert r.status is Status.PROCESSADA
+    l = r.linhas[0]
+    assert (l.wo, l.material, l.fornecedor, l.quantidade_faltante, l.mensagem) == (
+        WO, "000000000022066463", "0000138480", 1, "Estoque indisponível")
+
+
+def test_campo_tipo_wo_nao_e_numero_da_wo():
+    from agente_btp.campos import tipo_do_campo
+    assert tipo_do_campo("tipoWo") is None and tipo_do_campo("statusWO") is None
+    assert tipo_do_campo("workOrderID_workOrderID") == "wo" and tipo_do_campo("numWO") == "wo"
+
+
+def test_servico_real_itens_ligados_pelo_consolidado(agente):
+    get, urls = servico_real(ligado=True)
+    agente.ponte.fontes = lambda: [{"recurso": SRV + "$metadata"}]
+    assert preparar(agente, get) is True
+    dados = gravada()
+    assert "Pendencias" in dados["url_lista"] and "ErrosMaterial?$filter=consolidID" in dados["url_mensagens"]
+    from agente_btp.cliente import ClienteBTP
+    from agente_btp.processador import processar_lote
+    [r] = processar_lote(ClienteBTP(cfg.carregar(), get), [WO])
+    assert r.status is Status.PROCESSADA and r.linhas[0].material == "000000000022066463"
+    assert r.linhas[0].consolidado == CONSOL
+
+
+def test_exploracao_tenta_a_proxima_wo(agente):
+    get, urls = servico_real()
+    agente.ponte.fontes = lambda: [{"recurso": SRV + "$metadata"}]
+    assert preparar(agente, get, wos=("11111|111111111", WO)) is True
+    assert gravada()["origem"] == "exploracao"
