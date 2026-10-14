@@ -16,6 +16,7 @@ from urllib.parse import unquote, urlsplit
 
 from . import odata
 from .entrada import PADRAO_WO
+from .campos import _VALOR, ESSENCIAIS, descritivo, tipo_do_campo
 from .modelos import ErroConsulta
 
 _WO_LIVRE = re.compile(PADRAO_WO.pattern.strip("^$"))
@@ -23,16 +24,6 @@ _GET_BATCH = re.compile(r"^GET\s+(\S+)\s+HTTP/1\.[01]", re.M)
 _STATUS_BATCH = re.compile(r"HTTP/1\.[01]\s+(\d{3})")
 _PARAMS_PAGINACAO = {"$skip", "$top", "$skiptoken", "$inlinecount", "$count"}
 
-# Palavras-chave dos nomes técnicos de campo (SAP costuma usar PT, EN ou abreviações).
-PALAVRAS = {
-    "material": re.compile(r"mat(nr|erial)", re.I),
-    "fornecedor": re.compile(r"fornec|lifnr|vendor|supplier", re.I),
-    "quantidade_faltante": re.compile(r"qtd|quant|menge|qty|falt", re.I),
-    "mensagem": re.compile(r"mensag|message|msg|text", re.I),
-    "consolidado": re.compile(r"consol", re.I),
-    "wo": re.compile(r"^wo$|^wo_|_wo$|^wo(id|nr|num|numero)$|work_?order|ordem", re.I),
-}
-ESSENCIAIS = ("material", "fornecedor", "quantidade_faltante", "mensagem")
 
 
 class AnaliseFalhou(Exception):
@@ -111,11 +102,13 @@ _DIGITOS = re.compile(r"^\d+$")
 _NUMERO = re.compile(r"^-?\d+([.,]\d+)?$")
 
 
-def _afinidade(nome: str, valor) -> int:
-    """Quanto o VALOR combina com o campo (desempata nomes ambíguos como MaterialText)."""
+def _afinidade(nome: str, chave: str, valor) -> int:
+    """Quanto o VALOR (e o nome) combinam com o campo — desempata MaterialText x Material."""
     texto = str(valor).strip()
+    if nome in _VALOR and _VALOR[nome].match(texto):
+        return 4
     if nome in ("material", "fornecedor"):
-        return 2 if _DIGITOS.match(texto) else 0
+        return (2 if _DIGITOS.match(texto) else 0) + (0 if descritivo(chave) else 1)
     if nome == "quantidade_faltante":
         return 2 if isinstance(valor, (int, float)) or _NUMERO.match(texto) else 0
     if nome == "mensagem":
@@ -124,21 +117,24 @@ def _afinidade(nome: str, valor) -> int:
 
 
 def mapear_campos(registro: dict, wo: str) -> dict[str, str]:
+    """Campo técnico de cada coluna, pelo nome (por partes) e pelo formato do valor."""
     campos: dict[str, str] = {}
-    candidatos: dict[str, list[tuple[int, str]]] = {}
+    candidatos: dict[str, list[tuple[int, int, str]]] = {}
     for chave, valor in registro.items():
         if chave.startswith(("__", "@")) or isinstance(valor, (dict, list)):
             continue
         if str(valor) == wo:
             campos.setdefault("wo", chave)
             continue
-        for nome, padrao in PALAVRAS.items():
-            if padrao.search(chave):
-                candidatos.setdefault(nome, []).append((_afinidade(nome, valor), chave))
-                break
-    for nome, opcoes in candidatos.items():
-        if nome not in campos:
-            campos[nome] = max(opcoes, key=lambda o: o[0])[1]
+        tipos = {tipo_do_campo(chave)} | {n for n, rx in _VALOR.items() if rx.match(str(valor).strip())}
+        for nome in tipos - {None}:
+            candidatos.setdefault(nome, []).append((_afinidade(nome, chave, valor), -len(chave), chave))
+    usados = set(campos.values())
+    for nome, opcoes in sorted(candidatos.items(), key=lambda kv: -max(kv[1])[0]):
+        livres = [o for o in opcoes if o[2] not in usados and o[0] > 0]
+        if nome not in campos and livres:
+            campos[nome] = max(livres)[2]
+            usados.add(campos[nome])
     return campos
 
 

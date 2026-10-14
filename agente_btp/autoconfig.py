@@ -16,7 +16,7 @@ import re
 import xml.etree.ElementTree as ET
 from urllib.parse import urlsplit
 
-from .analisador import ESSENCIAIS, PALAVRAS
+from .campos import ESSENCIAIS, descritivo, tipo_do_campo
 
 TIPOS_TEXTO = {"Edm.String"}
 TIPOS_NUMERO = {"Edm.Decimal", "Edm.Int16", "Edm.Int32", "Edm.Int64", "Edm.Double", "Edm.Single", "Edm.Byte"}
@@ -32,23 +32,52 @@ def _local(tag: str) -> str:
 
 def ler_metadata(xml: str) -> dict[str, dict[str, str]]:
     """{conjunto: {campo: tipo}} a partir do EDMX (OData V2 ou V4)."""
+    return {nome: c["props"] for nome, c in ler_modelo(xml)["conjuntos"].items()}
+
+
+def ler_modelo(xml: str) -> dict:
+    """Conjuntos com campos, chaves e navegações (OData V2 e V4)."""
     raiz = ET.fromstring(xml)
-    tipos: dict[str, dict[str, str]] = {}
+    v4 = (raiz.get("Version") or "").startswith("4")
+    tipos, assoc = {}, {}
     for el in raiz.iter():
-        if _local(el.tag) == "EntityType" and el.get("Name"):
-            tipos[el.get("Name")] = {p.get("Name"): p.get("Type", "")
-                                     for p in el if _local(p.tag) == "Property" and p.get("Name")}
-    conjuntos = {}
+        nome_el = _local(el.tag)
+        if nome_el == "EntityType" and el.get("Name"):
+            props = {p.get("Name"): p.get("Type", "") for p in el if _local(p.tag) == "Property" and p.get("Name")}
+            chaves = [r.get("Name") for k in el if _local(k.tag) == "Key" for r in k if r.get("Name")]
+            navs = {}
+            for n in el:
+                if _local(n.tag) != "NavigationProperty" or not n.get("Name"):
+                    continue
+                if n.get("Type"):   # V4: Type="Collection(NS.Item)" ou "NS.Item"
+                    navs[n.get("Name")] = ("tipo", n.get("Type").replace("Collection(", "").rstrip(")").rsplit(".", 1)[-1])
+                else:               # V2: Relationship + ToRole -> Association
+                    navs[n.get("Name")] = ("assoc", (n.get("Relationship", "").rsplit(".", 1)[-1], n.get("ToRole")))
+            tipos[el.get("Name")] = {"props": props, "chaves": chaves, "navs": navs}
+        elif nome_el == "Association" and el.get("Name"):
+            assoc[el.get("Name")] = {e.get("Role"): (e.get("Type") or "").rsplit(".", 1)[-1]
+                                     for e in el if _local(e.tag) == "End"}
+    conjuntos, set_do_tipo = {}, {}
     for el in raiz.iter():
         if _local(el.tag) == "EntitySet" and el.get("Name"):
             tipo = (el.get("EntityType") or "").rsplit(".", 1)[-1]
-            conjuntos[el.get("Name")] = tipos.get(tipo, {})
-    return conjuntos
+            set_do_tipo.setdefault(tipo, el.get("Name"))
+            info = tipos.get(tipo, {"props": {}, "chaves": [], "navs": {}})
+            conjuntos[el.get("Name")] = {"tipo": tipo, **info}
+    for c in conjuntos.values():
+        destinos = {}
+        for nav, (modo, alvo) in c["navs"].items():
+            tipo_alvo = alvo if modo == "tipo" else assoc.get(alvo[0], {}).get(alvo[1])
+            if tipo_alvo in set_do_tipo:
+                destinos[nav] = set_do_tipo[tipo_alvo]
+        c["destinos"] = destinos
+    return {"v4": v4, "conjuntos": conjuntos}
 
 
-def _afinidade(nome: str, tipo: str) -> int:
+def _afinidade(nome: str, campo: str, tipo: str) -> int:
+    base = 0 if descritivo(campo) and nome in ("material", "fornecedor") else 1
     if nome in ("material", "fornecedor", "mensagem", "consolidado", "wo"):
-        return 2 if tipo in TIPOS_TEXTO else 0
+        return (2 if tipo in TIPOS_TEXTO else 0) + base
     if nome == "quantidade_faltante":
         return 2 if tipo in TIPOS_NUMERO else 1 if tipo in TIPOS_TEXTO else 0
     return 1
@@ -57,11 +86,10 @@ def _afinidade(nome: str, tipo: str) -> int:
 def mapear_por_nomes(campos: dict[str, str]) -> dict[str, str]:
     candidatos: dict[str, list[tuple[int, int, str]]] = {}
     for campo, tipo in campos.items():
-        for nome, padrao in PALAVRAS.items():
-            if padrao.search(campo):
-                # maior afinidade de tipo; empate -> nome mais curto (Material > MaterialText)
-                candidatos.setdefault(nome, []).append((_afinidade(nome, tipo), -len(campo), campo))
-                break
+        nome = tipo_do_campo(campo)
+        if nome:
+            # maior afinidade de tipo; empate -> nome mais curto (Material > MaterialText)
+            candidatos.setdefault(nome, []).append((_afinidade(nome, campo, tipo), -len(campo), campo))
     return {nome: max(opcoes)[2] for nome, opcoes in candidatos.items() if max(opcoes)[0] > 0}
 
 
@@ -84,46 +112,77 @@ def caminho_servico(url: str) -> str:
     return caminho if caminho.endswith("/") else caminho + "/"
 
 
+def _literal_chave(campo: str, tipo: str, v4: bool) -> str:
+    marcador = "{linha[" + campo + "]}"
+    if tipo == "Edm.Guid":
+        return marcador if v4 else f"guid'{marcador}'"
+    if tipo in TIPOS_NUMERO:
+        return marcador
+    return f"'{marcador}'"
+
+
+def _predicado(chaves: list[str], props: dict[str, str], v4: bool) -> str | None:
+    if not chaves:
+        return None
+    if len(chaves) == 1:
+        return "(" + _literal_chave(chaves[0], props.get(chaves[0], ""), v4) + ")"
+    return "(" + ",".join(f"{k}={_literal_chave(k, props.get(k, ''), v4)}" for k in chaves) + ")"
+
+
+def candidatos(servico: str, metadata_xml: str) -> list[tuple[dict, list[str]]]:
+    """Todas as configurações plausíveis, da mais provável para a menos provável.
+
+    Nenhuma é aceita às cegas: o agente testa cada uma com as WOs do usuário.
+    """
+    modelo = ler_modelo(metadata_xml)
+    conj = modelo["conjuntos"]
+    mapas = {n: mapear_por_nomes(c["props"]) for n, c in conj.items()}
+    msgs = sorted((n for n in mapas if _pontos_mensagens(mapas[n]) >= 3),
+                  key=lambda n: (-_pontos_mensagens(mapas[n]), len(n)))
+    listas = sorted((n for n in mapas if _pontos_lista(mapas[n]) >= 0),
+                    key=lambda n: (-_pontos_lista(mapas[n]), len(n)))
+    saida = []
+    for m in msgs:
+        m_msg = mapas[m]
+        for lista in listas:
+            if lista == m:
+                continue
+            m_lista, info = mapas[lista], conj[lista]
+            base = {"url_lista": f"{servico}{lista}?$filter={m_lista['wo']} eq '{{wo}}'",
+                    "campo_consolidado_lista": m_lista.get("consolidado", ""),
+                    "campo_mensagens_expandidas": None, "campos": m_msg}
+            # 1) navegação declarada do alerta para as mensagens
+            pred = _predicado(info["chaves"], info["props"], modelo["v4"])
+            for nav, destino in info["destinos"].items():
+                if destino == m and pred:
+                    saida.append((dict(base, url_mensagens=f"{servico}{lista}{pred}/{nav}"),
+                                  [f"Lista '{lista}' → mensagens pela navegação '{nav}'."]))
+            # 2) filtro pelos campos em comum (Consolidado e/ou WO)
+            filtros = []
+            if "consolidado" in m_msg and "consolidado" in m_lista:
+                filtros.append(f"{m_msg['consolidado']} eq '{{linha[{m_lista['consolidado']}]}}'")
+            if "wo" in m_msg:
+                filtros.append(f"{m_msg['wo']} eq '{{linha[{m_lista['wo']}]}}'")
+            for grupo in ([filtros] if len(filtros) < 2 else [filtros, filtros[:1], filtros[1:]]):
+                if grupo:
+                    saida.append((dict(base, url_mensagens=f"{servico}{m}?$filter=" + " and ".join(grupo)),
+                                  [f"Lista '{lista}' → mensagens '{m}' filtradas por campos em comum."]))
+        # 3) um conjunto só: as linhas de mensagem já trazem a WO
+        if "wo" in m_msg:
+            saida.append(({"url_lista": f"{servico}{m}?$filter={m_msg['wo']} eq '{{wo}}'",
+                           "campo_consolidado_lista": m_msg.get("consolidado", ""), "url_mensagens": None,
+                           "campo_mensagens_expandidas": ".", "campos": m_msg},
+                          [f"Mensagens consultadas direto pela WO em '{m}'."]))
+    if not saida:
+        raise MetadataSemCorrespondencia("nenhum conjunto com WO e com material/fornecedor/quantidade/mensagem")
+    for dados, rel in saida:
+        rel.insert(0, f"Serviço de dados: {servico}")
+    return saida
+
+
 def configurar(servico: str, metadata_xml: str) -> tuple[dict, list[str]]:
-    conjuntos = ler_metadata(metadata_xml)
-    mapas = {nome: mapear_por_nomes(campos) for nome, campos in conjuntos.items()}
-
-    mensagens = max(mapas, key=lambda n: (_pontos_mensagens(mapas[n]), -len(n)), default=None)
-    if not mensagens or _pontos_mensagens(mapas[mensagens]) < 4:
-        raise MetadataSemCorrespondencia("nenhum conjunto com material, fornecedor, quantidade e mensagem")
-    m_msg = mapas[mensagens]
-
-    outros = [n for n in mapas if n != mensagens and _pontos_lista(mapas[n]) >= 0]
-    lista = max(outros, key=lambda n: _pontos_lista(mapas[n]), default=None)
-
-    relatorio = [f"Serviço de dados: {servico}"]
-    if lista is None:
-        if "wo" not in m_msg:
-            raise MetadataSemCorrespondencia("nenhum conjunto com o campo da WO")
-        # As próprias linhas de mensagem já trazem a WO: uma consulta só.
-        dados = {"url_lista": f"{servico}{mensagens}?$filter={m_msg['wo']} eq '{{wo}}'",
-                 "campo_consolidado_lista": m_msg.get("consolidado", ""),
-                 "url_mensagens": None, "campo_mensagens_expandidas": ".", "campos": m_msg}
-        relatorio.append(f"Mensagens consultadas direto pela WO em '{mensagens}'.")
-        return dados, relatorio
-
-    m_lista = mapas[lista]
-    filtros = []
-    if "consolidado" in m_msg and "consolidado" in m_lista:
-        filtros.append(f"{m_msg['consolidado']} eq '{{linha[{m_lista['consolidado']}]}}'")
-    if "wo" in m_msg:
-        filtros.append(f"{m_msg['wo']} eq '{{linha[{m_lista['wo']}]}}'")
-    if not filtros:
-        raise MetadataSemCorrespondencia(f"não há campo que ligue '{lista}' a '{mensagens}'")
-    dados = {
-        "url_lista": f"{servico}{lista}?$filter={m_lista['wo']} eq '{{wo}}'",
-        "campo_consolidado_lista": m_lista.get("consolidado", ""),
-        "url_mensagens": f"{servico}{mensagens}?$filter=" + " and ".join(filtros),
-        "campo_mensagens_expandidas": None,
-        "campos": m_msg,
-    }
-    relatorio.append(f"Lista: '{lista}' · Mensagens: '{mensagens}'.")
-    return dados, relatorio
+    """A configuração mais provável (sem teste). Use candidatos() + validação no agente."""
+    return candidatos(servico, metadata_xml)[0]
 
 
 _RAIZES = (
@@ -143,37 +202,43 @@ def raiz_servico(url: str) -> str | None:
     return None
 
 
-def configurar_pela_aba(conexao, diag: dict | None = None) -> tuple[dict, list[str]]:
-    """Pergunta à aba os serviços em uso e tenta cada $metadata até um servir."""
+def candidatos_pela_aba(conexao, diag: dict | None = None) -> list[tuple[dict, list[str]]]:
+    """Pergunta à aba os serviços em uso e reúne os candidatos de todos os $metadata."""
     diag = diag if diag is not None else {}
     fontes = conexao.fontes()
     diag["fontes"] = fontes[:50]
     servicos: list[str] = []
     for f in fontes:
-        candidatos = []
-        if f.get("url"):
-            try:
-                candidatos.append(caminho_servico(f["url"]))
-            except MetadataSemCorrespondencia:
-                pass
+        for chave in ("url", "url_original"):
+            if f.get(chave):
+                try:
+                    s = caminho_servico(f[chave])
+                except MetadataSemCorrespondencia:
+                    s = None
+                if s and s not in servicos:
+                    servicos.append(s)
         if f.get("recurso"):
-            candidatos.append(raiz_servico(f["recurso"]))
-        for s in candidatos:
+            s = raiz_servico(f["recurso"])
             if s and s not in servicos:
                 servicos.append(s)
     diag["servicos"] = []
     if not servicos:
         raise MetadataSemCorrespondencia("nenhum serviço de dados encontrado na aba (o Monitor está aberto?)")
-    motivos = []
+    todos = []
     for servico in servicos[:15]:
         try:
             r = conexao.get(servico + "$metadata", accept="application/xml")
             if r.status != 200:
                 raise MetadataSemCorrespondencia(f"HTTP {r.status}")
-            dados, relatorio = configurar(servico, r.corpo)
-            diag["servicos"].append({"servico": servico, "resultado": "ok"})
-            return dados, relatorio
-        except (MetadataSemCorrespondencia, ET.ParseError, Exception) as exc:  # noqa: BLE001
+            achados = candidatos(servico, r.corpo)
+            todos.extend(achados)
+            diag["servicos"].append({"servico": servico, "resultado": f"{len(achados)} candidato(s)"})
+        except Exception as exc:  # noqa: BLE001
             diag["servicos"].append({"servico": servico, "resultado": str(exc)[:200]})
-            motivos.append(f"{servico}: {exc}")
-    raise MetadataSemCorrespondencia("; ".join(motivos))
+    if not todos:
+        raise MetadataSemCorrespondencia("nenhum serviço com os dados do Monitor; ver diagnóstico")
+    return todos
+
+
+def configurar_pela_aba(conexao, diag: dict | None = None) -> tuple[dict, list[str]]:
+    return candidatos_pela_aba(conexao, diag)[0]

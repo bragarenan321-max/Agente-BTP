@@ -249,10 +249,11 @@ async function atualizar() {
   $("cartaoProgresso").classList.toggle("oculto", !ativo);
   if (ativo) {
     const p = e.progresso, pct = p.total ? Math.round(100 * p.atual / p.total) : 0;
-    $("tituloProg").textContent = e.fase === "preparando" ? "Preparando (só na primeira vez)…"
+    $("tituloProg").textContent = e.fase === "falhou" ? "Não foi possível preparar"
+      : e.fase === "preparando" ? "Preparando (só na primeira vez)…"
       : e.fase === "concluido" ? "Concluído" : "Processando";
     $("barra").classList.toggle("indef", e.fase === "preparando");
-    $("prepInfo").classList.toggle("oculto", e.fase !== "preparando");
+    $("prepInfo").classList.toggle("oculto", !["preparando", "falhou"].includes(e.fase));
     $("observadas").textContent = e.observadas;
     $("barraFill").style.width = (e.fase === "concluido" ? 100 : pct) + "%";
     $("progTxt").textContent = p.total ? `${p.atual} de ${p.total} WOs · ${pct}%` : "";

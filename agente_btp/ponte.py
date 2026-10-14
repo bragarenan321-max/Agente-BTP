@@ -20,7 +20,7 @@ from .cliente import Resposta
 from .modelos import FalhaComunicacao, SessaoExpirada
 
 ESPERA_LONG_POLL = 15.0      # quanto o pedido do agente fica aguardando uma tarefa
-TOLERANCIA_SILENCIO = 30.0   # sem contato há mais que isso = aba desconectada
+TOLERANCIA_SILENCIO = 25.0   # sem contato há mais que isso = aba desconectada
 TIMEOUT_TAREFA = 90.0
 LIMITE_CAPTURA = 400
 
@@ -30,6 +30,7 @@ class PonteAba:
         self._cond = threading.Condition()
         self._fila: deque[dict] = deque()
         self._pendentes: dict[str, dict] = {}
+        self._entregues: dict[str, dict] = {}   # tarefas já com a aba, aguardando resposta
         self.agente_id: str | None = None
         self._visto_em = 0.0
         self._aba_autenticada = False
@@ -47,6 +48,24 @@ class PonteAba:
             self.agente_id = agente
             self.pagina = pagina
             self._visto_em = time.monotonic()
+            self._devolver_entregues()
+
+    def despedir(self, agente: str) -> None:
+        """A aba avisou que vai fechar/recarregar: desconecta na hora e salva as tarefas."""
+        with self._cond:
+            if agente == self.agente_id:
+                self.agente_id = None
+                self._aba_autenticada = False
+                self._devolver_entregues()
+
+    def _devolver_entregues(self) -> None:
+        # Tarefas entregues a uma aba que sumiu (fechada, recarregada, favorito clicado de
+        # novo) voltam para o início da fila: a próxima aba conectada as executa.
+        for tarefa in reversed(list(self._entregues.values())):
+            if tarefa["id"] in self._pendentes and tarefa not in self._fila:
+                self._fila.appendleft(tarefa)
+        self._entregues.clear()
+        self._cond.notify_all()
 
     def proxima_tarefa(self, agente: str, autenticado: bool, pagina: str,
                        capturando_na_aba: bool = False, espera: float = ESPERA_LONG_POLL,
@@ -69,12 +88,15 @@ class PonteAba:
                 self._visto_em = time.monotonic()
             resposta = {"capturar": self._captura is not None}
             if self._fila and agente == self.agente_id:
-                resposta["tarefa"] = self._fila.popleft()
+                tarefa = self._fila.popleft()
+                self._entregues[tarefa["id"]] = tarefa
+                resposta["tarefa"] = tarefa
             return resposta
 
     def entregar_resposta(self, dados: dict) -> None:
         with self._cond:
             self._visto_em = time.monotonic()
+            self._entregues.pop(dados.get("id"), None)
             pendente = self._pendentes.get(dados.get("id"))
             if pendente:
                 pendente["resposta"] = dados
@@ -132,16 +154,20 @@ class PonteAba:
             self._fila.append(tarefa)
             self._cond.notify_all()
         try:
-            if not pendente["evento"].wait(TIMEOUT_TAREFA):
-                with self._cond:
-                    if tarefa in self._fila:
-                        self._fila.remove(tarefa)
+            limite = time.monotonic() + TIMEOUT_TAREFA
+            # Espera em fatias curtas: se a aba sumir, percebe logo (não espera os 90 s).
+            while not pendente["evento"].wait(0.5):
                 if not self.conectada:
-                    raise SessaoExpirada("A aba do SAP foi fechada ou recarregada. Clique no favorito novamente.")
-                raise FalhaComunicacao("A aba do SAP não respondeu a tempo.")
+                    raise SessaoExpirada("A aba do SAP foi fechada ou recarregada. "
+                                         "Clique no favorito 'Agente BTP' na aba do SAP.")
+                if time.monotonic() > limite:
+                    raise FalhaComunicacao("A aba do SAP não respondeu a tempo.")
         finally:
             with self._cond:
                 self._pendentes.pop(tarefa["id"], None)
+                self._entregues.pop(tarefa["id"], None)
+                if tarefa in self._fila:
+                    self._fila.remove(tarefa)
         return pendente["resposta"]
 
     def aguardar(self, ms: int) -> None:

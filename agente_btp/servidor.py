@@ -81,6 +81,13 @@ def criar_app(agente: Agente) -> Flask:
             request.args.get("pagina", ""), request.args.get("capturando") == "1",
             versao=request.args.get("versao", "")))
 
+    @app.post("/api/agente/tchau")
+    def agente_tchau():
+        exigir_origem_sap()
+        dados = request.get_json(force=True, silent=True) or {}
+        agente.ponte.despedir(str(dados.get("agente", "")))
+        return jsonify(ok=True)
+
     @app.post("/api/agente/resposta")
     def agente_resposta():
         exigir_origem_sap()

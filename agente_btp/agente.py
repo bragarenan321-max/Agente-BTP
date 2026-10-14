@@ -18,10 +18,11 @@ from pathlib import Path
 from . import config as cfg
 from . import historico
 from .analisador import AnaliseFalhou, analisar
-from .autoconfig import MetadataSemCorrespondencia, configurar_pela_aba
+from .autoconfig import MetadataSemCorrespondencia, candidatos_pela_aba
 from .cliente import ClienteBTP
 from .exportacao import gerar_planilha, nome_padrao
-from .modelos import Status
+from .entrada import wo_valida
+from .modelos import ErroConsulta, FalhaComunicacao, SessaoExpirada, Status
 from .ponte import PonteAba
 from .processador import processar_lote
 
@@ -29,7 +30,7 @@ log = logging.getLogger("agente_btp")
 
 RAIZ = cfg.RAIZ
 PASTA_SAIDAS = RAIZ / "saidas"
-ESPERA_APRENDIZADO_SEG = 600
+ESPERA_APRENDIZADO_SEG = 180
 
 
 class Agente:
@@ -39,6 +40,7 @@ class Agente:
         self._trava_config = threading.Lock()
         self._parar = threading.Event()
         self._diag: dict = {}
+        self._candidatos: list = []
         self.ponte = PonteAba()
         self.ponte.observador = self._ao_observar
         self._estado = {
@@ -71,6 +73,7 @@ class Agente:
 
     def aba_conectada(self) -> None:
         self._msg("Aba do SAP conectada.")
+        self._candidatos = []   # nova aba/página: o que foi lido antes pode não valer mais
         if not cfg.ARQUIVO_CONFIG.exists():
             self.ponte.iniciar_captura()   # aprende em silêncio enquanto o usuário usa o Monitor
             self.enviar("preparar")
@@ -93,18 +96,66 @@ class Agente:
                 self._definir(ocupado=False)
 
     def _cmd_preparar(self) -> None:
+        """Ao conectar: já busca as configurações candidatas (o teste é feito com as WOs)."""
         if cfg.ARQUIVO_CONFIG.exists() or not self.ponte.conectada:
             return
+        self._buscar_candidatos()
+
+    def _buscar_candidatos(self) -> list:
         diag = {"quando": datetime.now().isoformat(timespec="seconds")}
         try:
-            dados, relatorio = configurar_pela_aba(self.ponte, diag)
-        except (MetadataSemCorrespondencia, Exception) as exc:  # noqa: BLE001
+            self._candidatos = candidatos_pela_aba(self.ponte, diag)
+            diag["candidatos"] = len(self._candidatos)
+        except Exception as exc:  # noqa: BLE001
+            self._candidatos = []
             diag["erro"] = str(exc)[:500]
-            self._diag["dicionario"] = diag
-            log.info("Preparação pelo dicionário de dados não concluída: %s", exc)
-            return
+            log.info("Dicionário de dados: %s", exc)
         self._diag["dicionario"] = diag
-        self._gravar_config(dados, "dicionario", relatorio)
+        return self._candidatos
+
+    def _validar(self, dados: dict, amostra: list[str]) -> int:
+        """2 = trouxe dados reais; 1 = sem erro mas sem dados; 0 = não serve."""
+        try:
+            cliente = ClienteBTP(cfg.a_partir_de_dict(dados), self.ponte.get)
+        except ValueError:
+            return 0
+        for wo in amostra:
+            try:
+                alertas = cliente.buscar_alertas(wo)
+                if alertas:
+                    mensagens = cliente.buscar_mensagens(alertas[0])
+                    if not mensagens:
+                        continue
+                    linha = cliente.converter(wo, alertas[0], mensagens[0])
+                    return 2 if (linha.material or linha.mensagem) else 0
+            except ErroConsulta:
+                return 0
+            except FalhaComunicacao:
+                continue
+        return 1
+
+    def _preparar_com_wos(self, wos: list[str]) -> bool:
+        """Testa as candidatas com as WOs do usuário e grava a que trouxer dados de verdade."""
+        candidatos = self._candidatos or self._buscar_candidatos()
+        if not candidatos:
+            return False
+        amostra = [w for w in wos if wo_valida(w)][:5]
+        testes, fraca = [], None
+        for dados, relatorio in candidatos[:20]:
+            nota = self._validar(dados, amostra)
+            testes.append({"lista": dados["url_lista"], "mensagens": dados.get("url_mensagens"), "nota": nota})
+            if nota == 2:
+                self._diag.setdefault("dicionario", {})["testes"] = testes
+                self._gravar_config(dados, "dicionario", relatorio)
+                return True
+            if nota == 1 and fraca is None:
+                fraca = (dados, relatorio)
+        self._diag.setdefault("dicionario", {})["testes"] = testes
+        if fraca:
+            # Nenhuma das WOs de teste tem pendência; fica com a melhor sem erro.
+            self._gravar_config(fraca[0], "dicionario", fraca[1])
+            return True
+        return False
 
     def _ao_observar(self, consultas: list[dict]) -> None:
         """Chamado a cada lote de consultas observadas na aba (thread HTTP)."""
@@ -157,8 +208,9 @@ class Agente:
         if not self.ponte.autenticado():
             self._definir(fase="ocioso", aviso="Conecte a aba do SAP: clique no favorito 'Agente BTP' na aba já logada.")
             return
-        if not self._garantir_preparo():
-            self._definir(fase="ocioso")
+        if not self._garantir_preparo(wos):
+            if self._estado["fase"] != "falhou":
+                self._definir(fase="ocioso")
             self._registrar_historico(inicio_relogio, descricao, wos, [], None,
                                       "Interrompida" if self._parar.is_set() else "Não preparada")
             return
@@ -228,27 +280,42 @@ class Agente:
         except Exception:  # noqa: BLE001 — histórico nunca derruba a análise
             log.exception("Falha ao gravar o histórico")
 
-    def _garantir_preparo(self) -> bool:
+    def _garantir_preparo(self, wos: list[str]) -> bool:
         """Na primeira vez, prepara a conexão com o Monitor sem exigir nada técnico do usuário."""
         if cfg.ARQUIVO_CONFIG.exists():
             return True
         self._msg("Preparando a conexão com o Monitor de alertas (só na primeira vez)…")
         self.ponte.iniciar_captura()
-        self._cmd_preparar()
-        if cfg.ARQUIVO_CONFIG.exists():
-            return True
-        self._definir(aviso="Só desta vez: na aba do SAP, abra o Monitor de alertas e clique em qualquer "
-                            "WO para abrir a janela 'Mensagens'. O agente continua sozinho.")
+        try:
+            if self._preparar_com_wos(wos):
+                return True
+        except SessaoExpirada:
+            self._definir(aviso="A sessão do SAP caiu. Faça login na aba e clique no favorito 'Agente BTP'.")
+            return False
         limite = time.monotonic() + ESPERA_APRENDIZADO_SEG
-        while time.monotonic() < limite and not self._parar.is_set():
+        proxima_tentativa = time.monotonic() + 20
+        while not self._parar.is_set():
+            restante = int(limite - time.monotonic())
             if cfg.ARQUIVO_CONFIG.exists():
                 self._definir(aviso="")
                 return True
-            if int(limite - time.monotonic()) % 15 == 0:
-                self._cmd_preparar()   # o usuário pode ter acabado de abrir o Monitor
+            if restante <= 0:
+                break
+            self._definir(aviso=f"Na aba do SAP, abra o Monitor de alertas e clique em qualquer WO para abrir a "
+                                f"janela 'Mensagens'. O agente aprende com isso e continua sozinho. ({restante} s)")
+            if time.monotonic() >= proxima_tentativa:   # o usuário pode ter acabado de abrir o Monitor
+                proxima_tentativa = time.monotonic() + 20
+                self._candidatos = []
+                try:
+                    if self._preparar_com_wos(wos):
+                        self._definir(aviso="")
+                        return True
+                except SessaoExpirada:
+                    break
             time.sleep(1)
-        self._definir(aviso="Não foi possível preparar a conexão. Abra a janela 'Mensagens' de uma WO "
-                            "na aba do SAP e tente de novo.")
+        self._definir(aviso="Não consegui preparar a conexão com o Monitor. Clique em 'Baixar diagnóstico' "
+                            "(abaixo) e envie o arquivo para ajuste.")
+        self._definir(fase="falhou")
         return False
 
     # ------------------------------------------------ auxiliares

@@ -96,3 +96,29 @@ def test_aba_com_script_antigo_recebe_atualizar():
     p.registrar_agente("a1", "/site")
     assert p.proxima_tarefa("a1", True, "/site", espera=0, versao="velha")["atualizar"] is True
     assert "atualizar" not in p.proxima_tarefa("a1", True, "/site", espera=0, versao="nova")
+
+
+def test_tarefa_entregue_a_aba_que_sumiu_volta_para_a_fila():
+    """Aba recarregada no meio de uma consulta: a consulta não se perde."""
+    p = PonteAba()
+    p.registrar_agente("velha", "/site")
+    resultado = {}
+    threading.Thread(target=lambda: resultado.setdefault("r", p.get("/srv/x")), daemon=True).start()
+    time.sleep(0.1)
+    assert "tarefa" in p.proxima_tarefa("velha", True, "/site", espera=1)   # a aba velha pega... e morre
+    p.registrar_agente("nova", "/site")                                    # aba nova conecta
+    t = p.proxima_tarefa("nova", True, "/site", espera=1)["tarefa"]
+    p.entregar_resposta({"id": t["id"], "status": 200, "ct": "application/json", "body": "{}"})
+    time.sleep(0.2)
+    assert resultado["r"].status == 200
+
+
+def test_despedida_desconecta_na_hora():
+    p = PonteAba()
+    p.registrar_agente("a1", "/site")
+    p.proxima_tarefa("a1", True, "/site", espera=0)
+    assert p.autenticado()
+    p.despedir("a1")
+    assert not p.conectada
+    with pytest.raises(SessaoExpirada):
+        p.get("/srv/x")

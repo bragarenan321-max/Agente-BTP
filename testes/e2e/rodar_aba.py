@@ -34,7 +34,12 @@ favorito = json.load(urllib.request.urlopen("http://127.0.0.1:8767/api/favorito"
 WOS = ["88412|126579742", "42340|231184065", "02235|230771207", "123"]
 
 
+SO = os.environ.get("CENARIOS", "ABC")
+
+
 def cenario(nome, url_aba, b):
+    if nome[0] not in SO:
+        return
     print(f"\n===== {nome} =====")
     cfg.ARQUIVO_CONFIG.unlink(missing_ok=True)
     aba = b.new_page()
@@ -56,6 +61,8 @@ def cenario(nome, url_aba, b):
     e = agente.estado()
     print("origem da configuração:", json.loads(cfg.ARQUIVO_CONFIG.read_text())["origem"])
     print("contagem:", e["contagem"], "| aviso:", e["aviso"] or "-")
+    for teste in agente._diag.get("dicionario", {}).get("testes", []):
+        print("   teste:", teste["nota"], teste["lista"].split("/")[-1][:40], "|", str(teste["mensagens"]).split("/")[-2:])
     wb = load_workbook(PASTA_SAIDAS / e["ultimo_arquivo"])
     for linha in wb["Resultado"].iter_rows(values_only=True):
         print("  ", linha)
@@ -65,7 +72,11 @@ def cenario(nome, url_aba, b):
 with sync_playwright() as p:
     b = p.chromium.launch()
     cenario("A: dicionário de dados", "http://127.0.0.1:8798/site#Shell-home", b)
+    sap_falso.ESTADO["sem_metadata"] = True        # B: dicionário bloqueado -> só a observação resolve
     cenario("B: observando o Monitor", "http://127.0.0.1:8798/site?semfontes=1&simular=1#Shell-home", b)
+    sap_falso.ESTADO["sem_metadata"] = False
+    cenario("C: OData V4, nomes diferentes, navegação e conjunto-isca",
+            "http://127.0.0.1:8798/site?cap=1#Shell-home", b)
     # Histórico: as duas análises aparecem; apagar uma remove também o Excel dela.
     hist = json.load(urllib.request.urlopen("http://127.0.0.1:8767/api/historico"))
     print("\nhistórico:", [(h["situacao"], h["total"], h["contagem"].get("Processada")) for h in hist])

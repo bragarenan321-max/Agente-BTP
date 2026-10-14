@@ -137,7 +137,16 @@
             Object.keys(modelos).forEach((nome) => {
               const m = c.getModel(nome || undefined);
               if (m && m.sServiceUrl) {
-                out.push({ app: app.id || '', titulo: String(app.title || ''), url: String(m.sServiceUrl),
+                const original = String(m.sServiceUrl);
+                // Endereço relativo (ex.: "odata/v4/x/") é resolvido a partir da pasta do app.
+                let url = original;
+                try {
+                  const pasta = w.sap.ui.require.toUrl(c.getMetadata().getComponentName().replace(/\./g, '/')) + '/';
+                  url = new URL(original, new URL(pasta, w.location.href)).pathname;
+                } catch (e) {
+                  try { url = new URL(original, w.location.href).pathname; } catch (e2) {}
+                }
+                out.push({ app: app.id || '', titulo: String(app.title || ''), url: url, url_original: original,
                            tipo: m.getMetadata ? m.getMetadata().getName() : '' });
               }
             });
@@ -188,6 +197,17 @@
     clearInterval(descarga);
   }
   principal.__agenteBTP = { parar: parar, id: ID };
+
+  // Fechou/recarregou a aba: avisa o programa na hora (as tarefas pendentes são salvas).
+  const despedida = () => {
+    if (!estado.ativo) return;
+    try {
+      fetchOriginal(SERVIDOR + '/api/agente/tchau', Object.assign({
+        method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agente: ID }) }, LOOPBACK));
+    } catch (e) {}
+  };
+  principal.addEventListener('pagehide', despedida);
 
   async function laco() {
     let falhas = 0;
