@@ -122,3 +122,10 @@ def test_despedida_desconecta_na_hora():
     assert not p.conectada
     with pytest.raises(SessaoExpirada):
         p.get("/srv/x")
+
+
+def test_copia_do_agente_na_extensao_e_identica():
+    """A extensão injeta a própria cópia do agente: ela tem de ser igual à do programa."""
+    from agente_btp.config import RAIZ
+    original = (RAIZ / "agente_btp" / "web" / "agente_btp.js").read_text(encoding="utf-8")
+    assert (RAIZ / "extensao" / "agente_btp.js").read_text(encoding="utf-8") == original

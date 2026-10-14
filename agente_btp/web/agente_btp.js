@@ -19,6 +19,8 @@
 
   const ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
   const VERSAO = principal.__BTP_VERSAO || '';
+  // Injetado pela extensão (arquivo dentro dela): não usa eval e espera o programa abrir.
+  const VIA_EXTENSAO = !!principal.__BTP_VIA_EXTENSAO;
   const LOOPBACK = { targetAddressSpace: 'loopback' }; // Chrome: acesso à rede local
   const IGNORAR = /user-api|userinfo|currentuser|\/resources\/|theming/i;
   const TIPOS = /json|xml|multipart\/mixed/i;
@@ -214,11 +216,19 @@
 
   async function laco() {
     let falhas = 0;
-    try { await servidor('/api/agente/ola', { agente: ID, pagina: location.pathname + location.hash }); }
-    catch (e) {
-      aviso('não encontrei o programa local. Abra o Agente BTP e clique no favorito de novo.', '#b0191e');
-      parar();
-      return;
+    for (;;) {
+      try { await servidor('/api/agente/ola', { agente: ID, pagina: location.pathname + location.hash }); break; }
+      catch (e) {
+        if (!VIA_EXTENSAO) {
+          aviso('não encontrei o programa local. Abra o Agente BTP e clique no favorito de novo.', '#b0191e');
+          parar();
+          return;
+        }
+        // Pela extensão: espera o programa abrir, sem desistir.
+        aviso('aguardando o programa (Abrir Agente BTP.bat)…', '#6b6b6b');
+        await new Promise((ok) => setTimeout(ok, 5000));
+        if (!estado.ativo) return;
+      }
     }
     aviso('conectado');
     while (estado.ativo) {
@@ -227,6 +237,11 @@
                                  '&capturando=' + (estado.capturando ? 1 : 0) + '&versao=' + VERSAO +
                                  '&pagina=' + encodeURIComponent(location.pathname + location.hash));
         falhas = 0;
+        if (r.atualizar && VIA_EXTENSAO) {       // a extensão injeta a versão nova (sem eval)
+          parar();
+          principal.postMessage({ agenteBtp: 'reinjetar' }, location.origin);
+          return;
+        }
         if (r.atualizar) {                       // o programa local foi atualizado: recarrega este script
           parar();
           const novo = await fetchOriginal(SERVIDOR + '/agente_btp.js', Object.assign({ cache: 'no-store' }, LOOPBACK));

@@ -38,10 +38,12 @@ with sync_playwright() as p:
         tempfile.mkdtemp(), headless=False,
         args=["--headless=new", f"--disable-extensions-except={pasta_ext}", f"--load-extension={pasta_ext}"])
     aba = ctx.new_page()
-    aba.goto("http://127.0.0.1:8798/site#Shell-home")      # BTP aberto, programa AINDA fechado
+    aba.goto("http://127.0.0.1:8798/site?csp=1#Shell-home")  # BTP aberto (sem eval), programa AINDA fechado
     aba.wait_for_timeout(3000)
-    print("antes do programa, aviso na aba:", aba.locator("#agente-btp-extensao-aviso").inner_text()
-          if aba.locator("#agente-btp-extensao-aviso").count() else "(nenhum)")
+    print("antes do programa, selo na aba:", aba.inner_text("#agente-btp-selo")
+          if aba.locator("#agente-btp-selo").count() else "(nenhum)",
+          "| aviso de erro da extensão:", aba.locator("#agente-btp-extensao-aviso").count() > 0)
+    print("eval bloqueado na página:", aba.evaluate("() => { try { eval('1'); return false } catch (e) { return true } }"))
 
     from agente_btp.agente import PASTA_SAIDAS, Agente  # noqa: E402
     from agente_btp.servidor import criar_app  # noqa: E402
@@ -61,7 +63,7 @@ with sync_playwright() as p:
     esperar(lambda e: e["conexao"] == "conectado", 30)       # nenhum clique na aba
     print(f"conectou sozinha em {time.time() - inicio:.1f} s após abrir o programa")
     print("selo na aba:", aba.inner_text("#agente-btp-selo"),
-          "| aviso da extensão some:", aba.locator("#agente-btp-extensao-aviso").count() == 0)
+          "| aviso de erro da extensão:", aba.locator("#agente-btp-extensao-aviso").count() > 0)
 
     agente.enviar("executar", ["88412|126579742", "42340|231184065", "02235|230771207"])
     aba.wait_for_timeout(500)

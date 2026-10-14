@@ -71,7 +71,7 @@ class PonteAba:
                        capturando_na_aba: bool = False, espera: float = ESPERA_LONG_POLL,
                        versao: str | None = None) -> dict:
         with self._cond:
-            if self.versao_agente and versao != self.versao_agente:
+            if self.versao_agente and versao not in (self.versao_agente, "ext"):
                 # Script antigo na aba: o novo se recarrega; o antigo (sem 'atualizar') para.
                 return {"atualizar": True, "substituido": True}
             if agente != self.agente_id:

@@ -130,6 +130,11 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
     def do_GET(self):
         if self.path.startswith("/site"):
+            if "csp=1" in self.path:   # página que PROÍBE eval (como muitos sistemas corporativos)
+                b = PAGINA.encode(); self.send_response(200); self.send_header("Content-Type", "text/html")
+                self.send_header("Content-Security-Policy", "script-src 'self' 'unsafe-inline'")
+                self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
+                return
             return self._envia(200, "text/html", PAGINA)
         if self.path.startswith("/srv/") and ESTADO["expirada"]:
             self.send_response(302); self.send_header("Location", "https://ipc.claro.com.br/idp/SSO.saml2")

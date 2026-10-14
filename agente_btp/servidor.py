@@ -29,9 +29,24 @@ def codigo_carregador(origem_local: str) -> str:
             "e clique de novo. '+e)}})()" % origem_local)
 
 
+PASTA_EXTENSAO = PASTA_WEB.parent.parent / "extensao"
+
+
+def sincronizar_extensao(codigo_agente: str) -> None:
+    """A extensão leva uma cópia do agente; ao abrir o programa, garante que é a mesma."""
+    destino = PASTA_EXTENSAO / "agente_btp.js"
+    try:
+        if PASTA_EXTENSAO.is_dir() and (not destino.exists()
+                                         or destino.read_text(encoding="utf-8") != codigo_agente):
+            destino.write_text(codigo_agente, encoding="utf-8")
+    except OSError:
+        pass
+
+
 def criar_app(agente: Agente) -> Flask:
     app = Flask(__name__)
     codigo_agente = (PASTA_WEB / "agente_btp.js").read_text(encoding="utf-8")
+    sincronizar_extensao(codigo_agente)
     # Versão = impressão digital de todo o programa: qualquer mudança gera outra versão.
     digital = hashlib.sha1()
     for arq in sorted(PASTA_WEB.parent.glob("*.py")) + sorted(PASTA_WEB.glob("*")):
