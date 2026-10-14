@@ -127,14 +127,19 @@ class PonteAba:
     def autenticado(self) -> bool:
         return self.conectada and self._aba_autenticada
 
-    def get(self, url: str, accept: str | None = None) -> Resposta:
+    def get(self, url: str, accept: str | None = None, timeout: float | None = None) -> Resposta:
+        """GET pela aba. `timeout` (s) = tempo máximo desta consulta (a aba aborta ao estourar)."""
         if not url.startswith("/") or url.startswith("//"):
             raise FalhaComunicacao(f"URL recusada (precisa ser do próprio sistema): {url[:80]}")
         tarefa = {"url": url}
         if accept:
             tarefa["accept"] = accept
-        r = self._executar(tarefa)
+        if timeout:
+            tarefa["timeout"] = int(timeout * 1000)
+        r = self._executar(tarefa, (timeout + 10) if timeout else TIMEOUT_TAREFA)
         if r.get("status") == -1:
+            if str(r.get("body")).startswith("TEMPO_ESGOTADO"):
+                raise FalhaComunicacao(f"Tempo máximo da consulta ({timeout or 60:g} s) excedido.")
             raise FalhaComunicacao(f"Falha de rede na aba: {str(r.get('body'))[:200]}")
         return Resposta(status=int(r.get("status", 0)), content_type=r.get("ct") or "",
                         corpo=r.get("body") or "", redirecionado=bool(r.get("redir")))
@@ -148,7 +153,7 @@ class PonteAba:
             return []
         return [d for d in dados if isinstance(d, dict)]
 
-    def _executar(self, tarefa: dict) -> dict:
+    def _executar(self, tarefa: dict, espera_max: float | None = None) -> dict:
         if not self.conectada:
             raise SessaoExpirada("A aba do BTP não está conectada. Clique no favorito 'Agente BTP' na aba.")
         tarefa = dict(tarefa, id=uuid.uuid4().hex)
@@ -158,7 +163,7 @@ class PonteAba:
             self._fila.append(tarefa)
             self._cond.notify_all()
         try:
-            limite = time.monotonic() + TIMEOUT_TAREFA
+            limite = time.monotonic() + (espera_max or TIMEOUT_TAREFA)
             # Espera em fatias curtas: se a aba sumir, percebe logo (não espera os 90 s).
             while not pendente["evento"].wait(0.5):
                 if not self.conectada:

@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 
 from flask import Flask, Response, abort, jsonify, request, send_file
 
-from . import historico
+from . import historico, preferencias
 from .agente import Agente, caminho_saida
 from .entrada import ler_wos_planilha, ler_wos_texto
 from .config import URL_LAUNCHPAD
@@ -166,6 +166,26 @@ def criar_app(agente: Agente) -> Flask:
             return jsonify(ok=False, erro="Informe ao menos uma WO."), 400
         agente.enviar("executar", wos, " + ".join(partes))
         return jsonify(ok=True, total=len(wos))
+
+    # ------------------------------------------------ configurações (engrenagem)
+    @app.get("/api/configuracoes")
+    def ler_configuracoes():
+        return jsonify(valores=preferencias.como_dict(preferencias.carregar()),
+                       padrao=preferencias.como_dict(preferencias.Preferencias()))
+
+    @app.post("/api/configuracoes")
+    def gravar_configuracoes():
+        if agente.estado()["ocupado"]:
+            return jsonify(ok=False, erro="Aguarde a análise em andamento terminar."), 409
+        prefs, problemas = preferencias.salvar(request.get_json(force=True, silent=True) or {})
+        return jsonify(ok=True, valores=preferencias.como_dict(prefs), problemas=problemas)
+
+    @app.post("/api/configuracoes/padrao")
+    def restaurar_configuracoes():
+        if agente.estado()["ocupado"]:
+            return jsonify(ok=False, erro="Aguarde a análise em andamento terminar."), 409
+        prefs, _ = preferencias.salvar({})
+        return jsonify(ok=True, valores=preferencias.como_dict(prefs), problemas=[])
 
     @app.get("/api/historico")
     def lista_historico():

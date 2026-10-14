@@ -19,12 +19,13 @@ from pathlib import Path
 from . import config as cfg
 from . import historico
 from .analisador import AnaliseFalhou, analisar
-from .autoconfig import candidatos_pela_aba
+from .autoconfig import candidatos_pela_aba, leitura_por_chave
 from .cliente import ClienteBTP
 from .exploracao import Explorador
-from .exportacao import gerar_planilha, nome_analise
+from . import preferencias
+from .exportacao import gerar_planilha, nome_analise, verificar_planilha
 from .entrada import wo_valida
-from .modelos import ErroConsulta, FalhaComunicacao, SessaoExpirada, Status
+from .modelos import STATUS_FALHA, Auditoria, ErroConsulta, FalhaComunicacao, SessaoExpirada, Status
 from .ponte import PonteAba
 from .processador import processar_lote
 from .sondagem import sondar
@@ -61,6 +62,8 @@ class Agente:
             "inicio": None,
             "ultimo_arquivo": None,
             "ultimo_numero": None,
+            "etapa": "",
+            "indicadores": {},
             "aviso": "",
             "mensagens": [],
         }
@@ -74,6 +77,7 @@ class Agente:
             copia = dict(self._estado)
             copia["mensagens"] = list(self._estado["mensagens"][-200:])
             copia["contagem"] = dict(self._estado["contagem"])
+            copia["indicadores"] = dict(self._estado["indicadores"])
         copia["pronto"] = cfg.ARQUIVO_CONFIG.exists()
         copia["observadas"] = self.ponte.observadas
         copia["conexao"] = ("conectado" if self.ponte.autenticado() else
@@ -90,6 +94,7 @@ class Agente:
             self._msg("Aba do BTP conectada.")
             self._ultimo_aviso_conexao = agora
         self._candidatos = []   # nova aba/página: o que foi lido antes pode não valer mais
+        self._modelos = []
         self._testados.clear()
         self._sondadas.clear()
         if not cfg.ARQUIVO_CONFIG.exists():
@@ -145,7 +150,7 @@ class Agente:
             cliente = ClienteBTP(cfg.a_partir_de_dict(dados), get)
         except ValueError:
             return 0
-        com_alerta = 0
+        com_alerta, falhas = 0, 0
         for wo in amostra:
             try:
                 alertas = cliente.buscar_alertas(wo)
@@ -164,10 +169,11 @@ class Agente:
             except ErroConsulta:
                 return 0
             except FalhaComunicacao:
+                falhas += 1          # sem resposta não há como julgar: nunca conta como "lista vazia"
                 continue
             if com_alerta >= 2:                 # 2 WOs com alerta e nenhuma mensagem: caminho errado
                 return 0
-        return 0 if com_alerta else 1
+        return 0 if (com_alerta or falhas) else 1
 
     @staticmethod
     def _transporte_com_cache(get):
@@ -282,7 +288,11 @@ class Agente:
             self._trava_config.release()
 
     def _gravar_config(self, dados: dict, origem: str, relatorio: list[str]) -> None:
+        if not dados.get("url_item"):
+            dados = dict(dados, **leitura_por_chave(dados, self._modelos))
         cfg.salvar(dict(dados, origem=origem))
+        if not dados.get("url_item"):
+            relatorio = list(relatorio) + ["Releitura por chave indisponível: o serviço não declara chave do item."]
         for linha in relatorio:
             log.info("Configuração (%s): %s", origem, linha)
         self._msg("Conexão com o Monitor de alertas preparada.")
@@ -311,7 +321,8 @@ class Agente:
         inicio_relogio = datetime.now()
         self._parar.clear()
         self._definir(fase="preparando", progresso={"atual": 0, "total": len(wos)}, contagem={},
-                      ultimo_arquivo=None, ultimo_numero=None, aviso="", inicio=time.monotonic())
+                      ultimo_arquivo=None, ultimo_numero=None, aviso="", inicio=time.monotonic(),
+                      etapa="", indicadores=_indicadores([], len(wos)))
         if not self.ponte.autenticado():
             self._definir(fase="ocioso", aviso="Conecte a aba do BTP: clique no favorito 'Agente BTP' na aba já logada.")
             return
@@ -322,30 +333,57 @@ class Agente:
                                       "Interrompida" if self._parar.is_set() else "Não preparada")
             return
 
-        self._definir(fase="processando", inicio=time.monotonic())
-        self._msg(f"Processando {len(wos)} WO(s).")
-        cliente = ClienteBTP(cfg.carregar(), self.ponte.get)
+        prefs = preferencias.carregar()
+        api = cfg.carregar()
+        self._definir(fase="processando", inicio=time.monotonic(), indicadores=_indicadores([], len(wos)))
+        self._msg(f"Processando {len(wos)} WO(s) · {prefs.auditorias_por_wo} auditoria(s) por WO.")
+        if prefs.auditorias_independentes and not (api.url_item and api.chaves_item):
+            self._msg("Releitura por chave indisponível neste serviço: as auditorias serão novas consultas.")
+        cliente = ClienteBTP(api, self.ponte.get, intervalo=prefs.intervalo_consultas_seg,
+                             tempos={"lista": prefs.tempo_consulta_wo_seg,
+                                     "detalhes": prefs.tempo_consulta_detalhes_seg})
+        concluidos: list = []
 
         def ao_progredir(atual, total, resultado):
+            concluidos.append(resultado)
             with self._trava:
                 cont = self._estado["contagem"]
                 cont[resultado.status.value] = cont.get(resultado.status.value, 0) + 1
                 self._estado["progresso"] = {"atual": atual, "total": total}
+                self._estado["indicadores"] = _indicadores(concluidos, total)
+                self._estado["etapa"] = ""
             self._msg(f"[{atual}/{total}] {resultado.wo} — {resultado.status.value}"
-                      + (f" — {resultado.registros} linha(s)" if resultado.registros else ""))
+                      + (f" — {resultado.registros} ocorrência(s)" if resultado.registros else "")
+                      + f" — auditoria: {resultado.auditoria.value}"
+                      + (f" ({resultado.rodadas_concluidas}/{resultado.rodadas_previstas})"
+                         if resultado.rodadas_previstas else ""))
 
-        resultados = processar_lote(cliente, wos, ao_progredir, self._parar.is_set)
+        resultados = processar_lote(cliente, wos, ao_progredir, self._parar.is_set, prefs,
+                                    lambda texto: self._definir(etapa=texto))
         contagem: dict[str, int] = {}
         for r in resultados:
             contagem[r.status.value] = contagem.get(r.status.value, 0) + 1
         numero = historico.proximo_numero()
-        arquivo = gerar_planilha(resultados, nome_analise(PASTA_SAIDAS, numero, len(wos)),
-                                 numero=numero, emitida_em=inicio_relogio, origem=descricao)
+        arquivo, erro_planilha = None, ""
+        try:
+            arquivo = gerar_planilha(resultados, nome_analise(PASTA_SAIDAS, numero, len(wos)), numero=numero,
+                                     emitida_em=inicio_relogio, origem=descricao, prefs=prefs,
+                                     fonte_campos=api.campos, releitura_por_chave=bool(api.url_item))
+            problemas = verificar_planilha(arquivo, resultados, prefs.exportar_incompletos)
+            if problemas:
+                erro_planilha = ("A conferência do Excel gravado encontrou diferenças: "
+                                 + "; ".join(problemas[:5]))
+                log.error(erro_planilha)
+        except Exception as exc:  # noqa: BLE001 — a análise feita não se perde
+            log.exception("Falha ao gerar o Excel")
+            erro_planilha = f"Erro ao gerar ou gravar o Excel: {exc}"
         validos = [r for r in resultados if r.status not in (Status.WO_INVALIDA, Status.SESSAO_EXPIRADA)]
         sem_registros = sum(r.status is Status.SEM_REGISTROS for r in validos)
 
-        aviso = ""
-        if any(r.status is Status.SESSAO_EXPIRADA for r in resultados):
+        aviso = erro_planilha
+        if aviso:
+            pass
+        elif any(r.status is Status.SESSAO_EXPIRADA for r in resultados):
             aviso = ("A sessão do BTP caiu no meio do processamento. Faça login de novo na aba, "
                      "clique no favorito 'Agente BTP' e execute novamente.")
         elif any("HTTP 404" in r.observacao for r in resultados):
@@ -370,13 +408,15 @@ class Agente:
             self.ponte.iniciar_captura()
             aviso = ("Não consegui ler os dados desta vez. Na aba do BTP, abra a janela 'Mensagens' "
                      "de qualquer WO uma vez e execute de novo.")
-        self._definir(fase="concluido", contagem=contagem, ultimo_arquivo=arquivo.name, aviso=aviso,
-                      ultimo_numero=numero,
+        nome = arquivo.name if arquivo else None
+        self._definir(fase="concluido", contagem=contagem, ultimo_arquivo=nome, aviso=aviso,
+                      ultimo_numero=numero, etapa="", indicadores=_indicadores(resultados, len(wos)),
                       progresso={"atual": len(resultados), "total": len(wos)})
-        situacao = ("Sessão expirada" if any(r.status is Status.SESSAO_EXPIRADA for r in resultados) else
+        situacao = ("Erro na planilha" if erro_planilha else
+                    "Sessão expirada" if any(r.status is Status.SESSAO_EXPIRADA for r in resultados) else
                     "Interrompida" if self._parar.is_set() else "Concluída")
-        self._registrar_historico(inicio_relogio, descricao, wos, resultados, arquivo.name, situacao, numero)
-        self._msg(f"Concluído. Planilha: {arquivo.name}")
+        self._registrar_historico(inicio_relogio, descricao, wos, resultados, nome, situacao, numero)
+        self._msg(f"Concluído. Planilha: {nome}" if nome else "Concluído, mas o Excel não foi gerado.")
 
     def _registrar_historico(self, inicio, descricao, wos, resultados, arquivo, situacao, numero=None) -> None:
         fim = datetime.now()
@@ -395,9 +435,14 @@ class Agente:
                 "linhas_excel": sum(r.registros for r in resultados),
                 "situacao": situacao,
                 "contagem": contagem,
+                "indicadores": _indicadores(resultados, len(wos)),
                 "arquivo": arquivo,
                 "wos": [{"wo": r.wo, "status": r.status.value, "registros": r.registros,
-                         "observacao": r.observacao} for r in resultados],
+                         "auditoria": r.auditoria.value,
+                         "auditorias": f"{r.rodadas_concluidas}/{r.rodadas_previstas}" if r.rodadas_previstas else "",
+                         "observacao": "; ".join(x for x in (r.observacao if r.observacao != "OK" else "",
+                                                             r.observacao_auditoria) if x)}
+                        for r in resultados],
             })
         except Exception:  # noqa: BLE001 — histórico nunca derruba a análise
             log.exception("Falha ao gravar o histórico")
@@ -452,6 +497,21 @@ class Agente:
         log.info(texto)
         with self._trava:
             self._estado["mensagens"].append(f"{datetime.now():%H:%M:%S}  {texto}")
+
+
+def _indicadores(resultados: list, total: int) -> dict:
+    """Painel da tela: só conta uma WO como validada DEPOIS de todas as auditorias dela."""
+    validos = [r for r in resultados if r.status is not Status.WO_INVALIDA]
+    return {
+        "processadas": len(resultados), "pendentes": max(total - len(resultados), 0),
+        "validadas": sum(r.auditoria is Auditoria.VALIDADO for r in validos),
+        "divergentes": sum(r.auditoria is Auditoria.DIVERGENTE for r in validos),
+        "incompletas": sum(r.auditoria in (Auditoria.INCOMPLETO, Auditoria.NAO_CONCLUIDO)
+                           and r.status not in STATUS_FALHA for r in validos),
+        "falhas": sum(r.status in STATUS_FALHA for r in resultados),
+        "com_ocorrencias": sum(r.status is Status.PROCESSADA for r in resultados),
+        "ocorrencias": sum(r.registros for r in resultados),
+    }
 
 
 def caminho_saida(nome: str) -> Path | None:

@@ -16,7 +16,7 @@ import re
 import xml.etree.ElementTree as ET
 from urllib.parse import urlsplit
 
-from .campos import ESSENCIAIS, descritivo, tipo_do_campo
+from .campos import ESSENCIAIS, peso_nome, tipo_do_campo
 
 TIPOS_TEXTO = {"Edm.String"}
 TIPOS_NUMERO = {"Edm.Decimal", "Edm.Int16", "Edm.Int32", "Edm.Int64", "Edm.Double", "Edm.Single", "Edm.Byte"}
@@ -141,12 +141,16 @@ def _literal_filtro(campo_linha: str, tipo: str, v4: bool) -> str:
 
 
 def _afinidade(nome: str, campo: str, tipo: str) -> int:
-    base = 0 if descritivo(campo) and nome in ("material", "fornecedor") else 1
     if nome in ("material", "fornecedor", "mensagem", "consolidado", "wo"):
-        return (2 if tipo in TIPOS_TEXTO else 0) + base
-    if nome == "quantidade_faltante":
-        return 2 if tipo in TIPOS_NUMERO else 1 if tipo in TIPOS_TEXTO else 0
-    return 1
+        compativel = tipo in TIPOS_TEXTO
+    elif nome == "quantidade_faltante":
+        compativel = tipo in TIPOS_NUMERO or tipo in TIPOS_TEXTO
+    else:
+        compativel = True
+    if not compativel:
+        return 0
+    # tipo compatível = 10; o nome desempata (quantidadeFaltante > quantidade; mensagem > descricao)
+    return 10 + peso_nome(nome, campo) + (1 if nome == "quantidade_faltante" and tipo in TIPOS_NUMERO else 0)
 
 
 def mapear_por_nomes(campos: dict[str, str]) -> dict[str, str]:
@@ -406,3 +410,34 @@ def candidatos_pela_aba(conexao, diag: dict | None = None,
 
 def configurar_pela_aba(conexao, diag: dict | None = None) -> tuple[dict, list[str]]:
     return candidatos_pela_aba(conexao, diag)[0]
+
+
+def leitura_por_chave(dados: dict, modelos: list[tuple[str, dict]]) -> dict:
+    """Endereço para reler UM item das mensagens pela chave (auditoria independente).
+
+    Ex.: mensagens em /srv/Itens?$filter=... -> {"url_item": "/srv/Itens({linha[ID]})", "chaves_item": ["ID"]}.
+    Devolve {} quando o serviço não declara chave para o conjunto (a limitação é registrada).
+    """
+    if dados.get("url_mensagens"):
+        url = dados["url_mensagens"]
+    elif dados.get("campo_mensagens_expandidas") == ".":
+        url = dados["url_lista"]
+    else:
+        return {}
+    caminho = url.split("?", 1)[0]
+    for servico, modelo in modelos:
+        if not caminho.startswith(servico):
+            continue
+        resto = caminho[len(servico):]
+        conjuntos = modelo["conjuntos"]
+        if "/" in resto:                       # navegação: Alertas({linha[ID]})/itens
+            origem, _, nav = resto.rpartition("/")
+            destino = conjuntos.get(origem.split("(", 1)[0], {}).get("destinos", {}).get(nav)
+        else:
+            destino = resto
+        info = conjuntos.get(destino or "")
+        if not info or not info["chaves"]:
+            return {}
+        predicado = _predicado(info["chaves"], info["props"], modelo["v4"])
+        return {"url_item": f"{servico}{destino}{predicado}", "chaves_item": list(info["chaves"])}
+    return {}

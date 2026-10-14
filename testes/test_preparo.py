@@ -62,7 +62,7 @@ class BTP:
         self.alerta = dict({"Wo": WO, "ConsolidadoNum": CONSOL, "Mensagem": "Erro durante baixa"},
                            **(alerta_extra or {}))
 
-    def __call__(self, url, accept=None):
+    def __call__(self, url, accept=None, timeout=None):
         self.urls.append(url)
         caminho = unquote(url)
         if caminho.endswith("$metadata"):
@@ -162,7 +162,7 @@ def test_chave_estrangeira_alerta_id_v4(agente):
       <EntitySet Name="Itens" EntityType="S.Itens"/></EntityContainer></Schema></edmx:DataServices></edmx:Edmx>"""
     guid = "11111111-2222-3333-4444-555555555555"
 
-    def get(url, accept=None):
+    def get(url, accept=None, timeout=None):
         c = unquote(url)
         if c.endswith("$metadata"):
             return Resposta(200, "application/xml", xml)
@@ -179,7 +179,7 @@ def test_mensagens_em_outro_servico(agente):
     agente.ponte.fontes = lambda: [{"url": "/srv/"}, {"url": "/msg/"}]
     xml_msg = metadata().replace('Name="AlertaSet" EntityType="ZMON.Alerta"', 'Name="Nada" EntityType="ZMON.X"')
 
-    def get(url, accept=None):
+    def get(url, accept=None, timeout=None):
         c = unquote(url)
         if c == "/msg/$metadata":
             return Resposta(200, "application/xml", xml_msg)
@@ -214,7 +214,7 @@ def test_lote_quase_todo_sem_registros_refaz_a_configuracao(agente):
                 "campos": {"material": "Matnr", "fornecedor": "Lifnr", "quantidade_faltante": "QtdFaltante",
                            "mensagem": "Mensagem"}, "origem": "dicionario"})
 
-    def get(url, accept=None):
+    def get(url, accept=None, timeout=None):
         c = unquote(url)
         if c.startswith("/srv/AlertaSet?"):
             wo = c.split("'")[1]
@@ -252,7 +252,7 @@ def test_servico_real_acha_itens_pelos_dados(agente):
     assert r.status is Status.PROCESSADA
     l = r.linhas[0]
     assert (l.wo, l.material, l.fornecedor, l.quantidade_faltante, l.mensagem) == (
-        WO, "000000000022066463", "0000138480", 1, "Estoque indisponível")
+        WO, "000000000022066463", "0000138480", 2, "Estoque indisponível")   # faltante, não a total (3)
 
 
 def test_campo_tipo_wo_nao_e_numero_da_wo():

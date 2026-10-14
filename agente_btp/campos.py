@@ -54,3 +54,34 @@ _VALOR = {
     "material": re.compile(r"^\d{18}$"),        # MATNR com zeros à esquerda
     "fornecedor": re.compile(r"^\d{10}$"),      # LIFNR com zeros à esquerda
 }
+
+
+# Quando há mais de um campo candidato para a mesma coluna, o NOME decide qual é o certo.
+# Ex.: "quantidade" (total) x "quantidadeFaltante": a coluna da janela é a FALTANTE.
+_QTD_FALTANTE = ("falt", "pend", "saldo", "short", "missing", "deficit", "carenc")
+_QTD_OUTRA = ("total", "solicit", "requer", "requis", "necess", "dispon", "atend", "baix", "entreg", "plan",
+              "orig", "estoq", "lanc", "consum", "reserv", "pedid", "receb", "envi", "util", "aplic", "prev")
+_MSG_FORTE = ("mensag", "message", "msg", "erro", "error", "ocorr", "motivo", "alerta")
+
+
+def peso_nome(tipo: str, campo: str) -> int:
+    """Preferência pelo NOME entre campos do mesmo tipo (maior = mais provável)."""
+    p = partes(campo)
+    if tipo == "quantidade_faltante":
+        if any(x.startswith(_QTD_FALTANTE) for x in p):
+            return 4
+        return -3 if any(x.startswith(_QTD_OUTRA) for x in p) else 0
+    if tipo == "mensagem":
+        if any(x.startswith(_MSG_FORTE) for x in p):
+            return 3
+        return -2 if any(x.startswith("desc") for x in p) else 0
+    if tipo in ("material", "fornecedor"):
+        return -2 if descritivo(campo) else 0
+    return 0
+
+
+def campos_de_quantidade(registro: dict) -> dict:
+    """Todos os campos numéricos com cara de quantidade (para a auditoria mostrar as alternativas)."""
+    return {k: v for k, v in registro.items()
+            if not k.startswith(("__", "@")) and not isinstance(v, (dict, list, bool))
+            and tipo_do_campo(k) == "quantidade_faltante"}

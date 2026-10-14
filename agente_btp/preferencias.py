@@ -1,0 +1,103 @@
+"""Configurações do usuário (engrenagem da tela), salvas em config/preferencias.json.
+
+Só parâmetros operacionais: nenhuma senha, cookie ou token é guardado aqui.
+Todo valor recebido é validado e limitado à faixa permitida antes de ser usado ou salvo.
+"""
+from __future__ import annotations
+
+import json
+import threading
+from dataclasses import asdict, dataclass, fields
+from pathlib import Path
+
+from .config import RAIZ
+
+ARQUIVO = RAIZ / "config" / "preferencias.json"
+_trava = threading.Lock()
+
+
+@dataclass
+class Preferencias:
+    # --- Auditoria
+    auditorias_por_wo: int = 5                 # rodadas de conferência após a extração inicial
+    auditorias_independentes: bool = True      # alterna nova consulta e releitura item a item (por chave)
+    repeticoes_falha: int = 2                  # tentativas adicionais de uma consulta que falhou/excedeu o tempo
+    divergencia: str = "reconsultar"           # "reconsultar" | "revisar" (nunca aprova divergência)
+    consultas_extras_divergencia: int = 2      # leituras extras para tentar esclarecer uma divergência
+    # --- Tempo
+    tempo_consulta_wo_seg: float = 30          # filtro da WO no Monitor (consulta da lista)
+    tempo_consulta_detalhes_seg: float = 30    # detalhes da janela "Mensagens" (itens)
+    intervalo_auditorias_seg: float = 0.5      # pausa entre rodadas de auditoria
+    tempo_max_wo_seg: float = 180              # tudo de uma WO (extração + auditorias)
+    tempo_max_lote_min: float = 240            # a análise inteira
+    # --- Execução
+    intervalo_consultas_seg: float = 0.0       # pausa entre consultas ao BTP (aliviar o sistema)
+    wo_sem_resultado: str = "reconsultar"      # "registrar" | "reconsultar" uma vez antes de concluir
+    em_erro: str = "continuar"                 # "continuar" | "interromper" o lote
+    exportar_incompletos: bool = True          # incluir no Excel (sinalizadas) ocorrências não validadas
+
+
+# Faixas aceitas (mín, máx) e opções.
+_FAIXAS = {
+    "auditorias_por_wo": (0, 20), "repeticoes_falha": (0, 10), "consultas_extras_divergencia": (0, 10),
+    "tempo_consulta_wo_seg": (5, 600), "tempo_consulta_detalhes_seg": (5, 600),
+    "intervalo_auditorias_seg": (0, 60), "tempo_max_wo_seg": (10, 3600), "tempo_max_lote_min": (1, 1440),
+    "intervalo_consultas_seg": (0, 30),
+}
+_OPCOES = {"divergencia": ("reconsultar", "revisar"), "wo_sem_resultado": ("registrar", "reconsultar"),
+           "em_erro": ("continuar", "interromper")}
+
+
+def validar(dados: dict) -> tuple[Preferencias, list[str]]:
+    """Monta as preferências a partir de um dicionário qualquer. Devolve (prefs, problemas)."""
+    base, problemas = asdict(Preferencias()), []
+    for f in fields(Preferencias):
+        if f.name not in (dados or {}):
+            continue
+        bruto, padrao = dados[f.name], base[f.name]
+        try:
+            if isinstance(padrao, bool):
+                valor = bruto if isinstance(bruto, bool) else str(bruto).lower() in ("1", "true", "sim", "on")
+            elif isinstance(padrao, int):
+                valor = int(float(bruto))
+            elif isinstance(padrao, float):
+                valor = float(bruto)
+            else:
+                valor = str(bruto)
+        except (TypeError, ValueError):
+            problemas.append(f"{f.name}: valor inválido ({bruto!r}); mantido {padrao}")
+            continue
+        if f.name in _FAIXAS:
+            minimo, maximo = _FAIXAS[f.name]
+            if not minimo <= valor <= maximo:
+                problemas.append(f"{f.name}: {valor} fora da faixa {minimo}–{maximo}; ajustado")
+                valor = min(max(valor, minimo), maximo)
+        if f.name in _OPCOES and valor not in _OPCOES[f.name]:
+            problemas.append(f"{f.name}: opção inválida ({valor}); mantido {padrao}")
+            continue
+        base[f.name] = valor
+    return Preferencias(**base), problemas
+
+
+def carregar(arquivo: Path | None = None) -> Preferencias:
+    arquivo = arquivo or ARQUIVO
+    with _trava:
+        try:
+            return validar(json.loads(arquivo.read_text(encoding="utf-8")))[0]
+        except (FileNotFoundError, json.JSONDecodeError, AttributeError):
+            return Preferencias()
+
+
+def salvar(dados: dict, arquivo: Path | None = None) -> tuple[Preferencias, list[str]]:
+    arquivo = arquivo or ARQUIVO
+    prefs, problemas = validar(dados)
+    with _trava:
+        arquivo.parent.mkdir(parents=True, exist_ok=True)
+        tmp = arquivo.with_suffix(".tmp")
+        tmp.write_text(json.dumps(asdict(prefs), ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(arquivo)
+    return prefs, problemas
+
+
+def como_dict(prefs: Preferencias) -> dict:
+    return asdict(prefs)

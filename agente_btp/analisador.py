@@ -16,7 +16,7 @@ from urllib.parse import unquote, urlsplit
 
 from . import odata
 from .entrada import PADRAO_WO
-from .campos import _VALOR, ESSENCIAIS, descritivo, tipo_do_campo
+from .campos import _VALOR, ESSENCIAIS, peso_nome, tipo_do_campo
 from .modelos import ErroConsulta
 
 _WO_LIVRE = re.compile(PADRAO_WO.pattern.strip("^$"))
@@ -103,17 +103,27 @@ _NUMERO = re.compile(r"^-?\d+([.,]\d+)?$")
 
 
 def _afinidade(nome: str, chave: str, valor) -> int:
-    """Quanto o VALOR (e o nome) combinam com o campo — desempata MaterialText x Material."""
+    """Quanto o NOME e o VALOR combinam com a coluna.
+
+    O nome manda: um campo cujo nome é da coluna (ex.: "fornecedor") sempre vence um campo
+    que só tem o formato parecido (ex.: pedido de compra com 10 dígitos). Entre campos do
+    mesmo tipo, o nome desempata (quantidadeFaltante vence quantidade total).
+    """
     texto = str(valor).strip()
-    if nome in _VALOR and _VALOR[nome].match(texto):
-        return 4
-    if nome in ("material", "fornecedor"):
-        return (2 if _DIGITOS.match(texto) else 0) + (0 if descritivo(chave) else 1)
     if nome == "quantidade_faltante":
-        return 2 if isinstance(valor, (int, float)) or _NUMERO.match(texto) else 0
-    if nome == "mensagem":
-        return 2 if texto and not _NUMERO.match(texto) else 0
-    return 1
+        valor_ok = isinstance(valor, (int, float)) and not isinstance(valor, bool) or bool(_NUMERO.match(texto))
+    elif nome == "mensagem":
+        valor_ok = bool(texto) and not _NUMERO.match(texto)
+    elif nome in ("material", "fornecedor"):
+        valor_ok = bool(_DIGITOS.match(texto)) or bool(texto)
+    else:
+        valor_ok = True
+    if not valor_ok:
+        return 0
+    pelo_nome = 10 + peso_nome(nome, chave) if tipo_do_campo(chave) == nome else 0
+    pelo_valor = 4 if nome in _VALOR and _VALOR[nome].match(texto) else 2 if (
+        nome in ("material", "fornecedor") and _DIGITOS.match(texto)) else 1
+    return pelo_nome + pelo_valor
 
 
 def mapear_campos(registro: dict, wo: str) -> dict[str, str]:

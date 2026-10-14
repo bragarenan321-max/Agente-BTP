@@ -36,7 +36,7 @@ def servico_real(ligado=False):
     ent("Pendencias", [("ID", G), ("workOrderID", S), ("consolidID", S), ("status", S)])
     ent("ErrosMaterial", [("ID", G), ("consolidID" if ligado else "workOrderID_workOrderID", S),
                           ("material", S), ("descricao", S),
-                          ("fornecedor", S), ("quantidadeFaltante", D), ("mensagem", S)])
+                          ("fornecedor", S), ("quantidade", D), ("quantidadeFaltante", D), ("mensagem", S)])
     ent("MaterialConsolid", [("ID", G), ("workOrderID_workOrderID", S), ("material", S), ("fornecedor", S),
                              ("quantidade", D)])
     ent("LogMaterialConsolid", [("ID", G), ("workOrderID", S), ("material", S), ("fornecedor", S),
@@ -49,11 +49,11 @@ def servico_real(ligado=False):
            + "".join(tipos) + '<EntityContainer Name="C">' + "".join(conjuntos)
            + "</EntityContainer></Schema></edmx:DataServices></edmx:Edmx>")
     itens = {WO: [{"ID": "g1", "workOrderID_workOrderID": WO, "material": "000000000022066463",
-                   "descricao": "CABO", "fornecedor": "0000138480", "quantidadeFaltante": 1,
+                   "descricao": "CABO", "fornecedor": "0000138480", "quantidade": 3, "quantidadeFaltante": 2,
                    "mensagem": "Estoque indisponível"}]}
     urls = []
 
-    def get(url, accept=None):
+    def get(url, accept=None, timeout=None):
         urls.append(url)
         c = unquote(url)
         if not c.startswith(SRV):
@@ -64,6 +64,10 @@ def servico_real(ligado=False):
         conjunto, _, q = rel.partition("?")
         m = re.search(r"(\w+) eq '([^']*)'", q)
         campo, valor = (m.group(1), m.group(2)) if m else ("", "")
+        if conjunto.startswith("ErrosMaterial(") and not q:   # releitura do item pela chave
+            achado = [i for i in itens[WO] if f"({i['ID']})" in conjunto or f"('{i['ID']}')" in conjunto]
+            return ok(dict(achado[0], **({"consolidID": CONSOL} if ligado else {}))) if achado else \
+                Resposta(404, "application/json", '{"error":{"message":"nao existe"}}')
         if conjunto == "ErrosMaterial" and campo == "workOrderID_workOrderID" and not ligado:
             return ok({"value": itens.get(valor, [])})
         if conjunto == "ErrosMaterial" and campo == "consolidID" and ligado:

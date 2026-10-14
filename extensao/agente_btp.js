@@ -188,16 +188,18 @@
       return { id: t.id, status: -1, ct: '', body: 'URL recusada', redir: false };
     }
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 60000);
+    let estourou = false;
+    const timer = setTimeout(() => { estourou = true; ctrl.abort(); }, t.timeout || 60000);
     try {
+      // no-store: cada leitura (inclusive cada auditoria) vem do BTP, nunca do cache do navegador.
       const r = await fetchOriginal(t.url, {
-        method: 'GET', credentials: 'same-origin', redirect: 'manual', signal: ctrl.signal,
+        method: 'GET', credentials: 'same-origin', redirect: 'manual', signal: ctrl.signal, cache: 'no-store',
         headers: { 'Accept': t.accept || 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       });
       if (r.type === 'opaqueredirect') return { id: t.id, status: 0, ct: '', body: '', redir: true };
       return { id: t.id, status: r.status, ct: r.headers.get('content-type') || '', body: await r.text(), redir: false };
     } catch (e) {
-      return { id: t.id, status: -1, ct: '', body: String(e), redir: false };
+      return { id: t.id, status: -1, ct: '', body: (estourou ? 'TEMPO_ESGOTADO ' : '') + String(e), redir: false };
     } finally { clearTimeout(timer); }
   }
 

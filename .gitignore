@@ -8,4 +8,5 @@ saidas/
 descoberta/
 logs/
 config/api.json
+config/preferencias.json
 historico/

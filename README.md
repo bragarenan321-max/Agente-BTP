@@ -19,16 +19,35 @@ da tela do Monitor. Um caminho só é aceito se trouxer de fato os itens da jane
 todas as WOs voltarem sem itens, a configuração é refeita e, se necessário, o agente pede
 (uma única vez) que a janela "Mensagens" de uma WO seja aberta na aba do BTP.
 
+### Auditoria (fidelidade dos dados)
+Cada WO é extraída e depois **conferida N vezes** (padrão 5, ajustável na engrenagem ⚙):
+cada auditoria é uma nova leitura no BTP; com "auditorias independentes", as rodadas pares
+releem cada item pelo seu endereço próprio (outro caminho). Os valores são comparados campo a
+campo. Resultado: **Validado**, **Divergente**, **Incompleto** ou **Não concluído**. Uma
+divergência nunca é aprovada por maioria: sem evidência (registro de alteração do próprio BTP),
+o campo fica vazio e sinalizado para revisão.
+
 ### Relatório (Excel)
 `Análise N - X WOs.xlsx` (N = número sequencial da análise; X = WOs consultadas):
 
 | Aba | Conteúdo |
 |---|---|
-| Itens faltantes | WO, Nº do Material, Fornecedor, Quantidade faltante, Mensagem, Consolidado |
-| Resumo | Indicadores (WOs consultadas, com itens, itens, quantidade total) e distribuição por situação |
-| Situação por WO | Situação da consulta de cada WO e detalhe |
+| Dados extraídos | Exatamente: WO, Material SAP, Fornecedor SAP, Quantidade faltante, Mensagem (texto original) |
+| Situação por WO | Ocorrências, materiais, fornecedores, total (quando válido), mensagens, auditoria e situação operacional |
+| Análise por material SAP | Material + fornecedor, com as WOs relacionadas, ocorrências e mensagens |
+| Itens faltantes | Visão operacional com consolidado e resultado da auditoria |
+| Resumo | Indicadores com o significado de cada um, mensagens, parâmetros e origem dos campos no BTP |
+| Auditoria | Cada leitura feita ao BTP e o resultado da comparação |
 
-Pré-requisito: Python 3.10+ instalado.
+Ocorrências não validadas aparecem destacadas em cor, com comentário na célula explicando o motivo.
+Depois de gravado, o arquivo é reaberto e a aba 1 é conferida célula a célula com os dados.
+
+### Configurações (engrenagem)
+Auditoria (quantidade, independência, repetições, conduta diante de divergência), tempos
+(consulta da WO, detalhes, intervalo, máximo por WO e da análise) e execução (intervalo entre
+consultas, WO sem resultado, erros, exportação de não validados). Salvas em
+`config/preferencias.json` (sem credenciais). Relatório técnico da revisão:
+[`docs/relatorio-revisao-auditoria.md`](docs/relatorio-revisao-auditoria.md).
 
 ## Arquitetura
 
@@ -41,8 +60,10 @@ Pré-requisito: Python 3.10+ instalado.
 | `extensao/` | Extensão do Chrome: conecta a aba do BTP sozinha (endereço do programa fixo, não alterável por páginas) |
 | `ponte.py` + `web/agente_btp.js` | Conexão com a **aba já aberta** (favorito), no modelo do Agente Atlas |
 | `cliente.py` | Cliente OData **somente GET** + classificação de erros |
-| `processador.py` | Fluxo por WO, estados, retentativa de rede, lote |
-| `exportacao.py` | Relatório Excel (Itens faltantes, Resumo, Situação por WO), identificadores como texto |
+| `processador.py` | Fluxo por WO: extração inicial, auditorias, leituras extras, limites de tempo, lote |
+| `auditoria.py` | Comparação campo a campo e estados Validado / Divergente / Incompleto / Não concluído |
+| `preferencias.py` | Configurações da engrenagem, validadas e persistidas |
+| `exportacao.py` | Relatório Excel em 6 abas a partir de uma única estrutura de dados + conferência do arquivo gravado |
 | `servidor.py` / `web/` | Interface web local |
 
 Mapeamento funcional do processo: [`docs/mapeamento-processo.md`](docs/mapeamento-processo.md).

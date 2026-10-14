@@ -136,9 +136,9 @@ def test_redirecionamento_e_sessao_expirada():
 
 
 def test_falha_comunicacao_continua_lote(monkeypatch):
-    monkeypatch.setattr("agente_btp.processador.time.sleep", lambda s: None)
     t = TransporteFalso({"88412": Resposta(503, "text/plain", ""),
-                         "AlertasSet": json_v2([ALERTA]), "MensagensSet": json_v2([MENSAGEM])})
+                         "AlertasSet": json_v2([dict(ALERTA, WO="42340|231184065")]),
+                         "MensagensSet": json_v2([dict(MENSAGEM, WO="42340|231184065")])})
     rs = processar_lote(ClienteBTP(CONFIG, t), ["88412|126579742", "42340|231184065"])
     assert rs[0].status is Status.FALHA_COMUNICACAO
     assert rs[1].status is Status.PROCESSADA
@@ -157,18 +157,21 @@ def test_planilha_preserva_zeros_e_tipos(tmp_path):
     rs = processar_lote(ClienteBTP(CONFIG, t), ["88412|126579742"])
     destino = gerar_planilha(rs, tmp_path / "out.xlsx", numero=7)
     wb = load_workbook(destino)
-    assert wb.sheetnames == ["Itens faltantes", "Resumo", "Situação por WO"]
-    ws = wb["Itens faltantes"]
-    assert ws["A1"].value == "Itens Faltantes por WO" and "Análise nº 7" in ws["A2"].value
-    assert [c.value for c in ws[4]] == COLUNAS_RESULTADO
-    valores = [c.value for c in ws[5]]
-    assert valores == ["88412|126579742", "000000000022026169", "0000137628", 2,
-                       "Estoque indisponível", "105012-20260916-abc"]
-    assert ws["B5"].data_type == "s" and ws["C5"].data_type == "s"
+    assert wb.sheetnames == ["Dados extraídos", "Situação por WO", "Análise por material SAP",
+                             "Itens faltantes", "Resumo", "Auditoria"]
+    ws = wb["Dados extraídos"]
+    assert [c.value for c in ws[1]] == COLUNAS_RESULTADO == [
+        "WO", "Material SAP", "Fornecedor SAP", "Quantidade faltante", "Mensagem"]
+    assert ws.max_column == 5
+    assert [c.value for c in ws[2]] == ["88412|126579742", "000000000022026169", "0000137628", 2,
+                                        "Estoque indisponível"]
+    assert ws["B2"].data_type == "s" and ws["C2"].data_type == "s" and ws["D2"].data_type == "n"
+    assert ws.freeze_panes == "A2" and ws.auto_filter.ref == "A1:E2"
+    assert ws["E2"].alignment.wrap_text
     sit = wb["Situação por WO"]
-    assert [c.value for c in sit[5]][1:3] == ["Com itens faltantes", 1]
+    assert [c.value for c in sit[5]][:2] == ["88412|126579742", 1]
     resumo = {r[0]: r[1] for r in wb["Resumo"].iter_rows(min_row=5, values_only=True) if r[0]}
-    assert resumo["Nº da análise"] == 7 and resumo["Itens faltantes (linhas)"] == 1
+    assert resumo["Nº da análise"] == 7 and resumo["Ocorrências de alertas"] == 1
 
 
 def test_nome_da_planilha(tmp_path):

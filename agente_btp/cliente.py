@@ -6,14 +6,19 @@ PATCH, DELETE ou $batch — assim o agente não consegue acionar "Reprocessar" n
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import re
+import time
 from dataclasses import dataclass
 from typing import Callable
 from urllib.parse import urljoin, urlsplit
 
 from . import odata
 from .config import ApiConfig
-from .modelos import ErroConsulta, FalhaComunicacao, LinhaMensagem, SessaoExpirada
+from .campos import campos_de_quantidade
+from .modelos import (ErroConsulta, FalhaComunicacao, Leitura, LinhaMensagem, Ocorrencia,
+                      SessaoExpirada, TempoEsgotado)
 
 
 @dataclass
@@ -50,15 +55,42 @@ def classificar(resposta: Resposta) -> str:
 
 
 class ClienteBTP:
-    def __init__(self, config: ApiConfig, transporte: Transporte):
+    """Leitura das WOs no BTP. `tempos` = tempo máximo (s) por tipo de consulta; `prazo` =
+    instante (time.monotonic) em que acaba o tempo da WO atual; `intervalo` = pausa entre consultas."""
+
+    def __init__(self, config: ApiConfig, transporte: Transporte, tempos: dict | None = None,
+                 intervalo: float = 0.0):
         self.config = config
         self._transporte = transporte
+        self.tempos = tempos or {}
+        self.intervalo = intervalo
+        self.prazo: float | None = None
+        self._ultima = 0.0
+        m = re.search(r"\$filter=([\w/]+)\s+eq\s+'\{wo\}'", config.url_lista)
+        self.campo_wo_lista = m.group(1) if m else None
 
-    def _get(self, url: str) -> list[dict]:
+    # ------------------------------------------------ transporte com limites de tempo
+    def _chamar(self, url: str, tipo: str) -> Resposta:
+        if self.intervalo:
+            espera = self._ultima + self.intervalo - time.monotonic()
+            if espera > 0:
+                time.sleep(espera)
+        limite = self.tempos.get(tipo)
+        if self.prazo is not None:
+            restante = self.prazo - time.monotonic()
+            if restante <= 0:
+                raise TempoEsgotado("Tempo máximo da WO atingido.")
+            limite = min(limite, restante) if limite else restante
+        try:
+            return self._transporte(url, timeout=limite) if (limite and self.tempos) else self._transporte(url)
+        finally:
+            self._ultima = time.monotonic()
+
+    def _get(self, url: str, tipo: str = "detalhes") -> list[dict]:
         """GET com paginação do servidor (__next / @odata.nextLink)."""
         registros: list[dict] = []
         for _ in range(LIMITE_PAGINAS):
-            pagina, proximo = odata.extrair_pagina(classificar(self._transporte(url)))
+            pagina, proximo = odata.extrair_pagina(classificar(self._chamar(url, tipo)))
             registros.extend(pagina)
             if not proximo:
                 return registros
@@ -66,7 +98,7 @@ class ClienteBTP:
         raise ErroConsulta(f"Mais de {LIMITE_PAGINAS} páginas de resultado; consulta interrompida.")
 
     def buscar_alertas(self, wo: str) -> list[dict]:
-        return self._get(odata.preencher_modelo(self.config.url_lista, wo=wo))
+        return self._get(odata.preencher_modelo(self.config.url_lista, wo=wo), "lista")
 
     def buscar_mensagens(self, alerta: dict) -> list[dict]:
         if self.config.campo_mensagens_link:
@@ -85,23 +117,113 @@ class ClienteBTP:
             return list(bruto or [])
         return self._get(odata.preencher_modelo(self.config.url_mensagens, linha=alerta))
 
-    def converter(self, wo: str, alerta: dict, mensagem: dict) -> LinhaMensagem:
+    # ------------------------------------------------ leitura completa de uma WO
+    def ler_wo(self, wo: str, rodada: int = 0, tipo: str = "Extração inicial") -> Leitura:
+        """Lê todas as ocorrências da WO, do jeito que o BTP as entrega, sem somar nem agrupar.
+
+        - Linha da lista de OUTRA WO (filtro ignorado pelo servidor) é descartada e avisada.
+        - O mesmo item que chega duas vezes (ex.: dois alertas da WO apontando para os
+          mesmos itens) é contado UMA vez; a repetição fica registrada em `duplicadas`.
+        """
+        leitura = Leitura(rodada, tipo)
+        alertas = self.buscar_alertas(wo)
+        validos = []
+        for a in alertas:
+            lido = odata.como_texto(odata.obter_campo(a, self.campo_wo_lista)) if self.campo_wo_lista else ""
+            if lido and lido != wo:
+                leitura.avisos.append(f"Linha da lista de outra WO ({lido}) descartada: o filtro não foi aplicado.")
+                continue
+            validos.append(a)
+        leitura.alertas = len(validos)
+        itens: dict = {}
+        for a in validos:
+            for m in self.buscar_mensagens(a):
+                o = self.ocorrencia(wo, a, m)
+                if o.valores["wo"] != wo:
+                    leitura.avisos.append(f"Item de outra WO ({o.valores['wo']}) descartado.")
+                    continue
+                if o.chave in itens:
+                    leitura.duplicadas += 1
+                    continue
+                itens[o.chave] = o
+        leitura.itens = itens
+        if leitura.duplicadas:
+            leitura.avisos.append(f"{leitura.duplicadas} item(ns) repetido(s) no retorno do BTP contado(s) uma vez.")
+        return leitura
+
+    @property
+    def pode_reler_por_chave(self) -> bool:
+        return bool(self.config.url_item and self.config.chaves_item)
+
+    def reler(self, wo: str, base: Leitura, rodada: int) -> Leitura:
+        """Auditoria independente: busca CADA item pelo seu endereço próprio (chave), por outro
+        caminho que não a consulta da lista. Item que não existe mais fica como ausente (None)."""
+        leitura = Leitura(rodada, "Releitura por chave", itens={})
+        encontrados = nao_encontrados = 0
+        for chave, o in base.itens.items():
+            if not all(k in o.bruto for k in self.config.chaves_item):
+                leitura.avisos.append(f"Item {chave}: chave não disponível para releitura.")
+                continue   # fica fora da leitura: "não relido" (diferente de "ausente" = None)
+            try:
+                registros = self._get(odata.preencher_modelo(self.config.url_item, linha=o.bruto))
+            except ErroConsulta as exc:
+                if "404" not in str(exc):
+                    raise
+                registros = []
+            leitura.itens[chave] = self.ocorrencia(wo, o.alerta, registros[0]) if registros else None
+            encontrados += bool(registros)
+            nao_encontrados += not registros
+        if nao_encontrados and not encontrados:
+            # Nenhum item pôde ser lido pelo endereço próprio: é o serviço que não oferece esse
+            # caminho (não prova que os itens sumiram). Quem chama troca por nova consulta.
+            raise ReleituraIndisponivel("O serviço não permite ler os itens pela chave "
+                                        f"({nao_encontrados} tentativa(s) sem resposta).")
+        return leitura
+
+    def ocorrencia(self, wo: str, alerta: dict, mensagem: dict) -> Ocorrencia:
         campos = self.config.campos
 
         def campo(nome):
             return odata.obter_campo(mensagem, campos[nome]) if campos.get(nome) else None
 
-        consolidado = odata.obter_campo(mensagem, campos["consolidado"]) if "consolidado" in campos else None
+        consolidado = campo("consolidado")
         if consolidado in (None, ""):
             consolidado = odata.obter_campo(alerta, self.config.campo_consolidado_lista)
-        return LinhaMensagem(
-            consolidado=odata.como_texto(consolidado),
-            wo=odata.como_texto(odata.obter_campo(mensagem, campos["wo"])) if campos.get("wo") else wo,
-            material=odata.como_texto(campo("material")),
-            fornecedor=odata.como_texto(campo("fornecedor")),
-            quantidade_faltante=odata.como_quantidade(campo("quantidade_faltante")),
-            mensagem=odata.como_texto(campo("mensagem")),
-        )
+        bruto = {k: v for k, v in mensagem.items()
+                 if not k.startswith(("__", "@")) and not isinstance(v, (dict, list))}
+        valores = {
+            "wo": odata.como_texto(campo("wo")) if campos.get("wo") else wo,
+            "material": odata.como_texto(campo("material")),
+            "fornecedor": odata.como_texto(campo("fornecedor")),
+            "quantidade_faltante": odata.como_quantidade(campo("quantidade_faltante")),
+            "mensagem": odata.como_texto(campo("mensagem")),
+            "consolidado": odata.como_texto(consolidado),
+        }
+        chaves = self.config.chaves_item or []
+        if chaves and all(bruto.get(k) not in (None, "") for k in chaves):
+            chave = "|".join(f"{k}={bruto[k]}" for k in chaves)
+        else:   # sem chave declarada: o conteúdo inteiro do registro identifica o item
+            chave = "conteudo:" + hashlib.sha1(json.dumps(bruto, sort_keys=True, default=str)
+                                                .encode()).hexdigest()[:12]
+        fonte = {c: campos[c] for c in ("wo", "material", "fornecedor", "quantidade_faltante", "mensagem")
+                 if campos.get(c)}
+        outras = {k: v for k, v in campos_de_quantidade(bruto).items() if k != campos.get("quantidade_faltante")}
+        tempo = next((str(v) for k, v in bruto.items() if _MARCA_TEMPO.search(k) and v not in (None, "")), None)
+        return Ocorrencia(chave, valores, bruto, alerta, fonte, outras, tempo)
+
+    def converter(self, wo: str, alerta: dict, mensagem: dict) -> LinhaMensagem:
+        v = self.ocorrencia(wo, alerta, mensagem).valores
+        return LinhaMensagem(consolidado=v["consolidado"], wo=v["wo"], material=v["material"],
+                             fornecedor=v["fornecedor"], quantidade_faltante=v["quantidade_faltante"],
+                             mensagem=v["mensagem"])
+
+
+class ReleituraIndisponivel(ErroConsulta):
+    """O BTP não atende a leitura de item pela chave (nenhum item encontrado por esse caminho)."""
+
+
+# Campo de "última alteração" do registro (evidência para explicar divergências).
+_MARCA_TEMPO = re.compile(r"(modif|chang|alterad|atualiz|updated|lastchange)", re.I)
 
 
 def link_navegacao(registro: dict, campo: str) -> str | None:

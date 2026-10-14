@@ -66,7 +66,10 @@ def cenario(nome, url_aba, b, wos=None):
               str(teste.get("mensagens") or teste.get("sondagem")).split("/")[-2:])
     wb = load_workbook(PASTA_SAIDAS / e["ultimo_arquivo"])
     print("arquivo:", e["ultimo_arquivo"], "| abas:", wb.sheetnames)
-    for linha in wb["Itens faltantes"].iter_rows(values_only=True):
+    print("indicadores:", e["indicadores"])
+    sit = {r[0]: (r[6], r[7], r[8]) for r in wb["Situação por WO"].iter_rows(min_row=5, values_only=True)}
+    print("auditoria por WO:", sit)
+    for linha in wb["Dados extraídos"].iter_rows(values_only=True):
         print("  ", linha)
     aba.close()
 

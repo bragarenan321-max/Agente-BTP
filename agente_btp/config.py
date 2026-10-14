@@ -24,7 +24,7 @@ URL_LAUNCHPAD = os.environ.get(
 CAMPOS_OBRIGATORIOS = ("material", "fornecedor", "quantidade_faltante", "mensagem")
 # Configurações de versões anteriores aceitavam caminhos que não traziam as mensagens:
 # só vale a configuração gravada por esta versão (ou posterior), já validada com dados reais.
-VERSAO_CONFIG = 2
+VERSAO_CONFIG = 3   # 3: escolha correta da quantidade FALTANTE (antes podia pegar a total)
 
 
 @dataclass
@@ -38,6 +38,9 @@ class ApiConfig:
     campos: dict[str, str]
     campo_mensagens_link: str | None = None
     campo_mensagens_json: str | None = None
+    # Releitura de UM item pela chave (auditoria independente). Ex.: /srv/Itens({linha[ID]})
+    url_item: str | None = None
+    chaves_item: list | None = None
 
 
 def carregar(caminho: Path | None = None) -> ApiConfig:
@@ -93,4 +96,6 @@ def a_partir_de_dict(dados: dict) -> ApiConfig:
         campos=campos,
         campo_mensagens_link=dados.get("campo_mensagens_link"),
         campo_mensagens_json=dados.get("campo_mensagens_json"),
+        url_item=dados.get("url_item"),
+        chaves_item=dados.get("chaves_item"),
     )
