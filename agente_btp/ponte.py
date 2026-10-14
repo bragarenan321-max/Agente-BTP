@@ -3,11 +3,8 @@
 O script agente_btp.js é injetado na aba logada (pelo favorito "Agente BTP"). Ele:
   1. pergunta ao servidor local (127.0.0.1) se há consulta a fazer (long-poll);
   2. faz o GET com a sessão da própria aba (same-origin) e devolve a resposta;
-  3. no Modo Descoberta, registra as consultas que a tela faz e as envia para cá.
-
-Do lado Python, a ponte expõe a mesma interface do navegador dedicado
-(autenticado / get / iniciar_captura / salvar_captura / aguardar), então o resto do
-agente não sabe por qual canal as consultas passam.
+  3. enquanto o agente ainda não está preparado, observa as consultas que a tela do
+     Monitor faz, para o agente aprender sozinho de onde vêm os dados.
 """
 from __future__ import annotations
 
@@ -25,6 +22,7 @@ from .modelos import FalhaComunicacao, SessaoExpirada
 ESPERA_LONG_POLL = 15.0      # quanto o pedido do agente fica aguardando uma tarefa
 TOLERANCIA_SILENCIO = 30.0   # sem contato há mais que isso = aba desconectada
 TIMEOUT_TAREFA = 90.0
+LIMITE_CAPTURA = 400
 
 
 class PonteAba:
@@ -37,6 +35,8 @@ class PonteAba:
         self._aba_autenticada = False
         self.pagina = ""
         self._captura: list[dict] | None = None
+        # Chamado com as consultas observadas, para o agente aprender sozinho.
+        self.observador = None
 
     # ------------------------------------------------ lado da aba (threads HTTP)
     def registrar_agente(self, agente: str, pagina: str) -> None:
@@ -54,7 +54,7 @@ class PonteAba:
             self._aba_autenticada = autenticado
             self.pagina = pagina
             limite = time.monotonic() + espera
-            # Responde na hora se há tarefa OU se a aba precisa saber que a descoberta
+            # Responde na hora se há tarefa OU se a aba precisa saber que a observação
             # começou/terminou — senão ela perderia as primeiras consultas da tela.
             while (not self._fila and time.monotonic() < limite and agente == self.agente_id
                    and (self._captura is not None) == capturando_na_aba):
@@ -76,8 +76,13 @@ class PonteAba:
     def adicionar_captura(self, itens: list[dict]) -> None:
         with self._cond:
             self._visto_em = time.monotonic()
-            if self._captura is not None:
-                self._captura.extend(i for i in itens if isinstance(i, dict))
+            if self._captura is None:
+                return
+            self._captura.extend(i for i in itens if isinstance(i, dict))
+            del self._captura[:-LIMITE_CAPTURA]   # memória limitada: só as mais recentes
+            copia = list(self._captura)
+        if self.observador:
+            self.observador(copia)  # fora da trava: a análise pode demorar
 
     # ------------------------------------------------ lado do agente (worker)
     @property
@@ -87,12 +92,31 @@ class PonteAba:
     def autenticado(self) -> bool:
         return self.conectada and self._aba_autenticada
 
-    def get(self, url: str) -> Resposta:
-        if not self.conectada:
-            raise SessaoExpirada("A aba do SAP não está conectada. Clique no favorito 'Agente BTP' na aba.")
+    def get(self, url: str, accept: str | None = None) -> Resposta:
         if not url.startswith("/") or url.startswith("//"):
             raise FalhaComunicacao(f"URL recusada (precisa ser do próprio sistema): {url[:80]}")
-        tarefa = {"id": uuid.uuid4().hex, "url": url}
+        tarefa = {"url": url}
+        if accept:
+            tarefa["accept"] = accept
+        r = self._executar(tarefa)
+        if r.get("status") == -1:
+            raise FalhaComunicacao(f"Falha de rede na aba: {str(r.get('body'))[:200]}")
+        return Resposta(status=int(r.get("status", 0)), content_type=r.get("ct") or "",
+                        corpo=r.get("body") or "", redirecionado=bool(r.get("redir")))
+
+    def fontes(self) -> list[dict]:
+        """Serviços OData usados pelos apps abertos na aba (lidos da configuração do UI5)."""
+        r = self._executar({"tipo": "fontes"})
+        try:
+            dados = json.loads(r.get("body") or "[]")
+        except json.JSONDecodeError:
+            return []
+        return [d for d in dados if isinstance(d, dict)]
+
+    def _executar(self, tarefa: dict) -> dict:
+        if not self.conectada:
+            raise SessaoExpirada("A aba do SAP não está conectada. Clique no favorito 'Agente BTP' na aba.")
+        tarefa = dict(tarefa, id=uuid.uuid4().hex)
         pendente = {"evento": threading.Event(), "resposta": None}
         with self._cond:
             self._pendentes[tarefa["id"]] = pendente
@@ -109,11 +133,7 @@ class PonteAba:
         finally:
             with self._cond:
                 self._pendentes.pop(tarefa["id"], None)
-        r = pendente["resposta"]
-        if r.get("status") == -1:
-            raise FalhaComunicacao(f"Falha de rede na aba: {str(r.get('body'))[:200]}")
-        return Resposta(status=int(r.get("status", 0)), content_type=r.get("ct") or "",
-                        corpo=r.get("body") or "", redirecionado=bool(r.get("redir")))
+        return pendente["resposta"]
 
     def aguardar(self, ms: int) -> None:
         time.sleep(ms / 1000)
@@ -124,7 +144,14 @@ class PonteAba:
 
     def iniciar_captura(self) -> None:
         with self._cond:
+            if self._captura is not None:
+                return
             self._captura = []
+            self._cond.notify_all()
+
+    def parar_captura(self) -> None:
+        with self._cond:
+            self._captura = None
             self._cond.notify_all()
 
     def salvar_captura(self, pasta: Path) -> Path:

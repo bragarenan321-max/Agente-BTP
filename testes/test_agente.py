@@ -171,3 +171,22 @@ def test_config_exige_campos():
     with pytest.raises(ValueError):
         cfg.a_partir_de_dict({"url_lista": "/s/A?$filter=WO eq '{wo}'", "url_mensagens": "/s/M",
                               "campos": {"wo": "WO"}})
+
+
+def test_planilha_sem_cabecalho_wo(tmp_path):
+    wb = Workbook()
+    wb.active.append(["Ordem de serviço", "Obs"])
+    wb.active.append(["06201|739635817", "x"])
+    wb.active.append([" 06282 | 328086400", None])
+    caminho = tmp_path / "in.xlsx"
+    wb.save(caminho)
+    assert ler_wos_planilha(caminho) == ["06201|739635817", "06282|328086400"]
+
+
+def test_planilha_cabecalho_com_wo_no_nome(tmp_path):
+    wb = Workbook()
+    wb.active.append(["Nº WO", "Outra"])
+    wb.active.append(["05715|230659432", "06201|739595275"])
+    caminho = tmp_path / "in.xlsx"
+    wb.save(caminho)
+    assert ler_wos_planilha(caminho) == ["05715|230659432"]

@@ -4,20 +4,15 @@ coleta os dados da janela "Mensagens" e gera um Excel com aba de Log.
 
 ## Como usar (Windows)
 
-1. Dê duplo clique em **`Abrir Agente BTP.bat`** (na 1ª vez ele prepara o ambiente).
-   A tela do agente abre em `http://127.0.0.1:8767`. Deixe a janela preta aberta.
-2. **Uma vez só:** arraste o botão verde **Agente BTP** da tela para a barra de favoritos do Chrome.
-3. Abra o SAP como sempre (login + MFA) e, **na aba já logada**, clique no favorito **Agente BTP**.
-   Se o Chrome perguntar sobre *acesso à rede local*, clique **Permitir**.
-   Um selo "Agente BTP: conectado" aparece no canto da aba.
-4. **Somente na 1ª vez:** *Iniciar descoberta* → na aba do SAP, faça o processo com UMA WO
-   (Monitor de alertas → filtrar a WO → clicar na linha → janela "Mensagens") → *Salvar descoberta*.
-   O agente configura a API sozinho e valida com a mesma WO. Confira com a janela "Mensagens".
-5. Cole as WOs (uma por linha) ou envie uma planilha com a coluna **WO** → **Executar** → baixe o Excel.
+1. Dê duplo clique em **`Abrir Agente BTP.bat`**. Abre a tela do agente (deixe a janela preta aberta).
+2. **Uma vez só:** crie o favorito **Agente BTP** (botão *"Ainda não tenho o favorito"* na tela,
+   ou o arquivo `FAVORITO - Agente BTP.txt`).
+3. Na aba do SAP **já aberta e logada**, clique no favorito. O topo da tela mostra **Conectado ao SAP**.
+4. Cole as WOs (ou envie a planilha) → **Executar** → acompanhe a barra → **Baixar planilha**.
 
-O agente **não abre o SAP** nem pede login: usa a aba que você já tem aberta.
-Se o favorito for bloqueado pela política da empresa, copie o código pelo botão
-*"Copiar código para o Console"* e cole no Console (F12) da aba do SAP.
+Não há etapa técnica: na primeira execução o agente se prepara sozinho, pelo dicionário de
+dados do SAP (`$metadata`) ou observando as consultas da tela do Monitor. Se o SAP for
+atualizado, ele se ajusta sozinho de novo.
 
 Pré-requisito: Python 3.10+ instalado.
 
@@ -25,9 +20,9 @@ Pré-requisito: Python 3.10+ instalado.
 
 | Módulo | Função |
 |---|---|
-| `analisador.py` | Lê a captura da descoberta e gera a configuração da API automaticamente |
+| `autoconfig.py` | Preparação automática pelo dicionário de dados do SAP (`$metadata`) |
+| `analisador.py` | Preparação automática observando as consultas reais da tela |
 | `ponte.py` + `web/agente_btp.js` | Conexão com a **aba já aberta** (favorito), no modelo do Agente Atlas |
-| `navegador.py` | Reserva, fora da interface: navegador dedicado (Playwright, opcional) |
 | `cliente.py` | Cliente OData **somente GET** + classificação de erros |
 | `processador.py` | Fluxo por WO, estados, retentativa de rede, lote |
 | `exportacao.py` | Excel (Resultado + Log), identificadores como texto |

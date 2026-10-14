@@ -1,6 +1,6 @@
 """Configuração da camada de dados (endpoints OData e nomes dos campos).
 
-Gerada automaticamente pelo analisador da descoberta (analisador.py) e gravada em
+Gerada automaticamente pelo agente (autoconfig.py ou analisador.py) e gravada em
 config/api.json (fora do controle de versão). Ver config/api.exemplo.json.
 
 As URLs são MODELOS: caminho + query string, com marcadores substituídos a cada consulta:
@@ -10,11 +10,16 @@ As URLs são MODELOS: caminho + query string, com marcadores substituídos a cad
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 ARQUIVO_CONFIG = RAIZ / "config" / "api.json"
+
+# Endereço do SAP (só para validar de qual site a aba conectada vem; o agente não o abre).
+URL_LAUNCHPAD = os.environ.get(
+    "AGENTE_BTP_URL", "https://claro-prd.launchpad.cfapps.br10.hana.ondemand.com/site#Shell-home")
 
 CAMPOS_OBRIGATORIOS = ("material", "fornecedor", "quantidade_faltante", "mensagem")
 
@@ -32,8 +37,7 @@ class ApiConfig:
 def carregar(caminho: Path = ARQUIVO_CONFIG) -> ApiConfig:
     if not caminho.exists():
         raise FileNotFoundError(
-            "API ainda não configurada. Use 'Iniciar descoberta', faça o processo com uma WO "
-            "e clique em 'Salvar descoberta'."
+            "Conexão com o Monitor de alertas ainda não preparada."
         )
     return a_partir_de_dict(json.loads(caminho.read_text(encoding="utf-8")))
 

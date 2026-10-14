@@ -1,4 +1,4 @@
-"""Analisa a captura do Modo Descoberta e gera a configuração da API automaticamente.
+"""Aprende a configuração da API observando as consultas reais que a tela do Monitor faz.
 
 Raciocínio:
 1. A consulta da LISTA é a que leva a WO na URL e devolve registros contendo a WO.
@@ -30,7 +30,7 @@ PALAVRAS = {
     "quantidade_faltante": re.compile(r"qtd|quant|menge|qty|falt", re.I),
     "mensagem": re.compile(r"mensag|message|msg|text", re.I),
     "consolidado": re.compile(r"consol", re.I),
-    "wo": re.compile(r"^wo$|^wo_?|_wo$|workorder|ordem", re.I),
+    "wo": re.compile(r"^wo$|^wo_|_wo$|^wo(id|nr|num|numero)$|work_?order|ordem", re.I),
 }
 ESSENCIAIS = ("material", "fornecedor", "quantidade_faltante", "mensagem")
 

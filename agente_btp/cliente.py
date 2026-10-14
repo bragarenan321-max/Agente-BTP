@@ -24,7 +24,7 @@ class Resposta:
 
 
 # Transporte: recebe uma URL e devolve a Resposta de um GET feito com a sessão
-# autenticada. Em produção é o navegador (navegador.py); nos testes, um falso.
+# autenticada. Em produção é a aba do SAP (ponte.py); nos testes, um falso.
 Transporte = Callable[[str], Resposta]
 
 LIMITE_PAGINAS = 50
@@ -39,8 +39,7 @@ def classificar(resposta: Resposta) -> str:
     if resposta.status >= 500:
         raise FalhaComunicacao(f"Servidor indisponível (HTTP {resposta.status}).")
     if resposta.status == 404:
-        raise ErroConsulta("Endereço da API não encontrado (HTTP 404). O sistema pode ter sido "
-                           "atualizado: refaça a Descoberta.")
+        raise ErroConsulta("Endereço de dados não encontrado (HTTP 404).")
     if resposta.status >= 400:
         raise ErroConsulta(f"Consulta rejeitada (HTTP {resposta.status}).")
     if "html" in resposta.content_type.lower():
@@ -69,6 +68,8 @@ class ClienteBTP:
         return self._get(odata.preencher_modelo(self.config.url_lista, wo=wo))
 
     def buscar_mensagens(self, alerta: dict) -> list[dict]:
+        if self.config.campo_mensagens_expandidas == ".":
+            return [alerta]  # a própria linha já é a mensagem
         if self.config.campo_mensagens_expandidas:
             bruto = odata.obter_campo(alerta, self.config.campo_mensagens_expandidas)
             if isinstance(bruto, dict) and "results" in bruto:

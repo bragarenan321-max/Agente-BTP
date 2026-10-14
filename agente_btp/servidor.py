@@ -1,4 +1,4 @@
-"""Interface web local (http://127.0.0.1:8765)."""
+"""Interface web local (http://127.0.0.1:8767) e canal com a aba do SAP."""
 from __future__ import annotations
 
 import tempfile
@@ -10,7 +10,7 @@ from flask import Flask, Response, abort, jsonify, request, send_file
 
 from .agente import Agente, caminho_saida
 from .entrada import ler_wos_planilha, ler_wos_texto
-from .navegador import URL_LAUNCHPAD
+from .config import URL_LAUNCHPAD
 
 PASTA_WEB = Path(__file__).resolve().parent / "web"
 _u = urlsplit(URL_LAUNCHPAD)
@@ -93,29 +93,9 @@ def criar_app(agente: Agente) -> Flask:
         codigo = codigo_carregador(request.host_url.rstrip("/"))
         return jsonify(favorito="javascript:" + codigo, console=codigo)
 
-    @app.post("/api/usar_aba")
-    def usar_aba():
-        agente.enviar("usar_aba")
-        return jsonify(ok=True)
-
     @app.get("/api/estado")
     def estado():
         return jsonify(agente.estado())
-
-    @app.post("/api/conectar")
-    def conectar():
-        agente.enviar("conectar")
-        return jsonify(ok=True)
-
-    @app.post("/api/descoberta/iniciar")
-    def descoberta_iniciar():
-        agente.enviar("descoberta_iniciar")
-        return jsonify(ok=True)
-
-    @app.post("/api/descoberta/salvar")
-    def descoberta_salvar():
-        agente.salvar_descoberta()
-        return jsonify(ok=True)
 
     @app.post("/api/executar")
     def executar():

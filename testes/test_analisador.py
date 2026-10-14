@@ -102,3 +102,47 @@ def test_falha_captura_vazia():
 def test_mapear_campos_prefere_valor_compativel():
     campos = mapear_campos({"MaterialText": "CABO", "Material": "0001"}, WO)
     assert campos["material"] == "Material"
+
+
+# ---------------------------------------------------------------- preparação pelo $metadata
+from agente_btp.autoconfig import MetadataSemCorrespondencia, configurar, ler_metadata  # noqa: E402
+
+EDMX = """<?xml version="1.0"?><edmx:Edmx xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx" Version="4.0">
+<edmx:DataServices><Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="S">
+<EntityType Name="Alerta"><Property Name="Wo" Type="Edm.String"/><Property Name="ConsolidadoNum" Type="Edm.String"/>
+ <Property Name="Workcenter" Type="Edm.String"/><Property Name="Mensagem" Type="Edm.String"/></EntityType>
+<EntityType Name="Msg"><Property Name="Wo" Type="Edm.String"/><Property Name="ConsolidadoNum" Type="Edm.String"/>
+ <Property Name="MaterialText" Type="Edm.String"/><Property Name="Matnr" Type="Edm.String"/>
+ <Property Name="Lifnr" Type="Edm.String"/><Property Name="QtdFaltante" Type="Edm.Decimal"/>
+ <Property Name="Mensagem" Type="Edm.String"/></EntityType>
+<EntityContainer Name="C"><EntitySet Name="Alertas" EntityType="S.Alerta"/><EntitySet Name="Mensagens" EntityType="S.Msg"/>
+</EntityContainer></Schema></edmx:DataServices></edmx:Edmx>"""
+
+
+def test_ler_metadata_v4():
+    conjuntos = ler_metadata(EDMX)
+    assert set(conjuntos) == {"Alertas", "Mensagens"}
+    assert conjuntos["Mensagens"]["QtdFaltante"] == "Edm.Decimal"
+
+
+def test_configurar_pelo_metadata():
+    dados, _ = configurar("/srv/", EDMX)
+    assert dados["url_lista"] == "/srv/Alertas?$filter=Wo eq '{wo}'"
+    assert dados["url_mensagens"] == ("/srv/Mensagens?$filter=ConsolidadoNum eq '{linha[ConsolidadoNum]}'"
+                                      " and Wo eq '{linha[Wo]}'")
+    assert dados["campos"]["material"] == "Matnr"          # não MaterialText
+    assert dados["campos"]["quantidade_faltante"] == "QtdFaltante"
+    cfg.a_partir_de_dict(dados)                             # configuração válida
+
+
+def test_metadata_sem_mensagens_falha():
+    xml = EDMX.replace('Name="Lifnr"', 'Name="Outro"').replace('Name="QtdFaltante"', 'Name="Valor"')
+    with pytest.raises(MetadataSemCorrespondencia):
+        configurar("/srv/", xml)
+
+
+def test_metadata_um_conjunto_so():
+    xml = EDMX.replace('<EntitySet Name="Alertas" EntityType="S.Alerta"/>', "")
+    dados, _ = configurar("/srv/", xml)
+    assert dados["url_lista"] == "/srv/Mensagens?$filter=Wo eq '{wo}'"
+    assert dados["campo_mensagens_expandidas"] == "."

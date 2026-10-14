@@ -5,7 +5,7 @@
  * Carregado pelo favorito "Agente BTP". Ele:
  *   1. pergunta ao Agente BTP local (127.0.0.1) se há consulta a fazer;
  *   2. faz o GET com a sessão da própria aba (same-origin) e devolve a resposta;
- *   3. no Modo Descoberta, registra as consultas que a tela faz (XHR/fetch).
+ *   3. enquanto o agente não está preparado, observa as consultas da tela (XHR/fetch).
  *
  * SOMENTE LEITURA: só executa GET, só para endereços do próprio sistema.
  * Não lê, copia nem envia cookies. Não faz login. Se a sessão cair, o agente
@@ -120,8 +120,38 @@
     catch (e) { estado.buffer.unshift(...lote); }
   }, 1000);
 
+  // ---------------------------------------------------------------- fontes de dados
+  // Quais serviços OData os apps abertos na aba usam (somente leitura da configuração).
+  function fontesDeDados() {
+    const out = [];
+    const janelas = [principal];
+    for (let i = 0; i < principal.frames.length; i++) janelas.push(principal.frames[i]);
+    janelas.forEach((w) => {
+      try {
+        if (!w.sap || !w.sap.ui || !w.sap.ui.core || !w.sap.ui.core.Component) return;
+        w.sap.ui.core.Component.registry.forEach((c) => {
+          try {
+            const app = c.getManifestEntry('sap.app') || {};
+            const modelos = (c.getManifestEntry('sap.ui5') || {}).models || {};
+            Object.keys(modelos).forEach((nome) => {
+              const m = c.getModel(nome || undefined);
+              if (m && m.sServiceUrl) {
+                out.push({ app: app.id || '', titulo: String(app.title || ''), url: String(m.sServiceUrl),
+                           tipo: m.getMetadata ? m.getMetadata().getName() : '' });
+              }
+            });
+          } catch (e) {}
+        });
+      } catch (e) { /* frame de outra origem */ }
+    });
+    return out;
+  }
+
   // ---------------------------------------------------------------- consultas (só GET)
   async function executar(t) {
+    if (t.tipo === 'fontes') {
+      return { id: t.id, status: 200, ct: 'application/json', body: JSON.stringify(fontesDeDados()), redir: false };
+    }
     if (typeof t.url !== 'string' || !/^\/(?!\/)/.test(t.url)) {
       return { id: t.id, status: -1, ct: '', body: 'URL recusada', redir: false };
     }
@@ -130,7 +160,7 @@
     try {
       const r = await fetchOriginal(t.url, {
         method: 'GET', credentials: 'same-origin', redirect: 'manual', signal: ctrl.signal,
-        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        headers: { 'Accept': t.accept || 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       });
       if (r.type === 'opaqueredirect') return { id: t.id, status: 0, ct: '', body: '', redir: true };
       return { id: t.id, status: r.status, ct: r.headers.get('content-type') || '', body: await r.text(), redir: false };
@@ -164,7 +194,7 @@
         falhas = 0;
         if (r.substituido) { aviso('desconectado (outra aba assumiu).', '#666'); parar(); return; }
         estado.capturando = principal.__btpCapturando = !!r.capturar;
-        aviso(estado.capturando ? 'gravando descoberta…' : 'conectado', estado.capturando ? '#c77700' : '#2e7d32');
+        aviso('conectado');
         if (r.tarefa) await servidor('/api/agente/resposta', await executar(r.tarefa));
       } catch (e) {
         falhas++;

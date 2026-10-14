@@ -5,115 +5,151 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agente BTP</title>
 <style>
-  :root { --fundo:#1c1d1f; --painel:#26282b; --borda:#3a3d41; --texto:#e8e8e8; --suave:#a0a4a8;
-          --verm:#b0191e; --verde:#2fbf71; --amar:#e0a526; }
+  :root {
+    --vermelho:#DA291C; --vermelho-esc:#B3001B; --fundo:#F3F3F3; --cartao:#FFFFFF; --texto:#1F1F1F;
+    --suave:#6B6B6B; --borda:#E2E2E2; --verde:#1E9E5A; --ambar:#E39B12; --cinza:#9A9A9A;
+  }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--fundo); color:var(--texto); font:15px/1.45 "Segoe UI",Arial,sans-serif; }
-  header { background:var(--verm); padding:14px 24px; font-size:20px; font-weight:600; }
-  main { max-width:960px; margin:24px auto; padding:0 16px; display:grid; gap:16px; }
-  section { background:var(--painel); border:1px solid var(--borda); border-radius:8px; padding:16px 20px; }
-  h2 { margin:0 0 12px; font-size:16px; }
-  button { background:var(--verm); color:#fff; border:0; border-radius:5px; padding:9px 16px;
-           font-size:14px; cursor:pointer; margin-right:8px; }
-  button.sec { background:transparent; border:1px solid var(--borda); color:var(--texto); }
-  button:disabled { opacity:.45; cursor:not-allowed; }
-  textarea { width:100%; min-height:130px; background:var(--fundo); color:var(--texto);
-             border:1px solid var(--borda); border-radius:5px; padding:8px; font-family:Consolas,monospace; }
+  body { margin:0; background:var(--fundo); color:var(--texto); font:15px/1.5 "Segoe UI", Arial, sans-serif; }
+  header { background:var(--vermelho); color:#fff; }
+  .topo { max-width:900px; margin:0 auto; padding:14px 16px; display:flex; align-items:center; gap:12px; }
+  .marca { font-size:22px; font-weight:700; letter-spacing:.2px; }
+  .marca small { display:block; font-size:12px; font-weight:400; opacity:.85; letter-spacing:0; }
+  .pilula { margin-left:auto; background:rgba(255,255,255,.16); border-radius:999px; padding:6px 12px;
+            font-size:13px; display:flex; align-items:center; gap:8px; white-space:nowrap; }
+  .ponto { width:9px; height:9px; border-radius:50%; background:var(--cinza); }
+  .ponto.ok { background:#5BE38F; } .ponto.esp { background:#FFD166; }
+  main { max-width:900px; margin:20px auto; padding:0 16px; display:grid; gap:16px; }
+  .cartao { background:var(--cartao); border:1px solid var(--borda); border-radius:10px; padding:18px 20px; }
+  h2 { margin:0 0 4px; font-size:17px; }
+  .suave { color:var(--suave); font-size:13px; margin:0 0 12px; }
+  .alerta { border-left:4px solid var(--vermelho); }
+  .aviso { background:#FFF6E0; border:1px solid #F3D48A; border-radius:10px; padding:12px 16px; font-size:14px; }
+  textarea { width:100%; min-height:150px; border:1px solid var(--borda); border-radius:8px; padding:10px;
+             font:14px Consolas, monospace; resize:vertical; background:#FAFAFA; }
+  textarea:focus { outline:2px solid #F3B0AA; border-color:var(--vermelho); }
   .linha { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  .ponto { width:11px; height:11px; border-radius:50%; background:var(--verm); display:inline-block; }
-  .ponto.ok { background:var(--verde); } .ponto.esp { background:var(--amar); }
-  .dica { color:var(--suave); font-size:13px; margin:6px 0 12px; }
-  #log { background:var(--fundo); border:1px solid var(--borda); border-radius:5px; padding:8px;
-         height:240px; overflow:auto; font:13px Consolas,monospace; white-space:pre-wrap; }
-  progress { width:100%; height:10px; }
-  a { color:#7fb6ff; }
-  a.favorito { display:inline-block; background:#2e7d32; color:#fff; padding:8px 16px; border-radius:5px;
-               text-decoration:none; font-weight:600; cursor:grab; }
-  details summary { cursor:pointer; margin-top:8px; }
+  button, .botao { font:600 15px "Segoe UI", Arial, sans-serif; border-radius:8px; padding:11px 22px; cursor:pointer;
+                   border:0; background:var(--vermelho); color:#fff; text-decoration:none; display:inline-block; }
+  button:hover, .botao:hover { background:var(--vermelho-esc); }
+  button.sec { background:#fff; color:var(--vermelho); border:1px solid var(--vermelho); padding:10px 18px; }
+  button.sec:hover { background:#FFF1F0; }
+  button.link { background:none; color:var(--vermelho); padding:0; font-weight:600; font-size:14px; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  .arquivo { font-size:14px; color:var(--suave); }
+  .arquivo label { color:var(--vermelho); font-weight:600; cursor:pointer; }
+  .contador { margin-left:auto; font-size:13px; color:var(--suave); }
+  .barra { height:14px; background:#EEE; border-radius:999px; overflow:hidden; margin:12px 0 8px; }
+  .barra > div { height:100%; width:0; background:var(--vermelho); border-radius:999px; transition:width .4s; }
+  .barra.indef > div { width:35% !important; animation:vai 1.2s ease-in-out infinite; }
+  @keyframes vai { 0% { margin-left:-35%; } 100% { margin-left:100%; } }
+  .numeros { display:flex; justify-content:space-between; font-size:13px; color:var(--suave); }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .chip { border-radius:999px; padding:4px 12px; font-size:13px; background:#F2F2F2; }
+  .chip b { margin-left:4px; }
+  .chip.ok { background:#E6F6EE; color:#13683C; } .chip.amb { background:#FFF3DC; color:#8A5A00; }
+  .chip.err { background:#FDE8E7; color:#A1150C; }
+  .favorito { display:inline-block; background:var(--vermelho); color:#fff; padding:6px 12px; border-radius:6px;
+              text-decoration:none; font-weight:600; font-size:13px; cursor:grab; }
+  ol { margin:6px 0 10px; padding-left:20px; font-size:14px; }
+  details summary { cursor:pointer; color:var(--suave); font-size:13px; }
+  #log { margin-top:10px; background:#FAFAFA; border:1px solid var(--borda); border-radius:8px; padding:10px;
+         max-height:220px; overflow:auto; font:12px Consolas, monospace; white-space:pre-wrap; color:#444; }
+  .oculto { display:none !important; }
 </style>
 </head>
 <body>
-<header>AGENTE BTP</header>
+<header>
+  <div class="topo">
+    <div class="marca">Agente BTP<small>Monitor de alertas → Excel</small></div>
+    <div class="pilula"><span class="ponto" id="pt"></span><span id="conexao">Aguardando o SAP</span></div>
+  </div>
+</header>
+
 <main>
-  <section>
-    <h2>1. Conexão com a aba do SAP</h2>
-    <div class="linha">
-      <span class="ponto" id="pt"></span><span id="conexao">Não conectado</span>
-    </div>
-    <div id="instrAba">
-      <p class="dica"><b>Primeira vez — criar o favorito (uma vez só):</b></p>
-      <ol class="dica">
-        <li>Clique em <b>Copiar URL do favorito</b>.</li>
-        <li>No Chrome, tecle <b>Ctrl+Shift+O</b> (Favoritos) → menu <b>⋮</b> → <b>Adicionar novo favorito</b>.</li>
-        <li>Nome: <b>Agente BTP</b>. URL: cole (<b>Ctrl+V</b>). Salve.</li>
+  <!-- Só aparece enquanto a aba do SAP não estiver conectada -->
+  <section class="cartao alerta" id="cartaoConexao">
+    <h2>Conecte a aba do SAP</h2>
+    <p class="suave" style="margin-bottom:6px">Na aba do SAP já aberta e logada, clique no favorito <b>Agente BTP</b>.</p>
+    <button class="link" id="bComo">Ainda não tenho o favorito</button>
+    <div id="como" class="oculto">
+      <ol>
+        <li>Clique em <b>Copiar favorito</b>.</li>
+        <li>No Chrome: <b>Ctrl+Shift+O</b> → menu <b>⋮</b> → <b>Adicionar novo favorito</b>.</li>
+        <li>Nome: <b>Agente BTP</b> · URL: cole (<b>Ctrl+V</b>) · Salvar.</li>
       </ol>
       <div class="linha">
-        <button id="bCopiarUrl">Copiar URL do favorito</button>
-        <span class="dica" style="margin:0">ou arraste para a barra de favoritos:</span>
+        <button class="sec" id="bCopiarUrl">Copiar favorito</button>
+        <span class="suave" style="margin:0">ou arraste para a barra de favoritos:</span>
         <a id="favorito" class="favorito" href="#" onclick="return false">Agente BTP</a>
       </div>
-      <textarea id="urlFavorito" readonly rows="2" style="min-height:0;margin-top:8px;font-size:12px"></textarea>
-      <p class="dica"><b>Sempre:</b> abra o SAP (já logado) e clique no favorito <b>Agente BTP</b>.
-        Se o Chrome perguntar sobre <b>acesso à rede local</b>, clique em <b>Permitir</b>.
-        Um selo verde "Agente BTP: conectado" aparece no canto da aba.</p>
-      <details class="dica">
-        <summary>O favorito não funcionou?</summary>
-        <p>Na aba do SAP, tecle F12 → aba <b>Console</b> → cole o código copiado abaixo → Enter.</p>
-        <button id="bCopiar" class="sec">Copiar código para o Console</button>
-      </details>
+      <p class="suave" style="margin-top:10px">Se o Chrome perguntar sobre <b>acesso à rede local</b>, clique em <b>Permitir</b>.
+        Favorito bloqueado pela empresa? <button class="link" id="bCopiarConsole">copiar alternativa para o Console (F12)</button></p>
     </div>
   </section>
 
-  <section id="secDescoberta">
-    <h2>2. Descoberta (uma única vez)</h2>
-    <p class="dica" id="dicaApi"></p>
-    <button id="bDescIni" class="sec">Iniciar descoberta</button>
-    <button id="bDescSalvar" class="sec">Salvar descoberta</button>
-  </section>
+  <div class="aviso oculto" id="aviso"></div>
 
-  <section>
-    <h2>3. WOs a processar</h2>
-    <p class="dica">Uma WO por linha, no formato <b>02235|230771207</b> — ou envie uma planilha com a coluna <b>WO</b>.</p>
-    <textarea id="texto" placeholder="42340|231184065&#10;88412|126579742"></textarea>
+  <section class="cartao">
+    <h2>WOs para consultar</h2>
+    <p class="suave">Cole uma WO por linha (ex.: 02235|230771207) ou envie a planilha.</p>
+    <textarea id="texto" placeholder="02235|230771207&#10;88412|126579742"></textarea>
     <div class="linha" style="margin-top:10px">
-      <input type="file" id="arquivo" accept=".xlsx">
+      <span class="arquivo"><label for="arquivo">Enviar planilha (.xlsx)</label>
+        <span id="nomeArquivo"></span></span>
+      <input type="file" id="arquivo" accept=".xlsx" class="oculto">
+      <span class="contador" id="contador">0 WOs</span>
     </div>
-    <div class="linha" style="margin-top:12px">
+    <div class="linha" style="margin-top:16px">
       <button id="bExecutar">Executar</button>
-      <button id="bParar" class="sec">Parar</button>
-      <span id="baixar"></span>
+      <button id="bParar" class="sec oculto">Parar</button>
     </div>
-    <progress id="prog" value="0" max="1" style="margin-top:12px"></progress>
-    <div class="dica" id="progTxt"></div>
   </section>
 
-  <section>
-    <h2>Registro</h2>
-    <div id="log"></div>
+  <section class="cartao oculto" id="cartaoProgresso">
+    <h2 id="tituloProg">Processando</h2>
+    <div class="barra" id="barra"><div id="barraFill"></div></div>
+    <div class="numeros"><span id="progTxt"></span><span id="etaTxt"></span></div>
+    <div class="chips" id="chips"></div>
+    <div class="linha" style="margin-top:16px">
+      <a id="baixar" class="botao oculto" href="#">Baixar planilha</a>
+    </div>
   </section>
+
+  <details>
+    <summary>Detalhes</summary>
+    <div id="log"></div>
+  </details>
 </main>
+
 <script>
 const $ = id => document.getElementById(id);
 const post = (url, body) => fetch(url, { method: "POST", body }).then(r => r.json());
+const PADRAO_WO = /^\s*\d{5}\s*\|\s*\d{9}\s*$/;
+let favorito = "", consoleCodigo = "", conectado = false, ocupado = false;
 
-let codigoConsole = "";
 fetch("/api/favorito").then(r => r.json()).then(f => {
+  favorito = f.favorito; consoleCodigo = f.console;
   $("favorito").setAttribute("href", f.favorito);
-  $("urlFavorito").value = f.favorito;
-  codigoConsole = f.console;
 });
-$("bCopiarUrl").onclick = async () => {
-  const url = $("urlFavorito").value;
-  try { await navigator.clipboard.writeText(url); alert("URL copiada. Crie o favorito com Ctrl+Shift+O e cole no campo URL."); }
-  catch (_) { $("urlFavorito").select(); document.execCommand("copy"); alert("URL copiada."); }
-};
-$("bCopiar").onclick = async () => {
-  try { await navigator.clipboard.writeText(codigoConsole); alert("Código copiado. Cole no Console da aba do SAP."); }
-  catch (_) { prompt("Copie o código abaixo:", codigoConsole); }
-};
-$("bDescIni").onclick = () => post("/api/descoberta/iniciar");
-$("bDescSalvar").onclick = () => post("/api/descoberta/salvar");
-$("bParar").onclick = () => post("/api/parar");
+async function copiar(texto, msg) {
+  try { await navigator.clipboard.writeText(texto); }
+  catch (_) { const t = document.createElement("textarea"); t.value = texto; document.body.appendChild(t);
+              t.select(); document.execCommand("copy"); t.remove(); }
+  alert(msg);
+}
+$("bComo").onclick = () => $("como").classList.toggle("oculto");
+$("bCopiarUrl").onclick = () => copiar(favorito, "Favorito copiado. Crie com Ctrl+Shift+O e cole no campo URL.");
+$("bCopiarConsole").onclick = () => copiar(consoleCodigo, "Copiado. Na aba do SAP: F12 → Console → cole → Enter.");
+
+function contar() {
+  const n = $("texto").value.split(/\r?\n/).filter(l => PADRAO_WO.test(l)).length;
+  const arq = $("arquivo").files[0];
+  $("contador").textContent = arq ? `${n} WOs + planilha` : `${n} WO${n === 1 ? "" : "s"}`;
+}
+$("texto").addEventListener("input", contar);
+$("arquivo").onchange = () => { $("nomeArquivo").textContent = $("arquivo").files[0] ? "· " + $("arquivo").files[0].name : ""; contar(); };
+
 $("bExecutar").onclick = async () => {
   const fd = new FormData();
   fd.append("texto", $("texto").value);
@@ -121,34 +157,57 @@ $("bExecutar").onclick = async () => {
   const r = await post("/api/executar", fd);
   if (!r.ok) alert(r.erro);
 };
+$("bParar").onclick = () => post("/api/parar");
 
-const ROTULO = {
-  aba: { desconectado: "Aba do SAP não conectada", aguardando_login: "Aba conectada, mas sem login no SAP", conectado: "Conectado à aba do SAP" },
-  navegador: { desconectado: "Não conectado", aguardando_login: "Aguardando login/MFA…", conectado: "Conectado (navegador separado)" },
-};
+const GRUPOS = [
+  { rotulo: "Processadas", classe: "ok", status: ["Processada"] },
+  { rotulo: "Sem registros", classe: "", status: ["Sem registros"] },
+  { rotulo: "Não encontradas", classe: "amb", status: ["Não encontrada no monitor"] },
+  { rotulo: "Inválidas", classe: "amb", status: ["WO inválida"] },
+  { rotulo: "Erros", classe: "err", status: ["Erro", "Falha de comunicação", "Sessão expirada"] },
+];
+const tempo = s => s < 60 ? `${Math.max(1, Math.round(s))} s` : `${Math.round(s / 60)} min`;
+
 async function atualizar() {
-  try {
-    const e = await fetch("/api/estado").then(r => r.json());
-    $("conexao").textContent = ROTULO[e.modo][e.conexao];
+  let e;
+  try { e = await fetch("/api/estado").then(r => r.json()); }
+  catch (_) { $("conexao").textContent = "Agente fechado"; $("pt").className = "ponto"; return; }
 
-    $("pt").className = "ponto" + (e.conexao === "conectado" ? " ok" : e.conexao === "aguardando_login" ? " esp" : "");
-    const con = e.conexao === "conectado";
-    $("bDescIni").disabled = e.ocupado || !con || e.descoberta_ativa;
-    $("bDescSalvar").disabled = !e.descoberta_ativa;
-    $("bExecutar").disabled = e.ocupado || !con || !e.api_configurada;
-    $("bParar").disabled = !e.ocupado;
-    $("dicaApi").textContent = e.api_configurada
-      ? "API configurada. A descoberta só é necessária se o sistema mudar."
-      : "API ainda não configurada: inicie a descoberta, faça o processo com UMA WO no navegador e salve. Envie o arquivo gerado na pasta 'descoberta'.";
-    const p = e.progresso;
-    $("prog").max = Math.max(p.total, 1); $("prog").value = p.atual;
-    $("progTxt").textContent = p.total ? `${p.atual} de ${p.total} WO(s)` : "";
-    $("baixar").innerHTML = e.ultimo_arquivo
-      ? `<a href="/api/download/${encodeURIComponent(e.ultimo_arquivo)}">Baixar ${e.ultimo_arquivo}</a>` : "";
-    const log = $("log"), noFim = log.scrollTop + log.clientHeight >= log.scrollHeight - 5;
-    log.textContent = e.mensagens.join("\n");
-    if (noFim) log.scrollTop = log.scrollHeight;
-  } catch (_) { $("conexao").textContent = "Agente encerrado"; }
+  conectado = e.conexao === "conectado"; ocupado = e.ocupado;
+  $("conexao").textContent = conectado ? "Conectado ao SAP" : e.conexao === "sem_login" ? "SAP sem login" : "Aguardando o SAP";
+  $("pt").className = "ponto" + (conectado ? " ok" : e.conexao === "sem_login" ? " esp" : "");
+  $("cartaoConexao").classList.toggle("oculto", conectado);
+
+  $("aviso").textContent = e.aviso || "";
+  $("aviso").classList.toggle("oculto", !e.aviso);
+
+  $("bExecutar").disabled = ocupado || !conectado;
+  $("bExecutar").title = conectado ? "" : "Conecte a aba do SAP primeiro";
+  $("bParar").classList.toggle("oculto", !(ocupado && e.fase !== "ocioso"));
+
+  const ativo = e.fase !== "ocioso";
+  $("cartaoProgresso").classList.toggle("oculto", !ativo);
+  if (ativo) {
+    const p = e.progresso, pct = p.total ? Math.round(100 * p.atual / p.total) : 0;
+    $("tituloProg").textContent = e.fase === "preparando" ? "Preparando (só na primeira vez)…"
+      : e.fase === "concluido" ? "Concluído" : "Processando";
+    $("barra").classList.toggle("indef", e.fase === "preparando");
+    $("barraFill").style.width = (e.fase === "concluido" ? 100 : pct) + "%";
+    $("progTxt").textContent = p.total ? `${p.atual} de ${p.total} WOs · ${pct}%` : "";
+    $("etaTxt").textContent = (e.fase === "processando" && p.atual > 0 && p.atual < p.total)
+      ? `faltam ~${tempo(e.decorrido_seg / p.atual * (p.total - p.atual))}` : "";
+    $("chips").innerHTML = GRUPOS.map(g => {
+      const n = g.status.reduce((s, st) => s + (e.contagem[st] || 0), 0);
+      return n ? `<span class="chip ${g.classe}">${g.rotulo}<b>${n}</b></span>` : "";
+    }).join("");
+    const pronto = e.fase === "concluido" && e.ultimo_arquivo;
+    $("baixar").classList.toggle("oculto", !pronto);
+    if (pronto) $("baixar").href = "/api/download/" + encodeURIComponent(e.ultimo_arquivo);
+  }
+
+  const log = $("log"), fim = log.scrollTop + log.clientHeight >= log.scrollHeight - 5;
+  log.textContent = e.mensagens.join("\n");
+  if (fim) log.scrollTop = log.scrollHeight;
 }
 setInterval(atualizar, 1000); atualizar();
 </script>

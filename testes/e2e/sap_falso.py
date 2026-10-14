@@ -12,8 +12,14 @@ MSGS = {
         {"Wo": "88412|126579742", "Matnr": "000000000011000042", "MaterialText": "CONECTOR", "Lifnr": "0000137628", "QtdFaltante": "10.000", "Mensagem": "Estoque indisponível"}],
 }
 PAGINA = """<html><body>Launchpad falso<script>
-window.sap = {ushell:{Container:{}}, ui:{core:{Component:{registry:{forEach(f){f({getManifestEntry(){
-  return {id:'monitor.alertas', dataSources:{mainService:{uri:'/srv/', type:'OData', settings:{odataVersion:'2.0'}}}}}})}}}}}};
+const PARAM = new URLSearchParams(location.search);
+const COMPONENTE = {
+  getManifestEntry(k){ return k === 'sap.app' ? {id:'monitor.alertas', title:'Monitor de alertas'}
+                            : k === 'sap.ui5' ? {models:{'':{dataSource:'mainService'}}} : null; },
+  getModel(){ return PARAM.get('semfontes') ? null
+                   : {sServiceUrl:'/srv', getMetadata(){ return {getName(){ return 'sap.ui.model.odata.v2.ODataModel'; }}; }}; },
+};
+window.sap = {ushell:{Container:{}}, ui:{core:{Component:{registry:{forEach(f){ f(COMPONENTE); }}}}}};
 function corpoBatch(gets){
   return gets.map(g=>'--b\\r\\nContent-Type: application/http\\r\\n\\r\\nGET '+g+' HTTP/1.1\\r\\nAccept: application/json\\r\\n\\r\\n\\r\\n').join('')+'--b--';
 }
@@ -27,10 +33,27 @@ async function usuario(){  // simula: filtrar a WO e abrir 'Mensagens'
   await batch(["AlertaSet?$skip=0&$top=20&$filter=Wo%20eq%20'88412%7C126579742'&$inlinecount=allpages"]);
   await batchXHR(["MensagemSet?$filter=ConsolidadoNum%20eq%20'105012-20260916-mEeF%2BOw%2FDh'"]);
 }
-setInterval(usuario, 2000);
+if (PARAM.get('simular')) setInterval(usuario, 2000);  // usuário usando o Monitor
 </script></body></html>"""
 
 ESTADO = {"expirada": False}
+
+METADATA = """<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="1.0" xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx">
+ <edmx:DataServices><Schema Namespace="ZMONITOR_SRV" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">
+  <EntityType Name="Alerta"><Key><PropertyRef Name="ConsolidadoNum"/></Key>
+   <Property Name="Wo" Type="Edm.String"/><Property Name="ConsolidadoNum" Type="Edm.String"/>
+   <Property Name="Fornecedor" Type="Edm.String"/><Property Name="Data" Type="Edm.DateTime"/>
+   <Property Name="Mensagem" Type="Edm.String"/></EntityType>
+  <EntityType Name="Mensagem"><Key><PropertyRef Name="Matnr"/></Key>
+   <Property Name="Wo" Type="Edm.String"/><Property Name="ConsolidadoNum" Type="Edm.String"/>
+   <Property Name="Matnr" Type="Edm.String"/><Property Name="MaterialText" Type="Edm.String"/>
+   <Property Name="Lifnr" Type="Edm.String"/><Property Name="QtdFaltante" Type="Edm.Decimal"/>
+   <Property Name="Mensagem" Type="Edm.String"/></EntityType>
+  <EntityContainer Name="C" m:IsDefaultEntityContainer="true" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata">
+   <EntitySet Name="AlertaSet" EntityType="ZMONITOR_SRV.Alerta"/>
+   <EntitySet Name="MensagemSet" EntityType="ZMONITOR_SRV.Mensagem"/>
+  </EntityContainer></Schema></edmx:DataServices></edmx:Edmx>"""
 
 
 def consulta(url):
@@ -54,6 +77,8 @@ class H(BaseHTTPRequestHandler):
         if self.path.startswith("/srv/") and ESTADO["expirada"]:
             self.send_response(302); self.send_header("Location", "https://ipc.claro.com.br/idp/SSO.saml2")
             self.end_headers(); return
+        if self.path.startswith("/srv/$metadata"):
+            return self._envia(200, "application/xml", METADATA)
         if self.path.startswith("/srv/"):
             r = consulta(self.path[len("/srv/"):])
             return self._envia(200, "application/json", json.dumps(r)) if r else self._envia(404, "text/plain", "")
