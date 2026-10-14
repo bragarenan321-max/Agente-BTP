@@ -24,7 +24,10 @@
   h2 { margin:0 0 4px; font-size:17px; }
   .suave { color:var(--suave); font-size:13px; margin:0 0 12px; }
   .alerta { border-left:4px solid var(--vermelho); }
-  .aviso { background:#FFF6E0; border:1px solid #F3D48A; border-radius:10px; padding:12px 16px; font-size:14px; }
+  .notificacao { display:flex; gap:8px; align-items:flex-start; font-size:13px; color:#444; background:#fff;
+                 border:1px solid var(--borda); border-radius:8px; padding:8px 12px; }
+  .notificacao::before { content:""; flex:none; width:8px; height:8px; margin-top:6px; border-radius:50%; background:var(--ambar); }
+  .notificacao.critica::before { background:var(--vermelho); }
   textarea { width:100%; min-height:150px; border:1px solid var(--borda); border-radius:8px; padding:10px;
              font:14px Consolas, monospace; resize:vertical; background:#FAFAFA; }
   textarea:focus { outline:2px solid #F3B0AA; border-color:var(--vermelho); }
@@ -91,25 +94,38 @@
   <!-- Só aparece enquanto a aba do BTP não estiver conectada -->
   <section class="cartao alerta" id="cartaoConexao">
     <h2>Conecte a aba do BTP</h2>
-    <p class="suave" style="margin-bottom:6px">Na aba do BTP já aberta e logada, clique no favorito <b>Agente BTP</b>.</p>
-    <button class="link" id="bComo">Ainda não tenho o favorito</button>
+    <p class="suave" style="margin-bottom:6px">Com a extensão <b>Agente BTP</b> instalada, basta abrir o BTP:
+      a conexão é automática.</p>
+    <button class="link" id="bComo">Instalar a extensão (uma vez só)</button>
     <div id="como" class="oculto">
       <ol>
-        <li>Clique em <b>Copiar favorito</b>.</li>
-        <li>No Chrome: <b>Ctrl+Shift+O</b> → menu <b>⋮</b> → <b>Adicionar novo favorito</b>.</li>
-        <li>Nome: <b>Agente BTP</b> · URL: cole (<b>Ctrl+V</b>) · Salvar.</li>
+        <li>No Chrome, abra o endereço <b>chrome://extensions</b>
+          <button class="link" id="bCopiarExt" style="font-size:13px">(copiar)</button>.</li>
+        <li>Ligue o <b>Modo do desenvolvedor</b> (canto superior direito).</li>
+        <li>Clique em <b>Carregar sem compactação</b> e escolha a pasta <b>extensao</b> do Agente BTP
+          <button class="link" id="bPastaExt" style="font-size:13px">(abrir a pasta)</button>.</li>
+        <li>Recarregue a aba do BTP (F5). Se o Chrome perguntar sobre <b>acesso à rede local</b>, clique em <b>Permitir</b>.</li>
       </ol>
-      <div class="linha">
-        <button class="sec" id="bCopiarUrl">Copiar favorito</button>
-        <span class="suave" style="margin:0">ou arraste para a barra de favoritos:</span>
-        <a id="favorito" class="favorito" href="#" onclick="return false">Agente BTP</a>
-      </div>
-      <p class="suave" style="margin-top:10px">Se o Chrome perguntar sobre <b>acesso à rede local</b>, clique em <b>Permitir</b>.
-        Favorito bloqueado pela empresa? <button class="link" id="bCopiarConsole">copiar alternativa para o Console (F12)</button></p>
+      <p class="suave" id="caminhoExt" style="margin:0 0 8px"></p>
+      <details class="suave">
+        <summary>A empresa bloqueia extensões? Use o favorito</summary>
+        <ol>
+          <li>Clique em <b>Copiar favorito</b>.</li>
+          <li>No Chrome: <b>Ctrl+Shift+O</b> → menu <b>⋮</b> → <b>Adicionar novo favorito</b>.</li>
+          <li>Nome: <b>Agente BTP</b> · URL: cole (<b>Ctrl+V</b>) · Salvar. Depois, clique nele na aba do BTP.</li>
+        </ol>
+        <div class="linha">
+          <button class="sec" id="bCopiarUrl">Copiar favorito</button>
+          <a id="favorito" class="favorito" href="#" onclick="return false">Agente BTP</a>
+          <button class="link" id="bCopiarConsole">copiar alternativa para o Console (F12)</button>
+        </div>
+      </details>
     </div>
   </section>
 
-  <div class="aviso oculto" id="aviso"></div>
+  <div class="notificacao critica oculto" id="desatualizado">O Agente BTP em execução é de uma versão anterior.
+    Feche a janela preta do Agente BTP e abra o <b>Abrir Agente BTP.bat</b> de novo.</div>
+  <div class="notificacao oculto" id="aviso"></div>
 
   <section class="cartao">
     <h2>WOs para consultar</h2>
@@ -184,6 +200,7 @@
 
 <script>
 const $ = id => document.getElementById(id);
+const VERSAO_TELA = "__VERSAO_PROGRAMA__";   // preenchido pelo programa ao servir a tela
 const post = (url, body) => fetch(url, { method: "POST", body }).then(r => r.json());
 const PADRAO_WO = /^\s*\d{5}\s*\|\s*\d{9}\s*$/;
 let favorito = "", consoleCodigo = "", conectado = false, ocupado = false;
@@ -199,6 +216,11 @@ async function copiar(texto, msg) {
   alert(msg);
 }
 $("bComo").onclick = () => $("como").classList.toggle("oculto");
+$("bCopiarExt").onclick = () => copiar("chrome://extensions", "Copiado. Cole na barra de endereço do Chrome.");
+$("bPastaExt").onclick = async () => {
+  const r = await fetch("/api/extensao/abrir", { method: "POST" }).then(r => r.json());
+  $("caminhoExt").textContent = "Pasta da extensão: " + r.caminho;
+};
 $("bCopiarUrl").onclick = () => copiar(favorito, "Favorito copiado. Crie com Ctrl+Shift+O e cole no campo URL.");
 $("bCopiarConsole").onclick = () => copiar(consoleCodigo, "Copiado. Na aba do BTP: F12 → Console → cole → Enter.");
 
@@ -234,6 +256,8 @@ async function atualizar() {
   catch (_) { $("conexao").textContent = "Agente fechado"; $("pt").className = "ponto"; return; }
 
   conectado = e.conexao === "conectado"; ocupado = e.ocupado;
+  // Programa antigo servindo a tela nova (janela preta antiga ainda aberta)?
+  $("desatualizado").classList.toggle("oculto", !VERSAO_TELA.startsWith("__") && e.versao === VERSAO_TELA);
   $("conexao").textContent = conectado ? "Conectado ao BTP" : e.conexao === "sem_login" ? "BTP sem login" : "Aguardando o BTP";
   $("pt").className = "ponto" + (conectado ? " ok" : e.conexao === "sem_login" ? " esp" : "");
   $("cartaoConexao").classList.toggle("oculto", conectado);

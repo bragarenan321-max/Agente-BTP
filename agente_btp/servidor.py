@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import json
 import tempfile
 from pathlib import Path
@@ -31,13 +32,19 @@ def codigo_carregador(origem_local: str) -> str:
 def criar_app(agente: Agente) -> Flask:
     app = Flask(__name__)
     codigo_agente = (PASTA_WEB / "agente_btp.js").read_text(encoding="utf-8")
-    versao = hashlib.sha1(codigo_agente.encode("utf-8")).hexdigest()[:10]
+    # Versão = impressão digital de todo o programa: qualquer mudança gera outra versão.
+    digital = hashlib.sha1()
+    for arq in sorted(PASTA_WEB.parent.glob("*.py")) + sorted(PASTA_WEB.glob("*")):
+        digital.update(arq.read_bytes())
+    versao = digital.hexdigest()[:10]
     agente.ponte.versao_agente = versao
     app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
 
     @app.get("/")
     def index():
-        return send_file(PASTA_WEB / "index.html")
+        html = (PASTA_WEB / "index.html").read_text(encoding="utf-8")
+        return Response(html.replace("__VERSAO_PROGRAMA__", versao), mimetype="text/html",
+                        headers={"Cache-Control": "no-store"})
 
     # ------------------------------------------------ canal com a aba do SAP
     @app.after_request
@@ -107,9 +114,20 @@ def criar_app(agente: Agente) -> Flask:
         codigo = codigo_carregador(request.host_url.rstrip("/"))
         return jsonify(favorito="javascript:" + codigo, console=codigo)
 
+    @app.post("/api/extensao/abrir")
+    def abrir_pasta_extensao():
+        """Abre no Explorer a pasta da extensão (para 'Carregar sem compactação')."""
+        pasta = PASTA_WEB.parent.parent / "extensao"
+        if os.name == "nt":
+            try:
+                os.startfile(str(pasta))  # noqa: S606 — só a pasta do próprio programa
+            except OSError:
+                pass
+        return jsonify(caminho=str(pasta))
+
     @app.get("/api/estado")
     def estado():
-        return jsonify(agente.estado())
+        return jsonify(dict(agente.estado(), versao=versao))
 
     @app.post("/api/executar")
     def executar():

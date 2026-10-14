@@ -192,11 +192,14 @@
 
   function parar() {
     estado.ativo = false;
+    principal.__btpAtivo = false;
     principal.__btpCapturando = false;
     clearInterval(ganchosFrames);
     clearInterval(descarga);
   }
   principal.__agenteBTP = { parar: parar, id: ID };
+  principal.__btpAtivo = true;
+  principal.__btpSubstituido = false;
 
   // Fechou/recarregou a aba: avisa o programa na hora (as tarefas pendentes são salvas).
   const despedida = () => {
@@ -230,7 +233,12 @@
           (0, eval)(await novo.text());
           return;
         }
-        if (r.substituido) { aviso('desconectado (outra aba assumiu).', '#666'); parar(); return; }
+        if (r.substituido) {
+          aviso('desconectado (outra aba do BTP está conectada).', '#666');
+          parar();
+          principal.__btpSubstituido = true;   // a extensão não reconecta esta aba sozinha
+          return;
+        }
         estado.capturando = principal.__btpCapturando = !!r.capturar;
         aviso('conectado');
         if (r.tarefa) await servidor('/api/agente/resposta', await executar(r.tarefa));

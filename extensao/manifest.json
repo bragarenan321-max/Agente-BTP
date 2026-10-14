@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Agente BTP",
+  "version": "1.0.0",
+  "description": "Conecta o Agente BTP à aba do BTP já aberta e logada. Não faz login, não lê cookies, não guarda dados.",
+  "permissions": ["scripting", "tabs"],
+  "host_permissions": [
+    "https://claro-prd.launchpad.cfapps.br10.hana.ondemand.com/*",
+    "http://127.0.0.1:8767/*"
+  ],
+  "background": { "service_worker": "fundo.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://claro-prd.launchpad.cfapps.br10.hana.ondemand.com/*"],
+      "js": ["no_btp.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ]
+}

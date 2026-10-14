@@ -5,9 +5,11 @@ coleta os dados da janela "Mensagens" e gera um Excel com aba de Log.
 ## Como usar (Windows)
 
 1. Dê duplo clique em **`Abrir Agente BTP.bat`**. Abre a tela do agente (deixe a janela preta aberta).
-2. **Uma vez só:** crie o favorito **Agente BTP** (botão *"Ainda não tenho o favorito"* na tela,
-   ou o arquivo `FAVORITO - Agente BTP.txt`).
-3. Na aba do BTP **já aberta e logada**, clique no favorito. O topo da tela mostra **Conectado ao BTP**.
+2. **Uma vez só:** instale a extensão **Agente BTP** (pasta `extensao/`): `chrome://extensions` →
+   *Modo do desenvolvedor* → *Carregar sem compactação* → escolha a pasta `extensao`.
+3. Abra o BTP normalmente. A extensão conecta sozinha (selo **Agente BTP: conectado** no canto da aba)
+   — mesmo se o programa for aberto depois. Sem extensão (bloqueio da empresa): use o favorito
+   (`FAVORITO - Agente BTP.txt`).
 4. Cole as WOs (ou envie a planilha) → **Executar** → acompanhe a barra → **Baixar planilha**.
 
 Não há etapa técnica: na primeira execução o agente se prepara sozinho, pelo dicionário de
@@ -22,6 +24,7 @@ Pré-requisito: Python 3.10+ instalado.
 |---|---|
 | `autoconfig.py` | Preparação automática pelo dicionário de dados do BTP (`$metadata`) |
 | `analisador.py` | Preparação automática observando as consultas reais da tela |
+| `extensao/` | Extensão do Chrome: conecta a aba do BTP sozinha (endereço do programa fixo, não alterável por páginas) |
 | `ponte.py` + `web/agente_btp.js` | Conexão com a **aba já aberta** (favorito), no modelo do Agente Atlas |
 | `cliente.py` | Cliente OData **somente GET** + classificação de erros |
 | `processador.py` | Fluxo por WO, estados, retentativa de rede, lote |
