@@ -72,7 +72,7 @@ class Agente:
         self._fila.put((comando, args))
 
     def aba_conectada(self) -> None:
-        self._msg("Aba do SAP conectada.")
+        self._msg("Aba do BTP conectada.")
         self._candidatos = []   # nova aba/página: o que foi lido antes pode não valer mais
         if not cfg.ARQUIVO_CONFIG.exists():
             self.ponte.iniciar_captura()   # aprende em silêncio enquanto o usuário usa o Monitor
@@ -206,7 +206,7 @@ class Agente:
         self._definir(fase="preparando", progresso={"atual": 0, "total": len(wos)}, contagem={},
                       ultimo_arquivo=None, aviso="", inicio=time.monotonic())
         if not self.ponte.autenticado():
-            self._definir(fase="ocioso", aviso="Conecte a aba do SAP: clique no favorito 'Agente BTP' na aba já logada.")
+            self._definir(fase="ocioso", aviso="Conecte a aba do BTP: clique no favorito 'Agente BTP' na aba já logada.")
             return
         if not self._garantir_preparo(wos):
             if self._estado["fase"] != "falhou":
@@ -235,20 +235,20 @@ class Agente:
 
         aviso = ""
         if any(r.status is Status.SESSAO_EXPIRADA for r in resultados):
-            aviso = ("A sessão do SAP caiu no meio do processamento. Faça login de novo na aba, "
+            aviso = ("A sessão do BTP caiu no meio do processamento. Faça login de novo na aba, "
                      "clique no favorito 'Agente BTP' e execute novamente.")
         elif any("HTTP 404" in r.observacao for r in resultados):
             # O SAP foi atualizado e o endereço mudou: o agente se prepara de novo sozinho.
             cfg.ARQUIVO_CONFIG.unlink(missing_ok=True)
             self.ponte.iniciar_captura()
             self.enviar("preparar")
-            aviso = "O SAP foi atualizado. O agente já está se ajustando; execute de novo em instantes."
+            aviso = "O BTP foi atualizado. O agente já está se ajustando; execute de novo em instantes."
         elif self._origem_config() == "dicionario" and resultados and all(
                 r.status in (Status.ERRO, Status.NAO_ENCONTRADA) for r in resultados):
             # A preparação automática pelo dicionário não serviu: descarta e aprende observando.
             cfg.ARQUIVO_CONFIG.unlink(missing_ok=True)
             self.ponte.iniciar_captura()
-            aviso = ("Não consegui ler os dados desta vez. Na aba do SAP, abra a janela 'Mensagens' "
+            aviso = ("Não consegui ler os dados desta vez. Na aba do BTP, abra a janela 'Mensagens' "
                      "de qualquer WO uma vez e execute de novo.")
         self._definir(fase="concluido", contagem=contagem, ultimo_arquivo=arquivo.name, aviso=aviso,
                       progresso={"atual": len(resultados), "total": len(wos)})
@@ -290,7 +290,7 @@ class Agente:
             if self._preparar_com_wos(wos):
                 return True
         except SessaoExpirada:
-            self._definir(aviso="A sessão do SAP caiu. Faça login na aba e clique no favorito 'Agente BTP'.")
+            self._definir(aviso="A sessão do BTP caiu. Faça login na aba e clique no favorito 'Agente BTP'.")
             return False
         limite = time.monotonic() + ESPERA_APRENDIZADO_SEG
         proxima_tentativa = time.monotonic() + 20
@@ -301,7 +301,7 @@ class Agente:
                 return True
             if restante <= 0:
                 break
-            self._definir(aviso=f"Na aba do SAP, abra o Monitor de alertas e clique em qualquer WO para abrir a "
+            self._definir(aviso=f"Na aba do BTP, abra o Monitor de alertas e clique em qualquer WO para abrir a "
                                 f"janela 'Mensagens'. O agente aprende com isso e continua sozinho. ({restante} s)")
             if time.monotonic() >= proxima_tentativa:   # o usuário pode ter acabado de abrir o Monitor
                 proxima_tentativa = time.monotonic() + 20

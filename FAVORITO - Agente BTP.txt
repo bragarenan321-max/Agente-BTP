@@ -1,4 +1,4 @@
-FAVORITO "Agente BTP" - conecta o Agente BTP a aba do SAP que ja esta aberta
+FAVORITO "Agente BTP" - conecta o Agente BTP a aba do BTP que ja esta aberta
 =============================================================================
 
 Crie UMA VEZ no Chrome:
@@ -9,7 +9,7 @@ Crie UMA VEZ no Chrome:
 
 Uso, sempre:
   - Abra o Agente BTP (Abrir Agente BTP.bat)
-  - Na aba do SAP ja logada, clique no favorito "Agente BTP"
+  - Na aba do BTP ja logada, clique no favorito "Agente BTP"
   - Se o Chrome perguntar sobre acesso a rede local: Permitir
   - Aparece o selo verde "Agente BTP: conectado" no canto da aba
 

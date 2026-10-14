@@ -79,7 +79,7 @@
 <header>
   <div class="topo">
     <div class="marca">Agente BTP<small>Monitor de alertas → Excel</small></div>
-    <div class="pilula"><span class="ponto" id="pt"></span><span id="conexao">Aguardando o SAP</span></div>
+    <div class="pilula"><span class="ponto" id="pt"></span><span id="conexao">Aguardando o BTP</span></div>
   </div>
   <nav>
     <button class="ativa" id="abaAnalise">Nova análise</button>
@@ -88,10 +88,10 @@
 </header>
 
 <main id="vistaAnalise">
-  <!-- Só aparece enquanto a aba do SAP não estiver conectada -->
+  <!-- Só aparece enquanto a aba do BTP não estiver conectada -->
   <section class="cartao alerta" id="cartaoConexao">
-    <h2>Conecte a aba do SAP</h2>
-    <p class="suave" style="margin-bottom:6px">Na aba do SAP já aberta e logada, clique no favorito <b>Agente BTP</b>.</p>
+    <h2>Conecte a aba do BTP</h2>
+    <p class="suave" style="margin-bottom:6px">Na aba do BTP já aberta e logada, clique no favorito <b>Agente BTP</b>.</p>
     <button class="link" id="bComo">Ainda não tenho o favorito</button>
     <div id="como" class="oculto">
       <ol>
@@ -114,7 +114,7 @@
   <section class="cartao">
     <h2>WOs para consultar</h2>
     <p class="suave">Cole uma WO por linha (ex.: 02235|230771207) ou envie a planilha.</p>
-    <textarea id="texto" placeholder="02235|230771207&#10;88412|126579742"></textarea>
+    <textarea id="texto" placeholder="Cole aqui as WOs, uma por linha"></textarea>
     <div class="linha" style="margin-top:10px">
       <span class="arquivo"><label for="arquivo">Enviar planilha (.xlsx)</label>
         <span id="nomeArquivo"></span></span>
@@ -200,7 +200,7 @@ async function copiar(texto, msg) {
 }
 $("bComo").onclick = () => $("como").classList.toggle("oculto");
 $("bCopiarUrl").onclick = () => copiar(favorito, "Favorito copiado. Crie com Ctrl+Shift+O e cole no campo URL.");
-$("bCopiarConsole").onclick = () => copiar(consoleCodigo, "Copiado. Na aba do SAP: F12 → Console → cole → Enter.");
+$("bCopiarConsole").onclick = () => copiar(consoleCodigo, "Copiado. Na aba do BTP: F12 → Console → cole → Enter.");
 
 function contar() {
   const n = $("texto").value.split(/\r?\n/).filter(l => PADRAO_WO.test(l)).length;
@@ -234,7 +234,7 @@ async function atualizar() {
   catch (_) { $("conexao").textContent = "Agente fechado"; $("pt").className = "ponto"; return; }
 
   conectado = e.conexao === "conectado"; ocupado = e.ocupado;
-  $("conexao").textContent = conectado ? "Conectado ao SAP" : e.conexao === "sem_login" ? "SAP sem login" : "Aguardando o SAP";
+  $("conexao").textContent = conectado ? "Conectado ao BTP" : e.conexao === "sem_login" ? "BTP sem login" : "Aguardando o BTP";
   $("pt").className = "ponto" + (conectado ? " ok" : e.conexao === "sem_login" ? " esp" : "");
   $("cartaoConexao").classList.toggle("oculto", conectado);
 
@@ -242,7 +242,7 @@ async function atualizar() {
   $("aviso").classList.toggle("oculto", !e.aviso);
 
   $("bExecutar").disabled = ocupado || !conectado;
-  $("bExecutar").title = conectado ? "" : "Conecte a aba do SAP primeiro";
+  $("bExecutar").title = conectado ? "" : "Conecte a aba do BTP primeiro";
   $("bParar").classList.toggle("oculto", !(ocupado && e.fase !== "ocioso"));
 
   const ativo = e.fase !== "ocioso";

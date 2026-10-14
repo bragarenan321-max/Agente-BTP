@@ -1,5 +1,5 @@
 # Agente-BTP
-Automação **somente leitura** do *Monitor de alertas* (SAP BTP / Fiori): recebe WOs,
+Automação **somente leitura** do *Monitor de alertas* (BTP): recebe WOs,
 coleta os dados da janela "Mensagens" e gera um Excel com aba de Log.
 
 ## Como usar (Windows)
@@ -7,11 +7,11 @@ coleta os dados da janela "Mensagens" e gera um Excel com aba de Log.
 1. Dê duplo clique em **`Abrir Agente BTP.bat`**. Abre a tela do agente (deixe a janela preta aberta).
 2. **Uma vez só:** crie o favorito **Agente BTP** (botão *"Ainda não tenho o favorito"* na tela,
    ou o arquivo `FAVORITO - Agente BTP.txt`).
-3. Na aba do SAP **já aberta e logada**, clique no favorito. O topo da tela mostra **Conectado ao SAP**.
+3. Na aba do BTP **já aberta e logada**, clique no favorito. O topo da tela mostra **Conectado ao BTP**.
 4. Cole as WOs (ou envie a planilha) → **Executar** → acompanhe a barra → **Baixar planilha**.
 
 Não há etapa técnica: na primeira execução o agente se prepara sozinho, pelo dicionário de
-dados do SAP (`$metadata`) ou observando as consultas da tela do Monitor. Se o SAP for
+dados do BTP (`$metadata`) ou observando as consultas da tela do Monitor. Se o BTP for
 atualizado, ele se ajusta sozinho de novo.
 
 Pré-requisito: Python 3.10+ instalado.
@@ -20,7 +20,7 @@ Pré-requisito: Python 3.10+ instalado.
 
 | Módulo | Função |
 |---|---|
-| `autoconfig.py` | Preparação automática pelo dicionário de dados do SAP (`$metadata`) |
+| `autoconfig.py` | Preparação automática pelo dicionário de dados do BTP (`$metadata`) |
 | `analisador.py` | Preparação automática observando as consultas reais da tela |
 | `ponte.py` + `web/agente_btp.js` | Conexão com a **aba já aberta** (favorito), no modelo do Agente Atlas |
 | `cliente.py` | Cliente OData **somente GET** + classificação de erros |

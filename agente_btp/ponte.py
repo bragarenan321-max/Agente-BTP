@@ -146,7 +146,7 @@ class PonteAba:
 
     def _executar(self, tarefa: dict) -> dict:
         if not self.conectada:
-            raise SessaoExpirada("A aba do SAP não está conectada. Clique no favorito 'Agente BTP' na aba.")
+            raise SessaoExpirada("A aba do BTP não está conectada. Clique no favorito 'Agente BTP' na aba.")
         tarefa = dict(tarefa, id=uuid.uuid4().hex)
         pendente = {"evento": threading.Event(), "resposta": None}
         with self._cond:
@@ -158,10 +158,10 @@ class PonteAba:
             # Espera em fatias curtas: se a aba sumir, percebe logo (não espera os 90 s).
             while not pendente["evento"].wait(0.5):
                 if not self.conectada:
-                    raise SessaoExpirada("A aba do SAP foi fechada ou recarregada. "
-                                         "Clique no favorito 'Agente BTP' na aba do SAP.")
+                    raise SessaoExpirada("A aba do BTP foi fechada ou recarregada. "
+                                         "Clique no favorito 'Agente BTP' na aba do BTP.")
                 if time.monotonic() > limite:
-                    raise FalhaComunicacao("A aba do SAP não respondeu a tempo.")
+                    raise FalhaComunicacao("A aba do BTP não respondeu a tempo.")
         finally:
             with self._cond:
                 self._pendentes.pop(tarefa["id"], None)
