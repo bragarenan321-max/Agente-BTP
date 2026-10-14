@@ -6,9 +6,10 @@ PATCH, DELETE ou $batch — assim o agente não consegue acionar "Reprocessar" n
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Callable
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 from . import odata
 from .config import ApiConfig
@@ -68,6 +69,13 @@ class ClienteBTP:
         return self._get(odata.preencher_modelo(self.config.url_lista, wo=wo))
 
     def buscar_mensagens(self, alerta: dict) -> list[dict]:
+        if self.config.campo_mensagens_link:
+            uri = link_navegacao(alerta, self.config.campo_mensagens_link)
+            if not uri:
+                return []
+            return self._get(relativizar(uri, self.config.url_lista))
+        if self.config.campo_mensagens_json:
+            return registros_json(odata.obter_campo(alerta, self.config.campo_mensagens_json))
         if self.config.campo_mensagens_expandidas == ".":
             return [alerta]  # a própria linha já é a mensagem
         if self.config.campo_mensagens_expandidas:
@@ -79,15 +87,64 @@ class ClienteBTP:
 
     def converter(self, wo: str, alerta: dict, mensagem: dict) -> LinhaMensagem:
         campos = self.config.campos
+
+        def campo(nome):
+            return odata.obter_campo(mensagem, campos[nome]) if campos.get(nome) else None
+
         consolidado = odata.obter_campo(mensagem, campos["consolidado"]) if "consolidado" in campos else None
         if consolidado in (None, ""):
             consolidado = odata.obter_campo(alerta, self.config.campo_consolidado_lista)
         return LinhaMensagem(
             consolidado=odata.como_texto(consolidado),
             wo=odata.como_texto(odata.obter_campo(mensagem, campos["wo"])) if campos.get("wo") else wo,
-            material=odata.como_texto(odata.obter_campo(mensagem, campos["material"])),
-            fornecedor=odata.como_texto(odata.obter_campo(mensagem, campos["fornecedor"])),
-            quantidade_faltante=odata.como_quantidade(
-                odata.obter_campo(mensagem, campos["quantidade_faltante"])),
-            mensagem=odata.como_texto(odata.obter_campo(mensagem, campos["mensagem"])),
+            material=odata.como_texto(campo("material")),
+            fornecedor=odata.como_texto(campo("fornecedor")),
+            quantidade_faltante=odata.como_quantidade(campo("quantidade_faltante")),
+            mensagem=odata.como_texto(campo("mensagem")),
         )
+
+
+def link_navegacao(registro: dict, campo: str) -> str | None:
+    """URI da navegação que o próprio OData informa na linha (V2: {"__deferred": {"uri": ...}})."""
+    valor = registro.get(campo)
+    if isinstance(valor, dict):
+        valor = (valor.get("__deferred") or {}).get("uri")
+    if not valor:
+        valor = registro.get(campo + "@odata.navigationLink")   # V4
+    return valor if isinstance(valor, str) and valor else None
+
+
+def relativizar(uri: str, url_lista: str) -> str:
+    """Converte a URI informada pelo servidor em caminho da própria aba.
+
+    Atrás do approuter, o Gateway pode informar o endereço interno do servidor; por isso
+    a parte a partir do conjunto de dados é recolocada sobre o caminho do serviço já usado.
+    """
+    caminho_lista = url_lista.split("?", 1)[0]
+    raiz, _, conjunto = caminho_lista.rpartition("/")
+    partes = urlsplit(uri)
+    caminho = partes.path if (partes.scheme or uri.startswith("/")) else raiz + "/" + uri
+    if partes.query:
+        caminho += "?" + partes.query
+    if conjunto:
+        i = caminho.rfind("/" + conjunto + "(")
+        if i >= 0:
+            return raiz + caminho[i:]
+    return caminho
+
+
+def registros_json(valor) -> list[dict]:
+    """Mensagens guardadas como texto JSON num campo da linha (lista, {results:[]} ou {value:[]})."""
+    if isinstance(valor, str):
+        texto = valor.strip()
+        if not texto.startswith(("[", "{")):
+            return []
+        try:
+            valor = json.loads(texto)
+        except json.JSONDecodeError:
+            return []
+    if isinstance(valor, dict):
+        valor = valor.get("results", valor.get("value", valor.get("d", [valor])))
+        if isinstance(valor, dict):
+            valor = valor.get("results", [valor])
+    return [v for v in valor if isinstance(v, dict)] if isinstance(valor, list) else []

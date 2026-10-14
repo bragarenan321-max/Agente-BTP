@@ -1,6 +1,6 @@
 # Agente-BTP
 Automação **somente leitura** do *Monitor de alertas* (BTP): recebe WOs,
-coleta os dados da janela "Mensagens" e gera um Excel com aba de Log.
+coleta os itens da janela "Mensagens" de cada WO e gera o relatório Excel `Análise N - X WOs.xlsx`.
 
 ## Como usar (Windows)
 
@@ -10,11 +10,23 @@ coleta os dados da janela "Mensagens" e gera um Excel com aba de Log.
 3. Abra o BTP normalmente. A extensão conecta sozinha (selo **Agente BTP: conectado** no canto da aba)
    — mesmo se o programa for aberto depois. Sem extensão (bloqueio da empresa): use o favorito
    (`FAVORITO - Agente BTP.txt`).
-4. Cole as WOs (ou envie a planilha) → **Executar** → acompanhe a barra → **Baixar planilha**.
+4. Cole as WOs (ou importe a planilha) → **Executar análise** → acompanhe a barra → **Baixar relatório**.
 
 Não há etapa técnica: na primeira execução o agente se prepara sozinho, pelo dicionário de
-dados do BTP (`$metadata`) ou observando as consultas da tela do Monitor. Se o BTP for
-atualizado, ele se ajusta sozinho de novo.
+dados do BTP (`$metadata`), pelos próprios dados da linha do alerta ou observando as consultas
+da tela do Monitor. Um caminho só é aceito se trouxer de fato os itens da janela "Mensagens"
+(material, fornecedor, quantidade faltante, mensagem) da própria WO. Se, mesmo assim, quase
+todas as WOs voltarem sem itens, a configuração é refeita e, se necessário, o agente pede
+(uma única vez) que a janela "Mensagens" de uma WO seja aberta na aba do BTP.
+
+### Relatório (Excel)
+`Análise N - X WOs.xlsx` (N = número sequencial da análise; X = WOs consultadas):
+
+| Aba | Conteúdo |
+|---|---|
+| Itens faltantes | WO, Nº do Material, Fornecedor, Quantidade faltante, Mensagem, Consolidado |
+| Resumo | Indicadores (WOs consultadas, com itens, itens, quantidade total) e distribuição por situação |
+| Situação por WO | Situação da consulta de cada WO e detalhe |
 
 Pré-requisito: Python 3.10+ instalado.
 
@@ -24,11 +36,12 @@ Pré-requisito: Python 3.10+ instalado.
 |---|---|
 | `autoconfig.py` | Preparação automática pelo dicionário de dados do BTP (`$metadata`) |
 | `analisador.py` | Preparação automática observando as consultas reais da tela |
+| `sondagem.py` | Preparação pelos dados da linha do alerta (link de navegação, itens embutidos, JSON) |
 | `extensao/` | Extensão do Chrome: conecta a aba do BTP sozinha (endereço do programa fixo, não alterável por páginas) |
 | `ponte.py` + `web/agente_btp.js` | Conexão com a **aba já aberta** (favorito), no modelo do Agente Atlas |
 | `cliente.py` | Cliente OData **somente GET** + classificação de erros |
 | `processador.py` | Fluxo por WO, estados, retentativa de rede, lote |
-| `exportacao.py` | Excel (Resultado + Log), identificadores como texto |
+| `exportacao.py` | Relatório Excel (Itens faltantes, Resumo, Situação por WO), identificadores como texto |
 | `servidor.py` / `web/` | Interface web local |
 
 Mapeamento funcional do processo: [`docs/mapeamento-processo.md`](docs/mapeamento-processo.md).

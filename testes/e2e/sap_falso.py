@@ -20,6 +20,7 @@ const COMPONENTE = {
   getManifestEntry(k){ return k === 'sap.app' ? {id:'monitor.alertas', title:'Monitor de alertas'}
                             : k === 'sap.ui5' ? {models:{'':{dataSource:'mainService'}}} : null; },
   getModel(){ return PARAM.get('semfontes') ? null
+                   : PARAM.get('srv') ? {sServiceUrl:'/'+PARAM.get('srv'), getMetadata(){ return {getName(){ return 'sap.ui.model.odata.v2.ODataModel'; }}; }}
                    : CAP ? {sServiceUrl:'../../odata/v4/monitor/', getMetadata(){ return {getName(){ return 'sap.ui.model.odata.v4.ODataModel'; }}; }}
                    : {sServiceUrl:'/srv', getMetadata(){ return {getName(){ return 'sap.ui.model.odata.v2.ODataModel'; }}; }}; },
 };
@@ -38,7 +39,12 @@ async function usuario(){  // simula: filtrar a WO e abrir 'Mensagens'
   await batch(["AlertaSet?$skip=0&$top=20&$filter=Wo%20eq%20'88412%7C126579742'&$inlinecount=allpages"]);
   await batchXHR(["MensagemSet?$filter=ConsolidadoNum%20eq%20'105012-20260916-mEeF%2BOw%2FDh'"]);
 }
-if (PARAM.get('simular')) setInterval(usuario, 2000);  // usuário usando o Monitor
+async function usuarioSrv4(){  // Monitor cuja janela 'Mensagens' usa consulta fora do dicionário
+  await fetch("/srv4/AlertaSet?$filter=Wo%20eq%20'88412%7C126579742'", {headers:{Accept:'application/json'}});
+  await fetch("/srv4/DetalheItens?$filter=Chave%20eq%20'KEY-0001'", {headers:{Accept:'application/json'}});
+}
+if (PARAM.get('simular') === 'srv4') setTimeout(() => setInterval(usuarioSrv4, 2000), 8000);
+else if (PARAM.get('simular')) setInterval(usuario, 2000);  // usuário usando o Monitor
 </script></body></html>"""
 
 ESTADO = {"expirada": False, "sem_metadata": False}
@@ -113,6 +119,47 @@ def consulta_v4(caminho):
     return 404, "{}"
 
 
+# ---- Variantes do caso REAL: a lista acha a WO, mas filtrar MensagemSet pelo Consolidado
+# volta vazio (499 WOs "Sem registros"). As mensagens vêm por outro caminho:
+#   /srv3/: link de navegação informado pelo servidor em cada linha (chave interna opaca);
+#   /srv4/: consulta que não está no dicionário — só observando o clique em 'Mensagens'.
+CHAVES = {"88412|126579742": "KEY-0001", "02235|230771207": "KEY-0002"}
+METADATA_SRV3 = METADATA.replace(
+    '<Property Name="Mensagem" Type="Edm.String"/></EntityType>\n  <EntityType Name="Mensagem">',
+    '<Property Name="Mensagem" Type="Edm.String"/>'
+    '<NavigationProperty Name="ToMensagens" Relationship="ZMONITOR_SRV.A_M" FromRole="A" ToRole="M"/>'
+    '</EntityType>\n  <EntityType Name="Mensagem">').replace(
+    '<EntityContainer', '<Association Name="A_M"><End Type="ZMONITOR_SRV.Alerta" Role="A" Multiplicity="1"/>'
+    '<End Type="ZMONITOR_SRV.Mensagem" Role="M" Multiplicity="*"/></Association><EntityContainer')
+assert "ToMensagens" in METADATA_SRV3 and "A_M" in METADATA_SRV3
+
+
+def consulta_real(prefixo, url):
+    caminho, _, q = url.partition("?")
+    m = re.search(r"'((?:[^']|'')*)'", unquote(q))
+    valor = m.group(1).replace("''", "'") if m else ""
+    if caminho == "AlertaSet":
+        linhas = []
+        for a in ALERTAS.get(valor, []):
+            linha = dict(a, Chave=CHAVES[a["Wo"]])
+            if prefixo == "srv3":
+                linha["ToMensagens"] = {"__deferred": {"uri": "https://backend-interno:44300/sap/opu/odata/sap/"
+                                                              f"ZMONITOR_SRV/AlertaSet('{CHAVES[a['Wo']]}')/ToMensagens"}}
+            linhas.append(linha)
+        return {"d": {"results": linhas}}
+    if caminho == "MensagemSet":
+        return {"d": {"results": []}}       # o filtro "óbvio" não traz nada
+    chave_para_consol = {CHAVES[w]: al[0]["ConsolidadoNum"] for w, al in ALERTAS.items()}
+    m = re.match(r"AlertaSet\('([^']+)'\)/ToMensagens$", unquote(caminho))
+    if prefixo == "srv3" and m:
+        return {"d": {"results": MSGS.get(chave_para_consol.get(m.group(1), ""), [])}}
+    if prefixo == "srv3" and caminho.startswith("AlertaSet("):
+        return {"d": {"results": []}}       # chave montada pelo dicionário: não é a interna
+    if prefixo == "srv4" and caminho == "DetalheItens":
+        return {"d": {"results": MSGS.get(chave_para_consol.get(valor, ""), [])}}
+    return None
+
+
 def consulta(url):
     caminho, _, q = url.partition("?")
     m = re.search(r"'((?:[^']|'')*)'", unquote(q))
@@ -143,6 +190,13 @@ class H(BaseHTTPRequestHandler):
             cod, corpo = consulta_v4(self.path[len("/cap/odata/v4/monitor/"):])
             tipo = "application/xml" if corpo.startswith("<?xml") else "application/json"
             return self._envia(cod, tipo, corpo)
+        for prefixo in ("srv3", "srv4"):
+            if self.path.startswith(f"/{prefixo}/"):
+                rel = self.path[len(prefixo) + 2:]
+                if rel.startswith("$metadata"):
+                    return self._envia(200, "application/xml", METADATA_SRV3 if prefixo == "srv3" else METADATA)
+                r = consulta_real(prefixo, rel)
+                return self._envia(200, "application/json", json.dumps(r)) if r else self._envia(404, "text/plain", "")
         if self.path.startswith("/srv/$metadata"):
             if ESTADO["sem_metadata"]:
                 return self._envia(403, "application/json", '{"error":{"message":"sem acesso"}}')

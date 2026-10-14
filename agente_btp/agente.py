@@ -8,6 +8,7 @@ Uma thread dedicada executa os comandos; o servidor web só lê o estado.
 """
 from __future__ import annotations
 
+import json
 import logging
 import queue
 import threading
@@ -18,19 +19,22 @@ from pathlib import Path
 from . import config as cfg
 from . import historico
 from .analisador import AnaliseFalhou, analisar
-from .autoconfig import MetadataSemCorrespondencia, candidatos_pela_aba
+from .autoconfig import candidatos_pela_aba
 from .cliente import ClienteBTP
-from .exportacao import gerar_planilha, nome_padrao
+from .exportacao import gerar_planilha, nome_analise
 from .entrada import wo_valida
 from .modelos import ErroConsulta, FalhaComunicacao, SessaoExpirada, Status
 from .ponte import PonteAba
 from .processador import processar_lote
+from .sondagem import sondar
 
 log = logging.getLogger("agente_btp")
 
 RAIZ = cfg.RAIZ
 PASTA_SAIDAS = RAIZ / "saidas"
-ESPERA_APRENDIZADO_SEG = 180
+ESPERA_APRENDIZADO_SEG = 300
+LIMITE_CANDIDATOS = 80
+LIMIAR_SEM_REGISTROS = 0.9   # acima disso, a ligação com as mensagens é considerada errada
 
 
 class Agente:
@@ -41,6 +45,9 @@ class Agente:
         self._parar = threading.Event()
         self._diag: dict = {}
         self._candidatos: list = []
+        self._testados: set[str] = set()
+        self._achados: dict = {}
+        self._sondadas: set[str] = set()
         self.ponte = PonteAba()
         self.ponte.observador = self._ao_observar
         self._estado = {
@@ -50,9 +57,12 @@ class Agente:
             "contagem": {},
             "inicio": None,
             "ultimo_arquivo": None,
+            "ultimo_numero": None,
             "aviso": "",
             "mensagens": [],
         }
+        if cfg.descartar_se_antiga():
+            self._msg("Configuração de versão anterior descartada; será refeita na próxima análise.")
         threading.Thread(target=self._laco, name="agente-btp", daemon=True).start()
 
     # ------------------------------------------------ API pública (servidor web)
@@ -77,6 +87,8 @@ class Agente:
             self._msg("Aba do BTP conectada.")
             self._ultimo_aviso_conexao = agora
         self._candidatos = []   # nova aba/página: o que foi lido antes pode não valer mais
+        self._testados.clear()
+        self._sondadas.clear()
         if not cfg.ARQUIVO_CONFIG.exists():
             self.ponte.iniciar_captura()   # aprende em silêncio enquanto o usuário usa o Monitor
             self.enviar("preparar")
@@ -116,46 +128,111 @@ class Agente:
         self._diag["dicionario"] = diag
         return self._candidatos
 
-    def _validar(self, dados: dict, amostra: list[str]) -> int:
-        """2 = trouxe dados reais; 1 = sem erro mas sem dados; 0 = não serve."""
+    def _validar(self, dados: dict, amostra: list[str], get, achados: dict) -> int:
+        """2 = trouxe as mensagens da WO; 1 = nenhuma WO da amostra está na lista; 0 = não serve.
+
+        Achar a WO na lista NÃO basta: se a lista traz o alerta e as mensagens vêm vazias,
+        a ligação com a janela "Mensagens" está errada e o caminho é recusado.
+        """
         try:
-            cliente = ClienteBTP(cfg.a_partir_de_dict(dados), self.ponte.get)
+            cliente = ClienteBTP(cfg.a_partir_de_dict(dados), get)
         except ValueError:
             return 0
+        com_alerta = 0
         for wo in amostra:
             try:
                 alertas = cliente.buscar_alertas(wo)
-                if alertas:
-                    mensagens = cliente.buscar_mensagens(alertas[0])
-                    if not mensagens:
-                        continue
+                if not alertas:
+                    continue
+                com_alerta += 1
+                achados.setdefault(dados["url_lista"], (wo, alertas[0], dados))
+                mensagens = cliente.buscar_mensagens(alertas[0])
+                if mensagens:
                     linha = cliente.converter(wo, alertas[0], mensagens[0])
+                    outras_wos = {str(v).strip() for v in mensagens[0].values()
+                                  if isinstance(v, str) and wo_valida(v.strip())} - {wo}
+                    if linha.wo != wo or outras_wos:   # mensagens de outra WO: ligação errada
+                        return 0
                     return 2 if (linha.material or linha.mensagem) else 0
             except ErroConsulta:
                 return 0
             except FalhaComunicacao:
                 continue
-        return 1
+            if com_alerta >= 2:                 # 2 WOs com alerta e nenhuma mensagem: caminho errado
+                return 0
+        return 0 if com_alerta else 1
+
+    @staticmethod
+    def _transporte_com_cache(get):
+        """Durante a preparação, a mesma consulta (ex.: a lista de uma WO) é feita uma vez só."""
+        memoria: dict = {}
+
+        def ler(url, accept=None):
+            chave = (url, accept)
+            if chave not in memoria:
+                resposta = get(url, accept) if accept else get(url)
+                if resposta.status != 200:
+                    return resposta
+                memoria[chave] = resposta
+            return memoria[chave]
+        return ler
 
     def _preparar_com_wos(self, wos: list[str]) -> bool:
-        """Testa as candidatas com as WOs do usuário e grava a que trouxer dados de verdade."""
+        """Testa os caminhos possíveis com as WOs do usuário; grava só o que trouxer as mensagens."""
         candidatos = self._candidatos or self._buscar_candidatos()
-        if not candidatos:
-            return False
         amostra = [w for w in wos if wo_valida(w)][:5]
-        testes, fraca = [], None
-        for dados, relatorio in candidatos[:20]:
-            nota = self._validar(dados, amostra)
-            testes.append({"lista": dados["url_lista"], "mensagens": dados.get("url_mensagens"), "nota": nota})
+        get = self._transporte_com_cache(self.ponte.get)
+        testes = self._diag.setdefault("dicionario", {}).setdefault("testes", [])
+        fraca = None
+        for dados, relatorio in candidatos[:LIMITE_CANDIDATOS]:
+            chave = json.dumps(dados, sort_keys=True)
+            if chave in self._testados:
+                continue
+            if self._parar.is_set() or cfg.ARQUIVO_CONFIG.exists():
+                return cfg.ARQUIVO_CONFIG.exists()
+            self._testados.add(chave)
+            nota = self._validar(dados, amostra, get, self._achados)
+            testes.append({"lista": dados["url_lista"], "nota": nota,
+                           "mensagens": dados.get("url_mensagens") or dados.get("campo_mensagens_link")
+                           or dados.get("campo_mensagens_expandidas")})
             if nota == 2:
-                self._diag.setdefault("dicionario", {})["testes"] = testes
                 self._gravar_config(dados, "dicionario", relatorio)
                 return True
             if nota == 1 and fraca is None:
                 fraca = (dados, relatorio)
-        self._diag.setdefault("dicionario", {})["testes"] = testes
-        if fraca:
-            # Nenhuma das WOs de teste tem pendência; fica com a melhor sem erro.
+        # Nenhum caminho do dicionário trouxe as mensagens: procura nos dados da própria linha.
+        for base in self._diag.get("dicionario", {}).get("listas", [])[:10]:
+            if base["url_lista"] in self._achados or self._parar.is_set():
+                continue
+            cliente = ClienteBTP(cfg.ApiConfig(base["url_lista"], base["campo_consolidado_lista"], None, ".", {}), get)
+            for wo in amostra[:3]:
+                try:
+                    alertas = cliente.buscar_alertas(wo)
+                except (ErroConsulta, FalhaComunicacao):
+                    break
+                if alertas:
+                    self._achados[base["url_lista"]] = (wo, alertas[0], dict(base, campos={}))
+                    break
+        for url_lista, (wo, alerta, base) in list(self._achados.items()):
+            if url_lista in self._sondadas:
+                continue
+            self._sondadas.add(url_lista)
+
+            def ler(url):
+                return ClienteBTP(cfg.ApiConfig(url_lista, "", None, ".", {}), get)._get(url)
+
+            for parcial, relatorio in sondar(alerta, wo, url_lista, ler):
+                dados = dict(base, url_mensagens=None, campo_mensagens_expandidas=None,
+                              campo_mensagens_link=None, campo_mensagens_json=None)
+                dados.update(parcial)
+                nota = self._validar(dados, amostra, get, {})
+                testes.append({"lista": url_lista, "sondagem": relatorio[0], "nota": nota})
+                if nota == 2:
+                    self._gravar_config(dados, "sondagem", relatorio)
+                    return True
+        if fraca and not self._achados:
+            # Nenhuma WO da amostra está no Monitor: não há como conferir as mensagens agora.
+            # Fica com a melhor sem erro; a conferência pós-lote a descarta se não servir.
             self._gravar_config(fraca[0], "dicionario", fraca[1])
             return True
         return False
@@ -165,7 +242,7 @@ class Agente:
         if not self._trava_config.acquire(blocking=False):
             return
         try:
-            if cfg.ARQUIVO_CONFIG.exists() and self._origem_config() == "observacao":
+            if cfg.ARQUIVO_CONFIG.exists():
                 self.ponte.parar_captura()
                 return
             try:
@@ -207,7 +284,7 @@ class Agente:
         inicio_relogio = datetime.now()
         self._parar.clear()
         self._definir(fase="preparando", progresso={"atual": 0, "total": len(wos)}, contagem={},
-                      ultimo_arquivo=None, aviso="", inicio=time.monotonic())
+                      ultimo_arquivo=None, ultimo_numero=None, aviso="", inicio=time.monotonic())
         if not self.ponte.autenticado():
             self._definir(fase="ocioso", aviso="Conecte a aba do BTP: clique no favorito 'Agente BTP' na aba já logada.")
             return
@@ -234,7 +311,11 @@ class Agente:
         contagem: dict[str, int] = {}
         for r in resultados:
             contagem[r.status.value] = contagem.get(r.status.value, 0) + 1
-        arquivo = gerar_planilha(resultados, nome_padrao(PASTA_SAIDAS))
+        numero = historico.proximo_numero()
+        arquivo = gerar_planilha(resultados, nome_analise(PASTA_SAIDAS, numero, len(wos)),
+                                 numero=numero, emitida_em=inicio_relogio, origem=descricao)
+        validos = [r for r in resultados if r.status not in (Status.WO_INVALIDA, Status.SESSAO_EXPIRADA)]
+        sem_registros = sum(r.status is Status.SEM_REGISTROS for r in validos)
 
         aviso = ""
         if any(r.status is Status.SESSAO_EXPIRADA for r in resultados):
@@ -246,6 +327,15 @@ class Agente:
             self.ponte.iniciar_captura()
             self.enviar("preparar")
             aviso = "O BTP foi atualizado. O agente já está se ajustando; execute de novo em instantes."
+        elif len(validos) >= 3 and sem_registros >= LIMIAR_SEM_REGISTROS * len(validos):
+            # A lista encontrou as WOs, mas quase nenhuma trouxe mensagens: a ligação com a
+            # janela "Mensagens" não é a certa. Descarta e aprende na próxima execução.
+            cfg.ARQUIVO_CONFIG.unlink(missing_ok=True)
+            self._candidatos = []
+            self.ponte.iniciar_captura()
+            aviso = (f"{sem_registros} de {len(validos)} WOs vieram sem os itens da janela 'Mensagens'. "
+                     "A configuração foi refeita: execute novamente; se for solicitado, abra a janela "
+                     "'Mensagens' de uma WO na aba do BTP.")
         elif self._origem_config() == "dicionario" and resultados and all(
                 r.status in (Status.ERRO, Status.NAO_ENCONTRADA) for r in resultados):
             # A preparação automática pelo dicionário não serviu: descarta e aprende observando.
@@ -254,13 +344,14 @@ class Agente:
             aviso = ("Não consegui ler os dados desta vez. Na aba do BTP, abra a janela 'Mensagens' "
                      "de qualquer WO uma vez e execute de novo.")
         self._definir(fase="concluido", contagem=contagem, ultimo_arquivo=arquivo.name, aviso=aviso,
+                      ultimo_numero=numero,
                       progresso={"atual": len(resultados), "total": len(wos)})
         situacao = ("Sessão expirada" if any(r.status is Status.SESSAO_EXPIRADA for r in resultados) else
                     "Interrompida" if self._parar.is_set() else "Concluída")
-        self._registrar_historico(inicio_relogio, descricao, wos, resultados, arquivo.name, situacao)
+        self._registrar_historico(inicio_relogio, descricao, wos, resultados, arquivo.name, situacao, numero)
         self._msg(f"Concluído. Planilha: {arquivo.name}")
 
-    def _registrar_historico(self, inicio, descricao, wos, resultados, arquivo, situacao) -> None:
+    def _registrar_historico(self, inicio, descricao, wos, resultados, arquivo, situacao, numero=None) -> None:
         fim = datetime.now()
         contagem: dict[str, int] = {}
         for r in resultados:
@@ -268,6 +359,7 @@ class Agente:
         try:
             historico.registrar({
                 "id": inicio.strftime("%Y%m%d%H%M%S%f"),
+                "numero": numero,
                 "inicio": inicio.isoformat(timespec="seconds"),
                 "fim": fim.isoformat(timespec="seconds"),
                 "duracao_seg": round((fim - inicio).total_seconds()),
@@ -288,6 +380,7 @@ class Agente:
         if cfg.ARQUIVO_CONFIG.exists():
             return True
         self._msg("Preparando a conexão com o Monitor de alertas (só na primeira vez)…")
+        self._testados, self._achados, self._sondadas = set(), {}, set()
         self.ponte.iniciar_captura()
         try:
             if self._preparar_com_wos(wos):
@@ -304,8 +397,9 @@ class Agente:
                 return True
             if restante <= 0:
                 break
-            self._definir(aviso=f"Na aba do BTP, abra o Monitor de alertas e clique em qualquer WO para abrir a "
-                                f"janela 'Mensagens'. O agente aprende com isso e continua sozinho. ({restante} s)")
+            self._definir(aviso=f"Ação necessária (uma única vez): na aba do BTP, filtre uma WO no Monitor de "
+                                f"alertas e abra a janela 'Mensagens'. A análise prossegue automaticamente. "
+                                f"({restante} s)")
             if time.monotonic() >= proxima_tentativa:   # o usuário pode ter acabado de abrir o Monitor
                 proxima_tentativa = time.monotonic() + 20
                 self._candidatos = []
@@ -316,7 +410,7 @@ class Agente:
                 except SessaoExpirada:
                     break
             time.sleep(1)
-        self._definir(aviso="Não consegui preparar a conexão com o Monitor. Clique em 'Baixar diagnóstico' "
+        self._definir(aviso="Não foi possível identificar a origem das mensagens. Baixe o diagnóstico "
                             "(abaixo) e envie o arquivo para ajuste.")
         self._definir(fase="falhou")
         return False

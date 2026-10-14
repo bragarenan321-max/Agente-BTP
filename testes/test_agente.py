@@ -155,16 +155,28 @@ def test_erro_odata():
 def test_planilha_preserva_zeros_e_tipos(tmp_path):
     t = TransporteFalso({"AlertasSet": json_v2([ALERTA]), "MensagensSet": json_v2([MENSAGEM])})
     rs = processar_lote(ClienteBTP(CONFIG, t), ["88412|126579742"])
-    destino = gerar_planilha(rs, tmp_path / "out.xlsx")
+    destino = gerar_planilha(rs, tmp_path / "out.xlsx", numero=7)
     wb = load_workbook(destino)
-    ws = wb["Resultado"]
-    assert [c.value for c in ws[1]] == COLUNAS_RESULTADO
-    valores = [c.value for c in ws[2]]
-    assert valores == ["105012-20260916-abc", "88412|126579742", "000000000022026169",
-                       "0000137628", 2, "Estoque indisponível"]
-    assert ws["C2"].data_type == "s" and ws["D2"].data_type == "s"
-    log = wb["Log"]
-    assert [c.value for c in log[2]][2:4] == ["Processada", 1]
+    assert wb.sheetnames == ["Itens faltantes", "Resumo", "Situação por WO"]
+    ws = wb["Itens faltantes"]
+    assert ws["A1"].value == "Itens Faltantes por WO" and "Análise nº 7" in ws["A2"].value
+    assert [c.value for c in ws[4]] == COLUNAS_RESULTADO
+    valores = [c.value for c in ws[5]]
+    assert valores == ["88412|126579742", "000000000022026169", "0000137628", 2,
+                       "Estoque indisponível", "105012-20260916-abc"]
+    assert ws["B5"].data_type == "s" and ws["C5"].data_type == "s"
+    sit = wb["Situação por WO"]
+    assert [c.value for c in sit[5]][1:3] == ["Com itens faltantes", 1]
+    resumo = {r[0]: r[1] for r in wb["Resumo"].iter_rows(min_row=5, values_only=True) if r[0]}
+    assert resumo["Nº da análise"] == 7 and resumo["Itens faltantes (linhas)"] == 1
+
+
+def test_nome_da_planilha(tmp_path):
+    from agente_btp.exportacao import nome_analise
+    assert nome_analise(tmp_path, 12, 499).name == "Análise 12 - 499 WOs.xlsx"
+    assert nome_analise(tmp_path, 3, 1).name == "Análise 3 - 1 WO.xlsx"
+    (tmp_path / "Análise 3 - 1 WO.xlsx").write_bytes(b"")
+    assert nome_analise(tmp_path, 3, 1).name == "Análise 3 - 1 WO (2).xlsx"
 
 
 def test_config_exige_campos():

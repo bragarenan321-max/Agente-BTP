@@ -70,7 +70,7 @@ with sync_playwright() as p:
     esperar(lambda e: e["fase"] == "concluido" and not e["ocupado"], 90)
     e = agente.estado()
     print("contagem:", e["contagem"])
-    for linha in load_workbook(PASTA_SAIDAS / e["ultimo_arquivo"])["Resultado"].iter_rows(values_only=True):
+    for linha in load_workbook(PASTA_SAIDAS / e["ultimo_arquivo"])["Itens faltantes"].iter_rows(values_only=True):
         print("  ", linha)
     ctx.close()
 os._exit(0)

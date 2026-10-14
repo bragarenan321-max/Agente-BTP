@@ -29,7 +29,7 @@ def processar_wo(cliente: ClienteBTP, wo: str) -> ResultadoWO:
     alertas = _com_retentativa(lambda: cliente.buscar_alertas(wo))
     if not alertas:
         return ResultadoWO(wo, Status.NAO_ENCONTRADA,
-                           observacao="WO sem pendência no Monitor de alertas")
+                           observacao="WO sem alerta no Monitor de Alertas")
 
     linhas = []
     for alerta in alertas:
@@ -38,7 +38,7 @@ def processar_wo(cliente: ClienteBTP, wo: str) -> ResultadoWO:
 
     if not linhas:
         return ResultadoWO(wo, Status.SEM_REGISTROS,
-                           observacao=f"{len(alertas)} alerta(s) sem mensagens de detalhe")
+                           observacao=f"{len(alertas)} alerta(s) sem itens na janela Mensagens")
     return ResultadoWO(wo, Status.PROCESSADA, linhas=linhas, observacao="OK")
 
 

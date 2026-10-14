@@ -8,23 +8,24 @@ from enum import Enum
 
 
 class Status(Enum):
-    PROCESSADA = "Processada"
-    SEM_REGISTROS = "Sem registros"
-    NAO_ENCONTRADA = "Não encontrada no monitor"
-    WO_INVALIDA = "WO inválida"
+    PROCESSADA = "Com itens faltantes"
+    SEM_REGISTROS = "Sem itens"
+    NAO_ENCONTRADA = "Não consta no Monitor"
+    WO_INVALIDA = "Formato inválido"
     SESSAO_EXPIRADA = "Sessão expirada"
     FALHA_COMUNICACAO = "Falha de comunicação"
     ERRO = "Erro"
 
 
-# Colunas da planilha final, na mesma ordem do Download da janela "Mensagens".
+# Colunas da planilha final: as da janela "Mensagens", na mesma ordem; o Consolidado
+# (referência do alerta no Monitor) vai por último.
 COLUNAS_RESULTADO = [
-    "Consolidado",
     "WO",
     "Nº do Material",
     "Fornecedor",
     "Quantidade faltante",
     "Mensagem",
+    "Consolidado",
 ]
 
 
@@ -39,12 +40,12 @@ class LinhaMensagem:
 
     def como_lista(self) -> list:
         return [
-            self.consolidado,
             self.wo,
             self.material,
             self.fornecedor,
             self.quantidade_faltante,
             self.mensagem,
+            self.consolidado,
         ]
 
 

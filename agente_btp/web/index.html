@@ -81,7 +81,7 @@
 <body>
 <header>
   <div class="topo">
-    <div class="marca">Agente BTP<small>Monitor de alertas → Excel</small></div>
+    <div class="marca">Agente BTP<small>Análise de pendências · Monitor de Alertas</small></div>
     <div class="pilula"><span class="ponto" id="pt"></span><span id="conexao">Aguardando o BTP</span></div>
   </div>
   <nav>
@@ -93,7 +93,7 @@
 <main id="vistaAnalise">
   <!-- Só aparece enquanto a aba do BTP não estiver conectada -->
   <section class="cartao alerta" id="cartaoConexao">
-    <h2>Conecte a aba do BTP</h2>
+    <h2>Conexão com o BTP</h2>
     <p class="suave" style="margin-bottom:6px">Com a extensão <b>Agente BTP</b> instalada, basta abrir o BTP:
       a conexão é automática.</p>
     <button class="link" id="bComo">Instalar a extensão (uma vez só)</button>
@@ -128,35 +128,35 @@
   <div class="notificacao oculto" id="aviso"></div>
 
   <section class="cartao">
-    <h2>WOs para consultar</h2>
-    <p class="suave">Cole uma WO por linha (ex.: 02235|230771207) ou envie a planilha.</p>
+    <h2>Consulta de WOs</h2>
+    <p class="suave">Informe uma WO por linha (formato 00000|000000000) ou importe uma planilha. O relatório traz, por WO, os itens da janela Mensagens: material, fornecedor, quantidade faltante e mensagem.</p>
     <textarea id="texto" placeholder="Cole aqui as WOs, uma por linha"></textarea>
     <div class="linha" style="margin-top:10px">
-      <span class="arquivo"><label for="arquivo">Enviar planilha (.xlsx)</label>
+      <span class="arquivo"><label for="arquivo">Importar planilha (.xlsx)</label>
         <span id="nomeArquivo"></span></span>
       <input type="file" id="arquivo" accept=".xlsx" class="oculto">
       <span class="contador" id="contador">0 WOs</span>
     </div>
     <div class="linha" style="margin-top:16px">
-      <button id="bExecutar">Executar</button>
+      <button id="bExecutar">Executar análise</button>
       <button id="bParar" class="sec oculto">Parar</button>
     </div>
   </section>
 
   <section class="cartao oculto" id="cartaoProgresso">
-    <h2 id="tituloProg">Processando</h2>
+    <h2 id="tituloProg">Em processamento</h2>
     <div class="barra" id="barra"><div id="barraFill"></div></div>
     <div class="numeros"><span id="progTxt"></span><span id="etaTxt"></span></div>
     <p class="suave oculto" id="prepInfo" style="margin:8px 0 0">Consultas da aba observadas: <b id="observadas">0</b>
       · <a href="/api/diagnostico" style="color:var(--vermelho)">Baixar diagnóstico</a></p>
     <div class="chips" id="chips"></div>
     <div class="linha" style="margin-top:16px">
-      <a id="baixar" class="botao oculto" href="#">Baixar planilha</a>
+      <a id="baixar" class="botao oculto" href="#">Baixar relatório (.xlsx)</a>
     </div>
   </section>
 
   <details>
-    <summary>Detalhes</summary>
+    <summary>Registro de execução</summary>
     <div id="log"></div>
   </details>
 </main>
@@ -167,11 +167,11 @@
       <h2 style="margin:0">Histórico de análises</h2>
       <button class="link" id="bLimpar" style="margin-left:auto">Limpar histórico</button>
     </div>
-    <p class="suave" style="margin-top:6px">Clique em uma análise para ver o resultado de cada WO.</p>
+    <p class="suave" style="margin-top:6px">Selecione uma análise para consultar a situação de cada WO.</p>
     <div class="rolagem" style="max-height:none">
       <table>
-        <thead><tr><th>Data</th><th>Origem</th><th class="num">WOs</th><th class="num">Processadas</th>
-          <th class="num">Linhas no Excel</th><th class="num">Duração</th><th>Situação</th><th></th></tr></thead>
+        <thead><tr><th class="num">Nº</th><th>Data</th><th>Origem</th><th class="num">WOs</th><th class="num">Com itens</th>
+          <th class="num">Itens</th><th class="num">Duração</th><th>Situação</th><th></th></tr></thead>
         <tbody id="tabHist"></tbody>
       </table>
     </div>
@@ -179,19 +179,19 @@
 
   <section class="cartao oculto" id="detalheHist">
     <div class="linha">
-      <h2 id="detTitulo" style="margin:0">Detalhes</h2>
-      <a id="detBaixar" class="botao oculto" href="#" style="margin-left:auto;padding:8px 16px;font-size:14px">Baixar planilha</a>
+      <h2 id="detTitulo" style="margin:0">Detalhamento</h2>
+      <a id="detBaixar" class="botao oculto" href="#" style="margin-left:auto;padding:8px 16px;font-size:14px">Baixar relatório</a>
       <button class="sec" id="detApagar" style="padding:7px 14px;font-size:14px">Apagar</button>
     </div>
     <p class="suave" id="detResumo" style="margin-top:6px"></p>
     <div class="chips" id="detChips"></div>
     <div class="linha" style="margin-top:14px">
-      <select id="detFiltro"><option value="">Todos os resultados</option></select>
+      <select id="detFiltro"><option value="">Todas as situações</option></select>
       <span class="contador" id="detConta"></span>
     </div>
     <div class="rolagem">
       <table>
-        <thead><tr><th>WO</th><th>Resultado</th><th class="num">Linhas</th><th>Observação</th></tr></thead>
+        <thead><tr><th>WO</th><th>Situação</th><th class="num">Itens</th><th>Detalhe</th></tr></thead>
         <tbody id="tabDet"></tbody>
       </table>
     </div>
@@ -242,11 +242,11 @@ $("bExecutar").onclick = async () => {
 $("bParar").onclick = () => post("/api/parar");
 
 const GRUPOS = [
-  { rotulo: "Processadas", classe: "ok", status: ["Processada"] },
-  { rotulo: "Sem registros", classe: "", status: ["Sem registros"] },
-  { rotulo: "Não encontradas", classe: "amb", status: ["Não encontrada no monitor"] },
-  { rotulo: "Inválidas", classe: "amb", status: ["WO inválida"] },
-  { rotulo: "Erros", classe: "err", status: ["Erro", "Falha de comunicação", "Sessão expirada"] },
+  { rotulo: "Com itens", classe: "ok", status: ["Com itens faltantes", "Processada"] },
+  { rotulo: "Sem itens", classe: "", status: ["Sem itens", "Sem registros"] },
+  { rotulo: "Fora do monitor", classe: "amb", status: ["Não consta no Monitor", "Não encontrada no monitor"] },
+  { rotulo: "Formato inválido", classe: "amb", status: ["Formato inválido", "WO inválida"] },
+  { rotulo: "Falhas", classe: "err", status: ["Erro", "Falha de comunicação", "Sessão expirada"] },
 ];
 const tempo = s => s < 60 ? `${Math.max(1, Math.round(s))} s` : `${Math.round(s / 60)} min`;
 
@@ -273,9 +273,10 @@ async function atualizar() {
   $("cartaoProgresso").classList.toggle("oculto", !ativo);
   if (ativo) {
     const p = e.progresso, pct = p.total ? Math.round(100 * p.atual / p.total) : 0;
-    $("tituloProg").textContent = e.fase === "falhou" ? "Não foi possível preparar"
-      : e.fase === "preparando" ? "Preparando (só na primeira vez)…"
-      : e.fase === "concluido" ? "Concluído" : "Processando";
+    $("tituloProg").textContent = e.fase === "falhou" ? "Configuração não concluída"
+      : e.fase === "preparando" ? "Configurando o acesso aos dados (primeira execução)"
+      : e.fase === "concluido" ? (e.ultimo_numero ? `Análise nº ${e.ultimo_numero} concluída` : "Análise concluída")
+      : "Em processamento";
     $("barra").classList.toggle("indef", e.fase === "preparando");
     $("prepInfo").classList.toggle("oculto", !["preparando", "falhou"].includes(e.fase));
     $("observadas").textContent = e.observadas;
@@ -313,21 +314,22 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "
 const dataBR = iso => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 const duracao = s => s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${Math.floor(s / 3600)} h ${Math.round(s % 3600 / 60)} min`;
 const classeSit = s => s === "Concluída" ? "ok" : s === "Interrompida" ? "amb" : "err";
-const classeStatus = s => s === "Processada" ? "ok" : ["Sem registros"].includes(s) ? "" :
-  ["Não encontrada no monitor", "WO inválida"].includes(s) ? "amb" : "err";
+const classeStatus = s => ["Com itens faltantes", "Processada"].includes(s) ? "ok"
+  : ["Sem itens", "Sem registros"].includes(s) ? ""
+  : ["Não consta no Monitor", "Formato inválido", "Não encontrada no monitor", "WO inválida"].includes(s) ? "amb" : "err";
 let selecionada = null, detalheAtual = null;
 
 async function carregarHistorico() {
   const lista = await fetch("/api/historico").then(r => r.json());
   $("tabHist").innerHTML = lista.length ? lista.map(a => `
     <tr class="clicavel ${a.id === selecionada ? "selecionada" : ""}" data-id="${a.id}">
-      <td>${dataBR(a.inicio)}</td><td>${esc(a.origem)}</td><td class="num">${a.total}</td>
-      <td class="num">${a.contagem["Processada"] || 0}</td><td class="num">${a.linhas_excel}</td>
+      <td class="num">${a.numero || "—"}</td><td>${dataBR(a.inicio)}</td><td>${esc(a.origem)}</td><td class="num">${a.total}</td>
+      <td class="num">${(a.contagem["Com itens faltantes"] || 0) + (a.contagem["Processada"] || 0)}</td><td class="num">${a.linhas_excel}</td>
       <td class="num">${duracao(a.duracao_seg)}</td>
       <td><span class="tag ${classeSit(a.situacao)}">${esc(a.situacao)}</span></td>
       <td style="white-space:nowrap">${a.arquivo ? `<a href="/api/download/${encodeURIComponent(a.arquivo)}" onclick="event.stopPropagation()" style="color:var(--vermelho);font-weight:600">Excel</a>` : ""}
         <button class="link apagar" data-id="${a.id}" title="Apagar esta análise" style="margin-left:10px;color:var(--suave)">✕</button></td>
-    </tr>`).join("") : `<tr><td colspan="8" class="vazio">Nenhuma análise ainda.</td></tr>`;
+    </tr>`).join("") : `<tr><td colspan="9" class="vazio">Nenhuma análise registrada.</td></tr>`;
   document.querySelectorAll("#tabHist tr.clicavel").forEach(tr => tr.onclick = () => abrirDetalhe(tr.dataset.id));
   document.querySelectorAll("#tabHist button.apagar").forEach(b => b.onclick = ev => { ev.stopPropagation(); apagar(b.dataset.id); });
 }
@@ -338,13 +340,13 @@ async function abrirDetalhe(id) {
   detalheAtual = await fetch("/api/historico/" + encodeURIComponent(id)).then(r => r.json());
   const a = detalheAtual;
   $("detalheHist").classList.remove("oculto");
-  $("detTitulo").textContent = `Análise de ${dataBR(a.inicio)}`;
-  $("detResumo").textContent = `${a.origem} · ${a.total} WOs · ${a.linhas_excel} linhas no Excel · duração ${duracao(a.duracao_seg)} · ${a.situacao}`;
+  $("detTitulo").textContent = a.numero ? `Análise nº ${a.numero} · ${dataBR(a.inicio)}` : `Análise de ${dataBR(a.inicio)}`;
+  $("detResumo").textContent = `${a.origem} · ${a.total} WOs consultadas · ${a.linhas_excel} itens faltantes · duração ${duracao(a.duracao_seg)} · ${a.situacao}`;
   $("detChips").innerHTML = Object.entries(a.contagem).map(([s, n]) =>
     `<span class="chip ${classeStatus(s)}">${esc(s)}<b>${n}</b></span>`).join("");
   $("detBaixar").classList.toggle("oculto", !a.arquivo);
   if (a.arquivo) $("detBaixar").href = "/api/download/" + encodeURIComponent(a.arquivo);
-  $("detFiltro").innerHTML = `<option value="">Todos os resultados</option>` +
+  $("detFiltro").innerHTML = `<option value="">Todas as situações</option>` +
     Object.keys(a.contagem).map(s => `<option>${esc(s)}</option>`).join("");
   desenharDetalhe();
   $("detalheHist").scrollIntoView({ behavior: "smooth", block: "start" });

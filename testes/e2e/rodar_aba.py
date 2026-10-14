@@ -34,7 +34,7 @@ favorito = json.load(urllib.request.urlopen("http://127.0.0.1:8767/api/favorito"
 WOS = ["88412|126579742", "42340|231184065", "02235|230771207", "123"]
 
 
-SO = os.environ.get("CENARIOS", "ABC")
+SO = os.environ.get("CENARIOS", "ABCDE")
 
 
 def cenario(nome, url_aba, b):
@@ -62,9 +62,11 @@ def cenario(nome, url_aba, b):
     print("origem da configuração:", json.loads(cfg.ARQUIVO_CONFIG.read_text())["origem"])
     print("contagem:", e["contagem"], "| aviso:", e["aviso"] or "-")
     for teste in agente._diag.get("dicionario", {}).get("testes", []):
-        print("   teste:", teste["nota"], teste["lista"].split("/")[-1][:40], "|", str(teste["mensagens"]).split("/")[-2:])
+        print("   teste:", teste["nota"], teste["lista"].split("/")[-1][:40], "|",
+              str(teste.get("mensagens") or teste.get("sondagem")).split("/")[-2:])
     wb = load_workbook(PASTA_SAIDAS / e["ultimo_arquivo"])
-    for linha in wb["Resultado"].iter_rows(values_only=True):
+    print("arquivo:", e["ultimo_arquivo"], "| abas:", wb.sheetnames)
+    for linha in wb["Itens faltantes"].iter_rows(values_only=True):
         print("  ", linha)
     aba.close()
 
@@ -77,9 +79,13 @@ with sync_playwright() as p:
     sap_falso.ESTADO["sem_metadata"] = False
     cenario("C: OData V4, nomes diferentes, navegação e conjunto-isca",
             "http://127.0.0.1:8798/site?cap=1#Shell-home", b)
+    cenario("D: caso real — filtro óbvio vazio; mensagens pelo link de cada linha",
+            "http://127.0.0.1:8798/site?srv=srv3#Shell-home", b)
+    cenario("E: caso real — mensagens fora do dicionário; aprende com o clique em 'Mensagens'",
+            "http://127.0.0.1:8798/site?srv=srv4&simular=srv4#Shell-home", b)
     # Histórico: as duas análises aparecem; apagar uma remove também o Excel dela.
     hist = json.load(urllib.request.urlopen("http://127.0.0.1:8767/api/historico"))
-    print("\nhistórico:", [(h["situacao"], h["total"], h["contagem"].get("Processada")) for h in hist])
+    print("\nhistórico:", [(h["situacao"], h["total"], h["contagem"].get("Com itens faltantes")) for h in hist])
     detalhe = json.load(urllib.request.urlopen(f"http://127.0.0.1:8767/api/historico/{hist[0]['id']}"))
     print("detalhe WOs:", [(w["wo"], w["status"]) for w in detalhe["wos"]])
     ui = b.new_page(viewport={"width": 1100, "height": 1000})

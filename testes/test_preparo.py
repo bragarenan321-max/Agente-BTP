@@ -1,0 +1,232 @@
+"""Preparação automática: só aceita o caminho que traz o conteúdo da janela "Mensagens".
+
+Cada cenário imita um jeito diferente de o BTP entregar as mensagens. Em todos, o caminho
+"ingênuo" (filtrar o conjunto de mensagens pelo Consolidado) volta VAZIO — exatamente o
+que aconteceu no BTP real (499 WOs como "Sem registros").
+"""
+import json
+import time
+from urllib.parse import unquote
+
+import pytest
+
+from agente_btp import agente as agente_mod
+from agente_btp import config as cfg
+from agente_btp import historico
+from agente_btp.cliente import Resposta
+from agente_btp.modelos import Status
+
+WO = "06162|231715939"
+CONSOL = "105012-20260916-mEeF+Ow/Dh"
+ITEM = {"Wo": WO, "Matnr": "000000000022066463", "Lifnr": "0000138480", "QtdFaltante": "1.000",
+        "Mensagem": "Estoque indisponível"}
+
+V2 = """<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="1.0" xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx"
+ xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata">
+ <edmx:DataServices><Schema Namespace="ZMON" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">
+  <EntityType Name="Alerta"><Key><PropertyRef Name="ConsolidadoNum"/></Key>
+   <Property Name="Wo" Type="Edm.String"/><Property Name="ConsolidadoNum" Type="Edm.String"/>
+   <Property Name="Mensagem" Type="Edm.String"/>%(json)s%(nav)s</EntityType>
+  %(msg_tipo)s
+  %(assoc)s
+  <EntityContainer Name="C" m:IsDefaultEntityContainer="true">
+   <EntitySet Name="AlertaSet" EntityType="ZMON.Alerta"/>%(msg_set)s
+   %(funcoes)s
+  </EntityContainer></Schema></edmx:DataServices></edmx:Edmx>"""
+MSG_TIPO = """<EntityType Name="Msg"><Key><PropertyRef Name="Matnr"/></Key>
+   <Property Name="ConsolidadoNum" Type="Edm.String"/><Property Name="Matnr" Type="Edm.String"/>
+   <Property Name="Lifnr" Type="Edm.String"/><Property Name="QtdFaltante" Type="Edm.Decimal"/>
+   <Property Name="Mensagem" Type="Edm.String"/></EntityType>"""
+MSG_SET = '<EntitySet Name="MsgSet" EntityType="ZMON.Msg"/>'
+NAV = '<NavigationProperty Name="ToMsg" Relationship="ZMON.A_M" FromRole="A" ToRole="M"/>'
+ASSOC = '<Association Name="A_M"><End Type="ZMON.Alerta" Role="A" Multiplicity="1"/><End Type="ZMON.Msg" Role="M" Multiplicity="*"/></Association>'
+
+
+def metadata(json_=False, nav=False, msgs=True, funcoes=""):
+    return V2 % {"json": '<Property Name="ItensJson" Type="Edm.String"/>' if json_ else "",
+                 "nav": NAV if nav else "", "assoc": ASSOC if nav else "",
+                 "msg_tipo": MSG_TIPO if msgs else "", "msg_set": MSG_SET if msgs else "",
+                 "funcoes": funcoes}
+
+
+def ok(corpo):
+    return Resposta(200, "application/json", json.dumps(corpo))
+
+
+class BTP:
+    """BTP falso. `rotas`: função(caminho_decodificado) -> registros | None (None = 404)."""
+
+    def __init__(self, xml, rotas, alerta_extra=None):
+        self.xml, self.rotas, self.urls = xml, rotas, []
+        self.alerta = dict({"Wo": WO, "ConsolidadoNum": CONSOL, "Mensagem": "Erro durante baixa"},
+                           **(alerta_extra or {}))
+
+    def __call__(self, url, accept=None):
+        self.urls.append(url)
+        caminho = unquote(url)
+        if caminho.endswith("$metadata"):
+            return Resposta(200, "application/xml", self.xml)
+        if caminho.startswith("/srv/AlertaSet?"):
+            return ok({"d": {"results": [self.alerta] if f"'{WO}'" in caminho else []}})
+        registros = self.rotas(caminho)
+        if registros is None:
+            return Resposta(404, "application/json", '{"error":{"message":"nao existe"}}')
+        return ok({"d": {"results": registros}})
+
+
+@pytest.fixture
+def agente(tmp_path, monkeypatch):
+    monkeypatch.setattr(cfg, "ARQUIVO_CONFIG", tmp_path / "api.json")
+    monkeypatch.setattr(historico, "ARQUIVO", tmp_path / "hist.json")
+    monkeypatch.setattr(historico, "CONTADOR", tmp_path / "contador.txt")
+    monkeypatch.setattr(agente_mod, "PASTA_SAIDAS", tmp_path / "saidas")
+    a = agente_mod.Agente()
+    a.ponte.fontes = lambda: [{"url": "/srv/"}]
+    return a
+
+
+def preparar(a, btp, wos=(WO,)):
+    a.ponte.get = btp
+    a._testados, a._achados, a._sondadas = set(), {}, set()
+    return a._preparar_com_wos(list(wos))
+
+
+def gravada():
+    return json.loads(cfg.ARQUIVO_CONFIG.read_text(encoding="utf-8"))
+
+
+def vazio_exceto(**rotas):
+    def resp(caminho):
+        for trecho, registros in rotas.items():
+            if trecho in caminho:
+                return registros
+        return [] if caminho.startswith("/srv/MsgSet") else None
+    return resp
+
+
+# ---------------------------------------------------------------- o defeito real
+def test_recusa_caminho_que_acha_a_wo_mas_nao_traz_mensagens(agente):
+    btp = BTP(metadata(), vazio_exceto())
+    assert preparar(agente, btp) is False
+    assert not cfg.ARQUIVO_CONFIG.exists()          # antes: gravava e dava 499 "Sem registros"
+
+
+# ---------------------------------------------------------------- caminhos novos
+def test_link_de_navegacao_informado_pelo_servidor(agente):
+    uri = "https://interno.claro:8443/sap/opu/odata/sap/ZMON/AlertaSet('X-1')/ToMsg"
+    btp = BTP(metadata(nav=True), vazio_exceto(**{"/srv/AlertaSet('X-1')/ToMsg": [ITEM]}),
+              {"ToMsg": {"__deferred": {"uri": uri}}})
+    assert preparar(agente, btp) is True
+    assert gravada()["campo_mensagens_link"] == "ToMsg"
+
+
+def test_mensagens_em_json_dentro_da_linha(agente):
+    itens = json.dumps([{"Material": "000000000022066463", "Fornecedor": "0000138480",
+                         "QtdFalta": 1, "Mensagem": "Estoque indisponível"}])
+    btp = BTP(metadata(json_=True, msgs=False), vazio_exceto(), {"ItensJson": itens})
+    assert preparar(agente, btp) is True
+    assert gravada()["campo_mensagens_json"] == "ItensJson"
+    assert gravada()["origem"] == "sondagem"
+
+
+def test_funcao_de_consulta_e_nunca_funcao_de_acao(agente):
+    funcoes = """<FunctionImport Name="ReprocessarAlerta" ReturnType="Collection(ZMON.Msg)" EntitySet="MsgSet" m:HttpMethod="GET">
+      <Parameter Name="ConsolidadoNum" Type="Edm.String" Mode="In"/></FunctionImport>
+     <FunctionImport Name="EfetuarBaixa" ReturnType="Collection(ZMON.Msg)" EntitySet="MsgSet" m:HttpMethod="GET">
+      <Parameter Name="ConsolidadoNum" Type="Edm.String" Mode="In"/></FunctionImport>
+     <FunctionImport Name="GetMensagens" ReturnType="Collection(ZMON.Msg)" EntitySet="MsgSet" m:HttpMethod="GET">
+      <Parameter Name="Consolidado" Type="Edm.String" Mode="In"/></FunctionImport>"""
+    btp = BTP(metadata(funcoes=funcoes), vazio_exceto(**{f"/srv/GetMensagens?Consolidado='{CONSOL}'": [ITEM]}))
+    assert preparar(agente, btp) is True
+    assert "GetMensagens" in gravada()["url_mensagens"]
+    assert not [u for u in btp.urls if "Reprocessar" in u or "Baixa" in u]
+
+
+def test_mensagens_de_outra_wo_sao_recusadas(agente):
+    outra = dict(ITEM, Wo="99999|999999999")
+    btp = BTP(metadata(), vazio_exceto(**{"/srv/MsgSet?": [outra]}))
+    assert preparar(agente, btp) is False
+
+
+def test_chave_estrangeira_alerta_id_v4(agente):
+    xml = """<?xml version="1.0"?><edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+    <edmx:DataServices><Schema Namespace="S" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+     <EntityType Name="Alertas"><Key><PropertyRef Name="ID"/></Key><Property Name="ID" Type="Edm.Guid"/>
+      <Property Name="Wo" Type="Edm.String"/><Property Name="Consolidado" Type="Edm.String"/></EntityType>
+     <EntityType Name="Itens"><Key><PropertyRef Name="Item"/></Key><Property Name="Item" Type="Edm.String"/>
+      <Property Name="alerta_ID" Type="Edm.Guid"/><Property Name="Matnr" Type="Edm.String"/>
+      <Property Name="Lifnr" Type="Edm.String"/><Property Name="QtdFaltante" Type="Edm.Decimal"/>
+      <Property Name="Mensagem" Type="Edm.String"/></EntityType>
+     <EntityContainer Name="C"><EntitySet Name="Alertas" EntityType="S.Alertas"/>
+      <EntitySet Name="Itens" EntityType="S.Itens"/></EntityContainer></Schema></edmx:DataServices></edmx:Edmx>"""
+    guid = "11111111-2222-3333-4444-555555555555"
+
+    def get(url, accept=None):
+        c = unquote(url)
+        if c.endswith("$metadata"):
+            return Resposta(200, "application/xml", xml)
+        if c.startswith("/srv/Alertas?"):
+            return ok({"value": [{"ID": guid, "Wo": WO, "Consolidado": CONSOL}]})
+        if c == f"/srv/Itens?$filter=alerta_ID eq {guid}":
+            return ok({"value": [ITEM]})
+        return ok({"value": []})
+    assert preparar(agente, get) is True
+    assert "alerta_ID" in gravada()["url_mensagens"]
+
+
+def test_mensagens_em_outro_servico(agente):
+    agente.ponte.fontes = lambda: [{"url": "/srv/"}, {"url": "/msg/"}]
+    xml_msg = metadata().replace('Name="AlertaSet" EntityType="ZMON.Alerta"', 'Name="Nada" EntityType="ZMON.X"')
+
+    def get(url, accept=None):
+        c = unquote(url)
+        if c == "/msg/$metadata":
+            return Resposta(200, "application/xml", xml_msg)
+        if c.endswith("$metadata"):
+            return Resposta(200, "application/xml", metadata(msgs=False))
+        if c.startswith("/srv/AlertaSet?"):
+            return ok({"d": {"results": [{"Wo": WO, "ConsolidadoNum": CONSOL}]}})
+        if c == f"/msg/MsgSet?$filter=ConsolidadoNum eq '{CONSOL}'":
+            return ok({"d": {"results": [ITEM]}})
+        return ok({"d": {"results": []}})
+    assert preparar(agente, get) is True
+    assert gravada()["url_mensagens"].startswith("/msg/MsgSet")
+
+
+# ---------------------------------------------------------------- salvaguardas
+def test_configuracao_de_versao_anterior_e_descartada(tmp_path):
+    caminho = tmp_path / "api.json"
+    caminho.write_text(json.dumps({"url_lista": "/s/A?$filter=W eq '{wo}'", "url_mensagens": "/s/M",
+                                   "campos": {"material": "M", "fornecedor": "F", "quantidade_faltante": "Q",
+                                              "mensagem": "T"}, "origem": "dicionario"}))
+    assert cfg.descartar_se_antiga(caminho) is True and not caminho.exists()
+    cfg.salvar({"url_lista": "/s/A?$filter=W eq '{wo}'", "url_mensagens": "/s/M",
+                "campos": {"material": "M", "fornecedor": "F", "quantidade_faltante": "Q", "mensagem": "T"}},
+               caminho)
+    assert cfg.descartar_se_antiga(caminho) is False and caminho.exists()
+
+
+def test_lote_quase_todo_sem_registros_refaz_a_configuracao(agente):
+    wos = [WO, "06162|231715940", "06162|231715941"]
+    cfg.salvar({"url_lista": "/srv/AlertaSet?$filter=Wo eq '{wo}'", "campo_consolidado_lista": "ConsolidadoNum",
+                "url_mensagens": "/srv/MsgSet?$filter=ConsolidadoNum eq '{linha[ConsolidadoNum]}'",
+                "campos": {"material": "Matnr", "fornecedor": "Lifnr", "quantidade_faltante": "QtdFaltante",
+                           "mensagem": "Mensagem"}, "origem": "dicionario"})
+
+    def get(url, accept=None):
+        c = unquote(url)
+        if c.startswith("/srv/AlertaSet?"):
+            wo = c.split("'")[1]
+            return ok({"d": {"results": [{"Wo": wo, "ConsolidadoNum": CONSOL}]}})
+        return ok({"d": {"results": []}})
+    agente.ponte.get = get
+    agente.ponte.agente_id, agente.ponte._aba_autenticada = "aba", True
+    agente.ponte._visto_em = time.monotonic() + 3600
+    agente._cmd_executar(wos, "teste")
+    e = agente.estado()
+    assert e["contagem"] == {Status.SEM_REGISTROS.value: 3}
+    assert not cfg.ARQUIVO_CONFIG.exists()
+    assert "Mensagens" in e["aviso"]
+    assert e["ultimo_arquivo"] == "Análise 1 - 3 WOs.xlsx"
+    assert historico.listar()[0]["numero"] == 1
