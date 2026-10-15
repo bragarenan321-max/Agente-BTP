@@ -232,7 +232,7 @@ def _real():
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         from servico_real_falso import SRV, servico_real
-        _REAL.extend([SRV, servico_real()[0]])
+        _REAL.extend([SRV, servico_real(retorno=True)[0]])
     return _REAL
 
 

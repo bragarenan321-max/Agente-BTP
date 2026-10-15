@@ -377,3 +377,19 @@ def test_raio_x_mostra_de_onde_vem_cada_dado():
     erros = next(c for c in rel["conjuntos"] if c["conjunto"] == "ErrosMaterial")
     assert erros["consultas"][0]["amostra"][0]["quantidadeFaltante"] == 2
     assert not [u for u in urls if "LimpaWorkOrder" in u]          # nome de ação nunca consultado
+
+
+def test_caminho_da_janela_mensagens_confirmado_no_btp(agente):
+    """Pendencias -> UltimoRetornoView com status 'E': só as linhas que a janela Mensagens mostra."""
+    get, urls = servico_real(retorno=True)
+    agente.ponte.fontes = lambda: [{"recurso": SRV + "$metadata"}]
+    assert preparar(agente, get) is True
+    dados = gravada()
+    assert dados["origem"] == "receita_btp" and "status eq 'E'" in dados["url_mensagens"]
+    from agente_btp.cliente import ClienteBTP
+    from agente_btp.processador import processar_lote
+    [r] = processar_lote(ClienteBTP(cfg.carregar(), get), [WO])
+    assert sorted((l.material, l.quantidade_faltante, l.mensagem) for l in r.linhas) == [
+        ("000000000022056366", 1, "Estoque indisponível"), ("000000000022060284", 1, "Estoque indisponível")]
+    assert all(l.fornecedor == "0000148963" and l.consolidado == CONSOL for l in r.linhas)
+    assert not any("22061736" in (l.material or "") for l in r.linhas)          # a linha "Ok" não entra

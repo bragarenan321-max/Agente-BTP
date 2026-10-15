@@ -17,14 +17,14 @@ def ok(corpo):
 
 
 SRV = "/MonitorPendenciashtml5.comsapbuildstandardmonitorDePendencias/work-order/"
-NOMES_REAIS = """OrdensDoConsolidado WoListConsolidado ServiceOrder RetornoDaBaixa UltimoRetornoView
+NOMES_REAIS = """OrdensDoConsolidado WoListConsolidado ServiceOrder RetornoDaBaixa
 ConsolidadoRevisadoView ConsolidadoRevisado OrdensDoConsolidadoExpandido OrdemDeServicoDescr OrdemDeServicoDescrTOA
 ErrosDoTecnicoExpandido TimestampInputWO IndicadoresDePerformance StatusFinalizaWO WorkOrder BaixaPendencias
 StatusWO StatusWOTOA WorkOrderLancadasTOA TotalItems TipoWoHelp WorkOrderHelp CabecalhoWO IntegracaoPendenteView
 OrdensBOM RelatorioDeErros SelectErros DesviosDaBOM BomParaWorkOrder MotorView ProvisaoBaixa SeriaisWO""".split()
 
 
-def servico_real(ligado=False):
+def servico_real(ligado=False, retorno=False):
     """CAP/OData V4 como o do Monitor real: muitos conjuntos, iscas com material/quantidade."""
     tipos, conjuntos = [], []
 
@@ -45,6 +45,13 @@ def servico_real(ligado=False):
     # fornecedor fixo, quantidade 0 e "mensagem" = tipo do erro ("estoque"/"bom").
     ent("MateriaisLancadosStatus", [("ID", G), ("workOrderID", S), ("material", S), ("fornecedor", S),
                                     ("quantidade", D), ("quantidadeLancada", D), ("tipoErro", S)])
+    # A tabela da janela "Mensagens" (confirmada no BTP real): último retorno da baixa, com
+    # linhas "Ok" (status O) e linhas com erro (status E). A janela mostra só status E.
+    if retorno:
+        ent("UltimoRetornoView", [("consolidID", S), ("workOrderID", S), ("status", S), ("material", S),
+                                  ("fornecedorID", S), ("quantidade", S), ("quantidadeDoc", S),
+                                  ("mensagem", S), ("zeile", S), ("aplicacao", S), ("contador", "Edm.Int32")],
+            chave="zeile")
     ent("LimpaWorkOrder", [("ID", G), ("workOrderID", S)])
     for nome in NOMES_REAIS:
         ent(nome, [("ID", G), ("workOrderID", S), ("tipoWo", S), ("descricao", S)])
@@ -90,6 +97,19 @@ def servico_real(ligado=False):
                                   "quantidade": 0, "quantidadeLancada": 0, "tipoErro": "estoque"},
                                  {"ID": "d2", "workOrderID": valor, "material": "22057657", "fornecedor": "148963",
                                   "quantidade": 0, "quantidadeLancada": 0, "tipoErro": "bom"}]})
+        if conjunto == "UltimoRetornoView" and retorno:
+            conds = dict(re.findall(r"(\w+) eq '([^']*)'", q))
+            linhas = [
+                {"zeile": "0010", "consolidID": CONSOL, "workOrderID": WO, "status": "O", "aplicacao": "OPEX",
+                 "material": "000000000022061736", "fornecedorID": "0000148963", "quantidade": "6.8e+1",
+                 "quantidadeDoc": "6.8e+1", "mensagem": "Ok", "contador": 2},
+                {"zeile": "0020", "consolidID": CONSOL, "workOrderID": WO, "status": "E", "aplicacao": "OPEX",
+                 "material": "000000000022056366", "fornecedorID": "0000148963", "quantidade": "1e+0",
+                 "quantidadeDoc": "0e+0", "mensagem": "Estoque indisponível", "contador": 2},
+                {"zeile": "0030", "consolidID": CONSOL, "workOrderID": WO, "status": "E", "aplicacao": "OPEX",
+                 "material": "000000000022060284", "fornecedorID": "0000148963", "quantidade": "1e+0",
+                 "quantidadeDoc": "0e+0", "mensagem": "Estoque indisponível", "contador": 2}]
+            return ok({"value": [l for l in linhas if all(str(l.get(k)) == v for k, v in conds.items())]})
         if conjunto == "LimpaWorkOrder":
             raise AssertionError("conjunto com nome de ação não pode ser consultado")
         return ok({"value": [{"ID": "x", "workOrderID": valor, "tipoWo": "INST", "descricao": "Instalação"}]

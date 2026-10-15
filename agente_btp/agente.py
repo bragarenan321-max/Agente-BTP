@@ -19,7 +19,7 @@ from pathlib import Path
 from . import config as cfg
 from . import historico
 from .analisador import AnaliseFalhou, analisar
-from .autoconfig import candidatos_pela_aba, leitura_por_chave
+from .autoconfig import candidatos_pela_aba, leitura_por_chave, receita_monitor
 from .cliente import ClienteBTP
 from .exploracao import Explorador
 from . import preferencias
@@ -292,6 +292,18 @@ class Agente:
         amostra = [w for w in wos if wo_valida(w)][:5]
         get = self._transporte_com_cache(self.ponte.get)
         testes = self._diag.setdefault("dicionario", {}).setdefault("testes", [])
+        # 0º) Caminho confirmado no BTP real (consultas da própria janela Mensagens).
+        for servico, modelo in self._modelos:
+            dados = receita_monitor(servico, modelo)
+            if not dados or _rejeitada(dados):
+                continue
+            nota = self._validar(dados, amostra, get, {})
+            testes.append({"lista": dados["url_lista"], "nota": nota, "mensagens": dados["url_mensagens"],
+                           "receita": "janela Mensagens (UltimoRetornoView, status E)"})
+            if nota == 2:
+                self._gravar_config(dados, "receita_btp", ["Caminho da janela Mensagens confirmado no BTP real: "
+                                                           "Pendencias -> UltimoRetornoView (status E)."])
+                return True
         # 1º) Pergunta direto aos dados: qual conjunto devolve os itens da janela "Mensagens"?
         novos = [m for m in self._modelos if m[0] not in self._explorados]
         if novos and amostra and not self._parar.is_set():

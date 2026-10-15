@@ -46,6 +46,8 @@ class ApiConfig:
     # Qual mensagem vai para a planilha: "item" (janela Mensagens) ou "alerta" (lista do Monitor)
     mensagem_origem: str = "item"
     confirmada: bool = False
+    # Campos vistos na resposta real do BTP: sem "quantidade ambígua" (ex.: quantidadeDoc)
+    campos_confirmados: bool = False
 
 
 def carregar(caminho: Path | None = None) -> ApiConfig:
@@ -107,4 +109,5 @@ def a_partir_de_dict(dados: dict) -> ApiConfig:
         campo_mensagem_alerta=dados.get("campo_mensagem_alerta"),
         mensagem_origem=dados.get("mensagem_origem") or "item",
         confirmada=bool(dados.get("confirmada")),
+        campos_confirmados=bool(dados.get("campos_confirmados")),
     )

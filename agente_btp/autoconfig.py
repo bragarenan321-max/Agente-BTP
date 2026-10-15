@@ -441,3 +441,42 @@ def leitura_por_chave(dados: dict, modelos: list[tuple[str, dict]]) -> dict:
         predicado = _predicado(info["chaves"], info["props"], modelo["v4"])
         return {"url_item": f"{servico}{destino}{predicado}", "chaves_item": list(info["chaves"])}
     return {}
+
+
+# ---------------------------------------------------------------- caminho confirmado no BTP real
+# Confirmado pelas consultas da tela do BTP (DevTools, 15/10/2026): a janela "Mensagens" do
+# Monitor de Alertas lê UltimoRetornoView filtrando por consolidado + WO + status 'E' (erro);
+# o consolidado vem da linha da WO na lista (Pendencias). Sem o status 'E' vêm linhas "Ok".
+STATUS_JANELA_MENSAGENS = "E"
+
+
+def receita_monitor(servico: str, modelo: dict) -> dict | None:
+    """Configuração exata da janela Mensagens, quando o serviço é o do Monitor de Alertas."""
+    conj = modelo["conjuntos"]
+    lista, msgs = conj.get("Pendencias"), conj.get("UltimoRetornoView")
+    if not lista or not msgs:
+        return None
+    precisa = {"consolidID", "workOrderID"}
+    if not precisa <= set(lista["props"]) or not (precisa | {"status"}) <= set(msgs["props"]):
+        return None
+    # Campos vistos na resposta real da janela (UltimoRetornoView): quantidade = "Quantidade
+    # faltante" (vem como "1e+0"); quantidadeDoc é outra coisa e NÃO entra.
+    confirmados = {"wo": "workOrderID", "material": "material", "fornecedor": "fornecedorID",
+                   "quantidade_faltante": "quantidade", "mensagem": "mensagem", "consolidado": "consolidID"}
+    if all(c in msgs["props"] for c in confirmados.values()):
+        campos = dict(confirmados)
+    else:   # versão diferente do serviço: reconhece pelos nomes (e a conferência na tela confirma)
+        campos = mapear_por_nomes({k: v for k, v in msgs["props"].items() if k not in ("status", "consolidID")})
+        campos.update(wo="workOrderID", consolidado="consolidID")
+    alerta = mapear_por_nomes(lista["props"]).get("mensagem")
+    return {
+        "url_lista": f"{servico}Pendencias?$filter=workOrderID eq '{{wo}}'",
+        "campo_consolidado_lista": "consolidID",
+        "url_mensagens": (f"{servico}UltimoRetornoView?$filter=consolidID eq '{{linha[consolidID]}}'"
+                          f" and workOrderID eq '{{linha[workOrderID]}}'"
+                          f" and status eq '{STATUS_JANELA_MENSAGENS}'"),
+        "campo_mensagens_expandidas": None,
+        "campo_mensagem_alerta": alerta,
+        "campos": campos,
+        "campos_confirmados": campos.get("quantidade_faltante") == "quantidade" and campos.get("fornecedor") == "fornecedorID",
+    }

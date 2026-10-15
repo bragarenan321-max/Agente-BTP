@@ -234,7 +234,8 @@ class ClienteBTP:
         fonte = {c: campos[c] for c in ("wo", "material", "fornecedor", "quantidade_faltante", "mensagem")
                  if campos.get(c)}
         quantidades = campos_de_quantidade(bruto)
-        outras = {k: v for k, v in quantidades.items() if k != campos.get("quantidade_faltante")}
+        outras = {} if self.config.campos_confirmados else {
+            k: v for k, v in quantidades.items() if k != campos.get("quantidade_faltante")}
         # Evidência de alteração: só campo com nome de alteração E valor que é DATA de fato
         # ("alteradoPor", "motivoAlteracao"... não servem).
         tempo = next((str(v) for k, v in bruto.items()
