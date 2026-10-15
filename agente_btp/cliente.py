@@ -78,9 +78,11 @@ class ClienteBTP:
         limite = self.tempos.get(tipo)
         if self.prazo is not None:
             restante = self.prazo - time.monotonic()
-            if restante <= 0:
+            if restante < 0.2:   # não dá tempo para uma consulta: encerra em vez de abortar no meio
                 raise TempoEsgotado("Tempo máximo da WO atingido.")
             limite = min(limite, restante) if limite else restante
+        if limite:
+            limite = max(limite, 1.0)   # a aba nunca recebe 0 (lá, 0 viraria o padrão de 60 s)
         try:
             return self._transporte(url, timeout=limite) if (limite and self.tempos) else self._transporte(url)
         finally:
@@ -136,16 +138,33 @@ class ClienteBTP:
             validos.append(a)
         leitura.alertas = len(validos)
         itens: dict = {}
+        sem_chave = 0
+        mesma_consulta = self.config.campo_mensagens_expandidas == "."   # cada linha já é um item
+        vistos_no_alerta: dict[str, int] = {}
         for a in validos:
+            if not mesma_consulta:
+                vistos_no_alerta = {}
             for m in self.buscar_mensagens(a):
                 o = self.ocorrencia(wo, a, m)
                 if o.valores["wo"] != wo:
                     leitura.avisos.append(f"Item de outra WO ({o.valores['wo']}) descartado.")
                     continue
+                if o.chave.startswith("conteudo:"):
+                    # Sem chave do BTP: itens iguais DENTRO do mesmo alerta são itens distintos
+                    # (numerados pela ordem); o mesmo item vindo de outra linha idêntica da lista
+                    # recebe o mesmo número e aí sim é repetição.
+                    sem_chave += 1
+                    n = vistos_no_alerta.get(o.chave, 0) + 1
+                    vistos_no_alerta[o.chave] = n
+                    if n > 1:
+                        o.chave = f"{o.chave}#{n}"
                 if o.chave in itens:
                     leitura.duplicadas += 1
                     continue
                 itens[o.chave] = o
+        if sem_chave:
+            leitura.avisos.append(f"{sem_chave} item(ns) sem chave no BTP: identificados pelo conteúdo "
+                                  "(sem quantidade, mensagem ou data de alteração).")
         leitura.itens = itens
         if leitura.duplicadas:
             leitura.avisos.append(f"{leitura.duplicadas} item(ns) repetido(s) no retorno do BTP contado(s) uma vez.")
@@ -159,25 +178,31 @@ class ClienteBTP:
         """Auditoria independente: busca CADA item pelo seu endereço próprio (chave), por outro
         caminho que não a consulta da lista. Item que não existe mais fica como ausente (None)."""
         leitura = Leitura(rodada, "Releitura por chave", itens={})
-        encontrados = nao_encontrados = 0
+        encontrados = nao_encontrados = recusados = 0
         for chave, o in base.itens.items():
-            if not all(k in o.bruto for k in self.config.chaves_item):
+            if not all(o.bruto.get(k) not in (None, "") for k in self.config.chaves_item):
                 leitura.avisos.append(f"Item {chave}: chave não disponível para releitura.")
                 continue   # fica fora da leitura: "não relido" (diferente de "ausente" = None)
             try:
                 registros = self._get(odata.preencher_modelo(self.config.url_item, linha=o.bruto))
             except ErroConsulta as exc:
                 if "404" not in str(exc):
-                    raise
+                    # Endereço recusado (ex.: 400 por formato da chave): não prova nada sobre o
+                    # item; fica "não relido", nunca "ausente".
+                    recusados += 1
+                    leitura.avisos.append(f"Item {chave}: releitura recusada pelo serviço ({exc}).")
+                    continue
                 registros = []
             leitura.itens[chave] = self.ocorrencia(wo, o.alerta, registros[0]) if registros else None
             encontrados += bool(registros)
             nao_encontrados += not registros
-        if nao_encontrados and not encontrados:
+        if not encontrados:
             # Nenhum item pôde ser lido pelo endereço próprio: é o serviço que não oferece esse
             # caminho (não prova que os itens sumiram). Quem chama troca por nova consulta.
             raise ReleituraIndisponivel("O serviço não permite ler os itens pela chave "
-                                        f"({nao_encontrados} tentativa(s) sem resposta).")
+                                        f"({nao_encontrados + recusados} tentativa(s) sem resposta"
+                                        + ("; itens sem chave" if not (nao_encontrados or recusados) else "")
+                                        + ").")
         return leitura
 
     def ocorrencia(self, wo: str, alerta: dict, mensagem: dict) -> Ocorrencia:
@@ -199,16 +224,29 @@ class ClienteBTP:
             "mensagem": odata.como_texto(campo("mensagem")),
             "consolidado": odata.como_texto(consolidado),
         }
+        fonte = {c: campos[c] for c in ("wo", "material", "fornecedor", "quantidade_faltante", "mensagem")
+                 if campos.get(c)}
+        quantidades = campos_de_quantidade(bruto)
+        outras = {k: v for k, v in quantidades.items() if k != campos.get("quantidade_faltante")}
+        # Evidência de alteração: só campo com nome de alteração E valor que é DATA de fato
+        # ("alteradoPor", "motivoAlteracao"... não servem).
+        tempo = next((str(v) for k, v in bruto.items()
+                      if _MARCA_TEMPO.search(k) and odata.instante(v) is not None), None)
         chaves = self.config.chaves_item or []
         if chaves and all(bruto.get(k) not in (None, "") for k in chaves):
             chave = "|".join(f"{k}={bruto[k]}" for k in chaves)
-        else:   # sem chave declarada: o conteúdo inteiro do registro identifica o item
-            chave = "conteudo:" + hashlib.sha1(json.dumps(bruto, sort_keys=True, default=str)
+        else:
+            # Sem chave declarada: identifica pelo que NÃO muda quando o BTP atualiza o item —
+            # sem quantidades, sem mensagem, sem campos de alteração — mais o alerta de origem.
+            # Assim uma mudança de quantidade aparece como DIVERGÊNCIA, não como item novo.
+            variaveis = set(quantidades) | {campos.get("mensagem")} | {
+                k for k in bruto if _MARCA_TEMPO.search(k)}
+            identidade = {k: v for k, v in bruto.items() if k not in variaveis}
+            origem = {k: v for k, v in alerta.items() if not k.startswith(("__", "@"))
+                      and not isinstance(v, (dict, list)) and k not in variaveis
+                      and k not in campos_de_quantidade(alerta)} if alerta is not mensagem else {}
+            chave = "conteudo:" + hashlib.sha1(json.dumps([origem, identidade], sort_keys=True, default=str)
                                                 .encode()).hexdigest()[:12]
-        fonte = {c: campos[c] for c in ("wo", "material", "fornecedor", "quantidade_faltante", "mensagem")
-                 if campos.get(c)}
-        outras = {k: v for k, v in campos_de_quantidade(bruto).items() if k != campos.get("quantidade_faltante")}
-        tempo = next((str(v) for k, v in bruto.items() if _MARCA_TEMPO.search(k) and v not in (None, "")), None)
         return Ocorrencia(chave, valores, bruto, alerta, fonte, outras, tempo)
 
     def converter(self, wo: str, alerta: dict, mensagem: dict) -> LinhaMensagem:

@@ -6,6 +6,7 @@ Todo valor recebido é validado e limitado à faixa permitida antes de ser usado
 from __future__ import annotations
 
 import json
+import math
 import threading
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
@@ -25,11 +26,11 @@ class Preferencias:
     divergencia: str = "reconsultar"           # "reconsultar" | "revisar" (nunca aprova divergência)
     consultas_extras_divergencia: int = 2      # leituras extras para tentar esclarecer uma divergência
     # --- Tempo
-    tempo_consulta_wo_seg: float = 30          # filtro da WO no Monitor (consulta da lista)
-    tempo_consulta_detalhes_seg: float = 30    # detalhes da janela "Mensagens" (itens)
+    tempo_consulta_wo_seg: float = 30.0          # filtro da WO no Monitor (consulta da lista)
+    tempo_consulta_detalhes_seg: float = 30.0    # detalhes da janela "Mensagens" (itens)
     intervalo_auditorias_seg: float = 0.5      # pausa entre rodadas de auditoria
-    tempo_max_wo_seg: float = 180              # tudo de uma WO (extração + auditorias)
-    tempo_max_lote_min: float = 240            # a análise inteira
+    tempo_max_wo_seg: float = 180.0              # tudo de uma WO (extração + auditorias)
+    tempo_max_lote_min: float = 240.0            # a análise inteira
     # --- Execução
     intervalo_consultas_seg: float = 0.0       # pausa entre consultas ao BTP (aliviar o sistema)
     wo_sem_resultado: str = "reconsultar"      # "registrar" | "reconsultar" uma vez antes de concluir
@@ -65,6 +66,9 @@ def validar(dados: dict) -> tuple[Preferencias, list[str]]:
             else:
                 valor = str(bruto)
         except (TypeError, ValueError):
+            problemas.append(f"{f.name}: valor inválido ({bruto!r}); mantido {padrao}")
+            continue
+        if isinstance(valor, float) and not math.isfinite(valor):
             problemas.append(f"{f.name}: valor inválido ({bruto!r}); mantido {padrao}")
             continue
         if f.name in _FAIXAS:

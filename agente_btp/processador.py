@@ -103,8 +103,9 @@ def processar_wo(cliente: ClienteBTP, wo: str, prefs: Preferencias | None = None
                     leituras.append(_com_retentativa(lambda r=rodada: cliente.reler(wo, base, r), extras, prazo))
                 except ReleituraIndisponivel as exc:
                     por_chave = False
+                    tipo = "Nova consulta"
                     limitacao = f"{exc} As auditorias seguintes foram novas consultas pelo mesmo caminho."
-                    leituras.append(ler(rodada, "Nova consulta"))
+                    leituras.append(ler(rodada, tipo))
         except TempoEsgotado:
             leituras.append(Leitura(rodada, tipo, erro=f"tempo máximo da WO ({prefs.tempo_max_wo_seg:g} s) atingido"))
             break
@@ -132,12 +133,14 @@ def processar_wo(cliente: ClienteBTP, wo: str, prefs: Preferencias | None = None
 
     # ---- situação OPERACIONAL (separada da auditoria)
     avisos = list(dict.fromkeys(a for l in leituras for a in l.avisos))
-    if not base.alertas and not base.itens:
-        status, obs = Status.NAO_ENCONTRADA, "WO sem alerta no Monitor de Alertas"
-    elif not linhas:
-        status, obs = Status.SEM_REGISTROS, f"{base.alertas} alerta(s) sem itens na janela Mensagens"
-    else:
+    # Decide por TODAS as leituras, não só pela primeira (que pode ter vindo vazia).
+    max_alertas = max((l.alertas or 0 for l in leituras if l.ok), default=0)
+    if linhas:
         status, obs = Status.PROCESSADA, "OK"
+    elif max_alertas:
+        status, obs = Status.SEM_REGISTROS, f"{max_alertas} alerta(s) sem itens na janela Mensagens"
+    else:
+        status, obs = Status.NAO_ENCONTRADA, "WO sem alerta no Monitor de Alertas"
     if avisos:
         obs = "; ".join([obs] + avisos)
     return ResultadoWO(wo, status, linhas=linhas, observacao=obs, auditoria=estado,

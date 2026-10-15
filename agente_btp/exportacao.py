@@ -13,12 +13,14 @@ arquivo gravado é reaberto e a aba 1 é conferida com os dados (verificar_plani
 """
 from __future__ import annotations
 
+import math
 from collections import Counter, OrderedDict
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -100,7 +102,7 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
     ws.title = ABAS[0]
     _cabecalho(ws, COLUNAS_RESULTADO, linha=1)
     for l in linhas:
-        ws.append(l.como_lista())
+        limpas = _append(ws, l.como_lista())
         n = ws.max_row
         for col in (1, 2, 3, 5):
             ws.cell(row=n, column=col).number_format = "@"
@@ -114,8 +116,11 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
             ws.cell(row=n, column=1).comment = Comment(f"Auditoria: {l.auditoria.value}. {l.observacao}"[:1500],
                                                        "Agente BTP")
         for col, campo in enumerate(("wo", "material", "fornecedor", "quantidade_faltante", "mensagem"), 1):
-            if campo in l.notas and col != 1:
-                ws.cell(row=n, column=col).comment = Comment(l.notas[campo][:1500], "Agente BTP")
+            nota = l.notas.get(campo, "") if col != 1 else ""
+            if col in limpas:
+                nota = (nota + " " if nota else "") + "Caracteres de controle do texto original foram removidos."
+            if nota and col != 1:
+                ws.cell(row=n, column=col).comment = Comment(nota[:1500], "Agente BTP")
     _finalizar(ws, [18, 22, 16, 12, 60], linha_cab=1, filtro=True)
 
     # ================================================================ 2. Situação por WO
@@ -137,7 +142,7 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
                 obs.append("Total não calculado: há quantidade não validada")
         elif len(materiais) > 1:
             obs.append("Vários materiais: o total por material está na aba Análise por material SAP")
-        w2.append([r.wo, len(ls), ", ".join(materiais),
+        _append(w2, [r.wo, len(ls), ", ".join(materiais),
                    ", ".join(OrderedDict.fromkeys(l.fornecedor or "(não obtido)" for l in ls)), total,
                    " | ".join(OrderedDict.fromkeys(l.mensagem or "(não obtida)" for l in ls)),
                    r.auditoria.value,
@@ -163,7 +168,7 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
     _cabecalho(w3, cab3, linha=4)
     for (material, fornecedor), ls in sorted(grupos.items(), key=lambda kv: (-len(kv[1]), kv[0])):
         wos = list(OrderedDict.fromkeys(l.wo for l in ls))
-        w3.append([material, fornecedor, len(wos), ", ".join(wos), len(ls), _soma(ls),
+        _append(w3, [material, fornecedor, len(wos), ", ".join(wos), len(ls), _soma(ls),
                    " | ".join(OrderedDict.fromkeys(l.mensagem or "(não obtida)" for l in ls)),
                    _contagem_auditoria(ls)])
         n = w3.max_row
@@ -181,7 +186,7 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
             "Auditoria", "Observação da auditoria"]
     _cabecalho(w4, cab4, linha=4)
     for l in linhas:
-        w4.append(l.como_lista() + [l.consolidado, l.auditoria.value, l.observacao])
+        _append(w4, l.como_lista() + [l.consolidado, l.auditoria.value, l.observacao])
         n = w4.max_row
         for col in (1, 2, 3, 5, 6):
             w4.cell(row=n, column=col).number_format = "@"
@@ -210,7 +215,7 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
     _cabecalho(w6, cab6, linha=4)
     for r in resultados:
         for a in r.registros_auditoria:
-            w6.append([a["wo"], a["material"], a["ocorrencia"], a["rodada"], a["tipo"],
+            _append(w6, [a["wo"], a["material"], a["ocorrencia"], a["rodada"], a["tipo"],
                        a["quando"].replace(microsecond=0) if a.get("quando") else None, a["quantidade"],
                        a["fornecedor"], a["mensagem"], a["resultado"], a["situacao"], a["observacao"]])
             n = w6.max_row
@@ -219,7 +224,7 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
             w6.cell(row=n, column=6).number_format = "dd/mm/yyyy hh:mm:ss"
             w6.cell(row=n, column=7).number_format = FORMATO_QTD
         if not r.registros_auditoria:
-            w6.append([r.wo, "—", "—", None, "—", r.data_hora.replace(microsecond=0), None, "", "",
+            _append(w6, [r.wo, "—", "—", None, "—", r.data_hora.replace(microsecond=0), None, "", "",
                        r.observacao, r.auditoria.value, r.observacao_auditoria])
             w6.cell(row=w6.max_row, column=6).number_format = "dd/mm/yyyy hh:mm:ss"
     _finalizar(w6, [18, 22, 26, 8, 20, 19, 12, 16, 36, 44, 15, 44], linha_cab=4, filtro=w6.max_row > 4)
@@ -261,7 +266,7 @@ def _resumo(ws, resultados, linhas, numero, emitida_em, origem, prefs, fonte_cam
     ]
     _cabecalho(ws, ["Indicador", "Valor", "Significado"], linha=4)
     for nome, valor, significado in indicadores:
-        ws.append([nome, valor, significado])
+        _append(ws, [nome, valor, significado])
         c = ws.cell(row=ws.max_row, column=2)
         c.alignment = Alignment(horizontal="left", vertical="top")
         if isinstance(valor, datetime):
@@ -273,7 +278,7 @@ def _resumo(ws, resultados, linhas, numero, emitida_em, origem, prefs, fonte_cam
         ws.cell(row=inicio, column=1, value=titulo).font = Font(bold=True, size=12)
         _cabecalho(ws, cab, linha=inicio + 1)
         for valores in linhas_secao:
-            ws.append(list(valores))
+            _append(ws, list(valores))
             for col in range(1, len(cab) + 1):
                 ws.cell(row=ws.max_row, column=col).alignment = _QUEBRA
             if pct:
@@ -320,24 +325,42 @@ def verificar_planilha(destino: str | Path, resultados: list[ResultadoWO],
                        exportar_incompletos: bool = True) -> list[str]:
     """Reabre o arquivo gravado e confere a aba 1, célula a célula, com os dados auditados."""
     esperadas = linhas_exportadas(resultados, exportar_incompletos)
-    wb = load_workbook(destino, read_only=True)
-    try:
-        if wb.sheetnames != ABAS:
-            return [f"Abas fora da ordem esperada: {wb.sheetnames}"]
-        linhas = list(wb[ABAS[0]].iter_rows(values_only=True))
-    finally:
-        wb.close()
-    problemas = []
+    wb = load_workbook(destino)   # sem read_only: precisa ver o TIPO de cada célula
+    if wb.sheetnames != ABAS:
+        return [f"Abas fora da ordem esperada: {wb.sheetnames}"]
+    aba = wb[ABAS[0]]
+    linhas = list(aba.iter_rows(values_only=True))
+    problemas = [f"{c.coordinate}: gravado como fórmula ({c.value!r})"
+                 for linha in aba.iter_rows() for c in linha if c.data_type == "f"]
     if list(linhas[0]) != COLUNAS_RESULTADO:
         problemas.append(f"Cabeçalho da aba 1 diferente: {linhas[0]}")
     gravadas = linhas[1:]
     if len(gravadas) != len(esperadas):
         problemas.append(f"Aba 1 tem {len(gravadas)} linha(s); esperado {len(esperadas)}.")
     for i, (g, e) in enumerate(zip(gravadas, esperadas), start=2):
-        for col, (vg, ve) in enumerate(zip(g, e.como_lista())):
+        for col, (vg, ve) in enumerate(zip(g, [_limpar(v) for v in e.como_lista()])):
+            numeros = isinstance(vg, (int, float)) and isinstance(ve, (int, float, Decimal))
+            if numeros and math.isclose(float(vg), float(ve), rel_tol=1e-12):
+                continue   # o Excel guarda número com 15 dígitos significativos
             if _txt(vg) != _txt(ve):
                 problemas.append(f"Linha {i}, {COLUNAS_RESULTADO[col]}: gravado {vg!r}, esperado {ve!r}")
     return problemas
+
+
+def _limpar(valor):
+    """Remove caracteres de controle que o formato .xlsx não aceita (derrubariam a gravação)."""
+    return ILLEGAL_CHARACTERS_RE.sub("", valor) if isinstance(valor, str) else valor
+
+
+def _append(ws, valores: list) -> set[int]:
+    """Acrescenta uma linha SEM interpretar nada: texto que começa com "=" fica texto (nunca
+    fórmula). Devolve as colunas (1-based) cujo texto precisou ser limpo."""
+    limpos = [_limpar(v) for v in valores]
+    ws.append(limpos)
+    for celula in ws[ws.max_row]:
+        if isinstance(celula.value, str) and celula.data_type == "f":
+            celula.data_type = "s"
+    return {i for i, (a, b) in enumerate(zip(valores, limpos), start=1) if a != b}
 
 
 def _titulo(ws, titulo: str, subtitulo: str) -> None:

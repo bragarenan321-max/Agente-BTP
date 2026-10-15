@@ -430,3 +430,102 @@ def test_validacao_com_falha_de_comunicacao_nao_aceita_caminho_sem_conferir(tmp_
     dados = {"url_lista": "/s/A?$filter=W eq '{wo}'", "url_mensagens": "/s/M?$filter=C eq '{linha[C]}'",
              "campos": {"material": "M", "fornecedor": "F", "quantidade_faltante": "Q", "mensagem": "T"}}
     assert a._validar(dados, [WO], falha, {}) == 0
+
+
+# ============================================================ regressões da revisão independente
+def _sem_chave():
+    return config_conjunto_unico(url_item=None, chaves_item=None)
+
+
+def test_sem_chave_mudanca_de_quantidade_e_divergencia_e_nao_item_novo():
+    btp = BTP([[item(ID=None, quantidadeFaltante=2)], [item(ID=None, quantidadeFaltante=3)]])
+    r = processar_wo(ClienteBTP(_sem_chave(), btp), WO, Preferencias(intervalo_auditorias_seg=0, divergencia="revisar"))
+    [l] = r.linhas                                    # 1 ocorrência, não 2
+    assert l.auditoria is Auditoria.DIVERGENTE and l.quantidade_faltante is None
+
+
+def test_itens_iguais_de_alertas_diferentes_nao_sao_fundidos():
+    config = cfg.a_partir_de_dict({
+        "url_lista": "/s/A?$filter=Wo eq '{wo}'", "campo_consolidado_lista": "C",
+        "url_mensagens": None, "campo_mensagens_expandidas": "itens",
+        "campos": {"material": "material", "fornecedor": "fornecedor",
+                   "quantidade_faltante": "quantidadeFaltante", "mensagem": "mensagem"}})
+    sem_id = {k: v for k, v in item().items() if k != "ID"}
+
+    def t(url, timeout=None):
+        return Resposta(200, "application/json", json.dumps({"value": [
+            {"Wo": WO, "C": "C-001", "itens": [sem_id]}, {"Wo": WO, "C": "C-002", "itens": [sem_id]}]}))
+    r = processar_wo(ClienteBTP(config, t), WO, RAPIDO)
+    assert sorted(l.consolidado for l in r.linhas) == ["C-001", "C-002"]
+
+
+def test_itens_iguais_na_mesma_consulta_sao_itens_distintos():
+    sem_id = {k: v for k, v in item().items() if k != "ID"}
+    r = processar_wo(ClienteBTP(_sem_chave(), BTP([[sem_id, sem_id]])), WO, RAPIDO)
+    assert r.registros == 2
+
+
+def test_item_nao_relido_nao_fica_validado():
+    btp = BTP([[item(), item(ID=None, material="000000000011000042")]], por_chave=lambda u: item())
+    r = processar_wo(ClienteBTP(config_conjunto_unico(), btp), WO, Preferencias(auditorias_por_wo=2,
+                                                                                 intervalo_auditorias_seg=0))
+    sem_chave = next(l for l in r.linhas if l.material == "000000000011000042")
+    assert sem_chave.auditoria is Auditoria.NAO_CONCLUIDO and "1 de 2" in sem_chave.observacao
+
+
+def test_campo_que_nao_e_data_nao_serve_de_evidencia():
+    leituras = [item(quantidadeFaltante=q, alteradoPor=u) for q, u in ((2, "ZECA"), (3, "ANA"), (2, "ZECA"), (2, "ZECA"))]
+    btp = BTP([[x] for x in leituras], por_chave=lambda u: leituras[-1])
+    r = processar_wo(ClienteBTP(config_conjunto_unico(), btp), WO,
+                     Preferencias(auditorias_por_wo=3, auditorias_independentes=False, divergencia="revisar"))
+    assert r.linhas[0].quantidade_faltante is None and "Não resolvida" in r.linhas[0].notas["quantidade_faltante"]
+
+
+def test_data_que_volta_no_tempo_nao_resolve():
+    novo = item(alteradoEm="2026-10-15T10:00:00.500Z", quantidadeFaltante=3)
+    velho = item(alteradoEm="2026-10-15T10:00:00Z", quantidadeFaltante=2)
+    r = processar_wo(ClienteBTP(config_conjunto_unico(), BTP([[novo], [velho]])), WO,
+                     Preferencias(auditorias_por_wo=3, auditorias_independentes=False, divergencia="revisar"))
+    assert r.linhas[0].quantidade_faltante is None
+
+
+def test_situacao_considera_todas_as_leituras():
+    r = processar_wo(ClienteBTP(config_conjunto_unico(), BTP([[], [item()]], por_chave=lambda u: item())), WO,
+                     Preferencias(intervalo_auditorias_seg=0, wo_sem_resultado="registrar"))
+    assert r.status is Status.PROCESSADA and r.auditoria is Auditoria.DIVERGENTE
+
+
+def test_texto_com_igual_e_controle_nao_vira_formula_nem_quebra(tmp_path):
+    itens = [item(mensagem="=> Saldo insuficiente (-2)"), item(ID="i2", mensagem="Falta\x0bmaterial")]
+    rs = processar_lote(ClienteBTP(_sem_chave(), BTP([itens])), [WO], prefs=RAPIDO)
+    destino = gerar_planilha(rs, tmp_path / "x.xlsx")
+    ws = load_workbook(destino)["Dados extraídos"]
+    assert ws["E2"].value == "=> Saldo insuficiente (-2)" and ws["E2"].data_type == "s"
+    assert ws["E3"].value == "Faltamaterial" and "controle" in ws["E3"].comment.text
+    assert verificar_planilha(destino, rs) == []
+
+
+def test_verificacao_acusa_formula_na_aba_1(tmp_path):
+    rs = processar_lote(ClienteBTP(_sem_chave(), BTP([[item()]])), [WO], prefs=RAPIDO)
+    destino = gerar_planilha(rs, tmp_path / "x.xlsx")
+    wb = load_workbook(destino)
+    wb["Dados extraídos"]["E2"] = "=1+1"
+    wb.save(destino)
+    assert any("fórmula" in p for p in verificar_planilha(destino, rs))
+
+
+def test_releitura_recusada_com_400_cai_para_nova_consulta():
+    def t(url, timeout=None):
+        if "/srv/Itens(" in url:
+            return Resposta(400, "application/json", '{"error":{"message":"chave"}}')
+        return Resposta(200, "application/json", json.dumps({"value": [item()]}))
+    r = processar_wo(ClienteBTP(config_conjunto_unico(), t), WO, RAPIDO)
+    assert r.auditoria is Auditoria.VALIDADO and r.rodadas_concluidas == 5
+    assert "não permite ler os itens pela chave" in r.observacao_auditoria
+
+
+def test_tempos_com_decimal_e_valores_invalidos(tmp_path):
+    prefs, problemas = preferencias.salvar({"tempo_max_wo_seg": 12.5, "tempo_max_lote_min": 1.5,
+                                            "tempo_consulta_wo_seg": "nan"}, tmp_path / "p.json")
+    assert prefs.tempo_max_wo_seg == 12.5 and prefs.tempo_max_lote_min == 1.5
+    assert prefs.tempo_consulta_wo_seg == 30.0 and problemas

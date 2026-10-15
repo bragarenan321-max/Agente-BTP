@@ -69,7 +69,7 @@ e `preferencias.py`, `exportacao.py` (6 abas + conferência do arquivo), `agente
 painel, histórico), `config.py` (versão 3, releitura por chave), testes.
 
 ## 5. Testes
-- Unidade: `python -m pytest testes` — 94 testes (reprodução do 2×3, zeros à esquerda, mensagem
+- Unidade: `python -m pytest testes` — 105 testes (reprodução do 2×3, zeros à esquerda, mensagem
   literal, WO↔material↔fornecedor, duplicidade, divergência, resolução por registro de alteração,
   campos ausentes, ambiguidade, falhas, tempos por consulta/WO/lote, interrupção, estrutura e
   conferência do Excel, persistência das configurações, API da engrenagem).
@@ -77,7 +77,23 @@ painel, histórico), `config.py` (versão 3, releitura por chave), testes.
   serviço do diagnóstico real com `quantidade`=3 e `quantidadeFaltante`=2 → Excel = 2),
   `rodar_extensao.py`, `rodar_combinacoes.py`.
 
-## 6. Limitações
+## 6. Revisão independente (pós-entrega) — 9 defeitos corrigidos
+1. Sem chave do BTP, uma mudança de quantidade partia o item em dois (com os dois valores). Agora a
+   identidade por conteúdo ignora quantidade, mensagem e datas: a mudança vira divergência.
+2. Itens iguais de alertas diferentes eram fundidos. A identidade inclui o alerta de origem; itens
+   iguais na mesma consulta são numerados (não descartados).
+3. Item não relido (sem chave) saía "Validado". Agora cada ocorrência conta só as auditorias que a
+   conferiram; sem chave com valor, não há releitura.
+4. "Evidência" de alteração aceitava campos que não são data (ex.: alteradoPor) e comparava datas
+   como texto. Agora só datas reais, em ordem, contando apenas leituras posteriores à alteração.
+5. WO aparecia "Não consta no Monitor" com ocorrência exportada. A situação considera todas as leituras.
+6. Mensagem iniciada por "=" era gravada como fórmula. Agora é texto, e a conferência acusa fórmula.
+7. Caractere de controle derrubava o Excel. Agora é removido, com comentário na célula.
+8. Releitura recusada com 400 deixava todas as WOs "Não concluído". Agora cai para nova consulta.
+9. Tempos com decimal eram truncados; "nan" passava. Corrigido.
+Testes: 105 de unidade + 6 cenários ponta a ponta.
+
+## 7. Limitações
 - Não houve acesso ao BTP real nos testes: os nomes reais dos campos não são conhecidos; a
   aba Resumo mostra de qual campo técnico cada coluna foi lida, para conferência no primeiro uso.
 - A releitura por chave depende de o serviço permitir; quando não permite, as auditorias são

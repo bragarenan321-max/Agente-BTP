@@ -17,6 +17,7 @@ from decimal import Decimal
 
 from .campos import peso_nome
 from .modelos import CAMPOS, GRAVIDADE, ROTULO, Auditoria, Leitura, LinhaMensagem
+from .odata import instante
 
 RELEITURA = "Releitura por chave"
 
@@ -41,18 +42,25 @@ def _observacoes(chave: str, leituras: list[Leitura]):
 
 
 def _resolver(obs: list, campo: str):
-    """Tenta explicar a divergência pelo registro de alteração do próprio BTP."""
-    com_marca = [(l, o) for l, o in obs if o is not None and o != "nao_relido" and o.marca_tempo]
-    if len(com_marca) < 3:
+    """Tenta explicar a divergência pelo registro de alteração do próprio BTP.
+
+    Exige: data de alteração REAL (não texto qualquer), datas que não voltam no tempo na ordem
+    das leituras, e ≥ 2 leituras feitas DEPOIS da última alteração concordando entre si.
+    """
+    com_marca = [(l, o, instante(o.marca_tempo)) for l, o in obs
+                 if o is not None and o != "nao_relido" and o.marca_tempo]
+    if len(com_marca) < 3 or any(t is None for _, _, t in com_marca):
         return None, ""
-    marcas = [o.marca_tempo for _, o in com_marca]
-    ultima = max(marcas)
-    if len(set(marcas)) < 2 or com_marca[-1][1].marca_tempo != ultima:
-        return None, ""
-    depois = [o.valores[campo] for _, o in com_marca if o.marca_tempo == ultima]
+    tempos = [t for _, _, t in com_marca]
+    if any(b < a for a, b in zip(tempos, tempos[1:])) or len(set(tempos)) < 2:
+        return None, ""                      # data voltou no tempo ou nunca mudou: não explica
+    ultima = tempos[-1]
+    inicio = tempos.index(ultima)            # primeira leitura já com a alteração mais recente
+    depois = [o.valores[campo] for _, o, _ in com_marca[inicio:]]
     if len(depois) >= 2 and len({_texto(v) for v in depois}) == 1:
-        return depois[-1], (f"Resolvida: o BTP registra alteração do item ({min(marcas)} → {ultima}); "
-                            f"valor atual confirmado em {len(depois)} leituras posteriores.")
+        return depois[-1], (f"Resolvida: o BTP registra alteração do item ({com_marca[0][1].marca_tempo} → "
+                            f"{com_marca[inicio][1].marca_tempo}); valor atual confirmado em "
+                            f"{len(depois)} leituras posteriores à alteração.")
     return None, ""
 
 
@@ -94,6 +102,8 @@ def consolidar(wo: str, leituras: list[Leitura], previstas: int):
         if not presentes:
             continue
         ref = presentes[0][1]
+        # Auditorias que de fato conferiram ESTA ocorrência ("não relido" não conta).
+        feitas = sum(1 for l, o in obs if l.rodada > 0 and l.tipo != "Leitura extra" and o != "nao_relido")
         notas, motivos, divergente = {}, [], False
         ausencias = [l.rodada for l, o in obs if o is None]
         if ausencias or chave not in base.itens:
@@ -132,9 +142,9 @@ def consolidar(wo: str, leituras: list[Leitura], previstas: int):
             estado = Auditoria.DIVERGENTE
         elif incompleto:
             estado = Auditoria.INCOMPLETO
-        elif concluidas < previstas or previstas == 0:
+        elif feitas < previstas or previstas == 0:
             estado = Auditoria.NAO_CONCLUIDO
-            motivos.append(f"{concluidas} de {previstas} auditorias concluídas" if previstas else
+            motivos.append(f"{feitas} de {previstas} auditorias conferiram esta ocorrência" if previstas else
                            "Auditoria desativada nas configurações: apenas uma leitura")
         else:
             estado = Auditoria.VALIDADO

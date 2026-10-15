@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import re
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from urllib.parse import quote
 
@@ -95,3 +97,27 @@ def como_quantidade(valor):
     except InvalidOperation:
         return None
     return int(numero) if numero == numero.to_integral_value() else numero
+
+
+_DATA_V2 = re.compile(r"^/Date\((-?\d+)([+-]\d{4})?\)/$")
+_DATA_ISO = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}")
+
+
+def instante(valor) -> float | None:
+    """Data/hora de um valor OData (V2 "/Date(ms)/" ou ISO 8601) em segundos; None se não for data."""
+    if not isinstance(valor, str):
+        return None
+    texto = valor.strip()
+    m = _DATA_V2.match(texto)
+    if m:
+        return int(m.group(1)) / 1000
+    if _DATA_ISO.match(texto):
+        try:
+            iso = texto.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(iso)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.timestamp()
+        except ValueError:
+            return None
+    return None

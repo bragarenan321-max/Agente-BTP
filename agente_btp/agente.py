@@ -368,7 +368,7 @@ class Agente:
         try:
             arquivo = gerar_planilha(resultados, nome_analise(PASTA_SAIDAS, numero, len(wos)), numero=numero,
                                      emitida_em=inicio_relogio, origem=descricao, prefs=prefs,
-                                     fonte_campos=api.campos, releitura_por_chave=bool(api.url_item))
+                                     fonte_campos=api.campos, releitura_por_chave=bool(api.url_item and api.chaves_item))
             problemas = verificar_planilha(arquivo, resultados, prefs.exportar_incompletos)
             if problemas:
                 erro_planilha = ("A conferência do Excel gravado encontrou diferenças: "
