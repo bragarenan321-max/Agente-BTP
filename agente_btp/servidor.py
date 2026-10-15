@@ -13,7 +13,7 @@ from flask import Flask, Response, abort, jsonify, request, send_file
 
 from . import historico, preferencias
 from .agente import Agente, caminho_saida
-from .entrada import ler_wos_planilha, ler_wos_texto
+from .entrada import ler_wos_planilha, ler_wos_texto, wo_valida
 from .config import URL_LAUNCHPAD
 
 PASTA_WEB = Path(__file__).resolve().parent / "web"
@@ -166,6 +166,29 @@ def criar_app(agente: Agente) -> Flask:
             return jsonify(ok=False, erro="Informe ao menos uma WO."), 400
         agente.enviar("executar", wos, " + ".join(partes))
         return jsonify(ok=True, total=len(wos))
+
+    @app.post("/api/raiox")
+    def iniciar_raiox():
+        dados = request.get_json(force=True, silent=True) or {}
+        wo = str(dados.get("wo", "")).strip().replace(" ", "")
+        if not wo_valida(wo):
+            return jsonify(ok=False, erro="Informe uma WO no formato 00000|000000000."), 400
+        if agente.estado()["ocupado"]:
+            return jsonify(ok=False, erro="Aguarde a análise em andamento terminar."), 409
+        agente.enviar("raiox", wo, str(dados.get("consolidado", "")).strip())
+        return jsonify(ok=True)
+
+    @app.post("/api/fonte/refazer")
+    def refazer_fonte():
+        if agente.estado()["ocupado"]:
+            return jsonify(ok=False, erro="Aguarde a análise em andamento terminar."), 409
+        agente.refazer_fonte()
+        return jsonify(ok=True)
+
+    @app.post("/api/raiox/pronto")
+    def raiox_pronto():
+        agente.raiox_pronto()
+        return jsonify(ok=True)
 
     @app.post("/api/fonte")
     def responder_fonte():

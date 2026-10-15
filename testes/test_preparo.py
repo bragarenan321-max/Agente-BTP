@@ -354,3 +354,26 @@ def test_mensagem_do_alerta_pode_ser_escolhida(agente, monkeypatch, tmp_path):
     e = agente.estado()
     d = list(load_workbook(agente_mod.PASTA_SAIDAS / e["ultimo_arquivo"])["Dados"].iter_rows(min_row=2, values_only=True))
     assert d[0][4] == amostras[0]["itens"][0]["mensagem_alerta"]
+
+
+def test_raio_x_mostra_de_onde_vem_cada_dado():
+    from agente_btp.raiox import raio_x, resumo_texto
+    get, urls = servico_real()
+
+    class Aba:
+        pagina = "/site#ObjMotor-display"
+
+        def fontes(self):
+            return [{"recurso": SRV + "$metadata"}]
+
+        def get(self, url, accept=None):
+            return get(url, accept)
+    rel = raio_x(Aba(), WO, CONSOL)
+    texto = resumo_texto(rel)
+    assert "ErrosMaterial [workOrderID_workOrderID = wo]: 1 registro(s)" in texto
+    assert "MateriaisLancadosStatus" in texto
+    pend = next(c for c in rel["conjuntos"] if c["conjunto"] == "Pendencias")
+    assert any(q["filtro"] == "consolidID = consolidado" for q in pend["consultas"])   # também pelo consolidado
+    erros = next(c for c in rel["conjuntos"] if c["conjunto"] == "ErrosMaterial")
+    assert erros["consultas"][0]["amostra"][0]["quantidadeFaltante"] == 2
+    assert not [u for u in urls if "LimpaWorkOrder" in u]          # nome de ação nunca consultado

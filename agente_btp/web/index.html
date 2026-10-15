@@ -209,8 +209,24 @@
     <div class="chips" id="chips"></div>
     <div class="linha" style="margin-top:16px">
       <a id="baixar" class="botao oculto" href="#">Baixar relatório auditado (.xlsx)</a>
+      <button id="bRaioxPronto" class="oculto">Já abri a janela Mensagens</button>
+      <a id="baixarRaiox" class="botao oculto" href="#">Baixar Raio-X (.json)</a>
     </div>
   </section>
+
+  <details id="caixaRaiox">
+    <summary>Raio-X da fonte (quando os dados não batem com o BTP)</summary>
+    <div class="cartao" style="margin-top:10px">
+      <p class="suave">Use uma WO cuja janela <b>Mensagens</b> você conhece. O agente consulta tudo o que o
+        serviço do Monitor tem para ela e observa a tela do BTP enquanto você abre a janela Mensagens.
+        O arquivo gerado mostra exatamente de onde vem cada dado.</p>
+      <div class="linha">
+        <input id="rxWo" placeholder="WO (ex.: 06201|740923282)" style="font:14px Consolas,monospace;padding:8px;border:1px solid var(--borda);border-radius:6px;width:230px">
+        <input id="rxCons" placeholder="Consolidado (opcional)" style="font:14px Consolas,monospace;padding:8px;border:1px solid var(--borda);border-radius:6px;width:260px">
+        <button class="sec" id="bRaiox">Gerar Raio-X</button>
+      </div>
+    </div>
+  </details>
 
   <details>
     <summary>Registro de execução</summary>
@@ -270,6 +286,7 @@
     <div class="linha">
       <button id="cfgSalvar">Salvar configurações</button>
       <button class="sec" id="cfgPadrao">Restaurar padrões</button>
+      <button class="sec" id="cfgRefazer" title="Apaga a fonte de dados gravada; a próxima análise pede a conferência de novo">Refazer a fonte de dados</button>
     </div>
   </section>
 </main>
@@ -352,6 +369,12 @@ async function responderFonte(resposta) {
     body: JSON.stringify({ resposta, mensagem: m ? m.value : "item" }) });
   $("cartaoConfirma").classList.add("oculto"); confirmacaoAtual = "";
 }
+$("bRaiox").onclick = async () => {
+  const r = await fetch("/api/raiox", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ wo: $("rxWo").value, consolidado: $("rxCons").value }) }).then(r => r.json());
+  if (!r.ok) alert(r.erro);
+};
+$("bRaioxPronto").onclick = () => fetch("/api/raiox/pronto", { method: "POST" });
 $("cfSim").onclick = () => responderFonte("sim");
 $("cfOutra").onclick = () => responderFonte("outra");
 $("cfMostrar").onclick = () => responderFonte("mostrar");
@@ -383,10 +406,12 @@ async function atualizar() {
     const p = e.progresso, pct = p.total ? Math.round(100 * p.atual / p.total) : 0;
     $("tituloProg").textContent = e.fase === "falhou" ? "Configuração não concluída"
       : e.fase === "confirmando" ? "Aguardando sua conferência da amostra"
+      : e.fase === "raiox" ? "Raio-X da fonte em andamento"
+      : e.fase === "raiox_ok" ? "Raio-X pronto"
       : e.fase === "preparando" ? "Configurando o acesso aos dados (primeira execução)"
       : e.fase === "concluido" ? (e.ultimo_numero ? `Análise nº ${e.ultimo_numero} concluída` : "Análise concluída")
       : "Extraindo e auditando";
-    $("barra").classList.toggle("indef", e.fase === "preparando");
+    $("barra").classList.toggle("indef", ["preparando", "raiox"].includes(e.fase));
     $("prepInfo").classList.toggle("oculto", !["preparando", "falhou"].includes(e.fase));
     $("observadas").textContent = e.observadas;
     $("barraFill").style.width = (e.fase === "concluido" ? 100 : pct) + "%";
@@ -397,8 +422,11 @@ async function atualizar() {
     [["iProcessadas", "processadas"], ["iPendentes", "pendentes"], ["iValidadas", "validadas"],
      ["iDivergentes", "divergentes"], ["iIncompletas", "incompletas"], ["iFalhas", "falhas"]]
       .forEach(([el, k]) => { $(el).textContent = ind[k] ?? 0; });
-    $("painel").classList.toggle("oculto", ["preparando", "falhou", "confirmando"].includes(e.fase));
-    $("etapa").textContent = e.fase === "processando" && e.etapa ? "Agora: " + e.etapa : "";
+    $("painel").classList.toggle("oculto", ["preparando", "falhou", "confirmando", "raiox", "raiox_ok"].includes(e.fase));
+    $("bRaioxPronto").classList.toggle("oculto", e.fase !== "raiox");
+    $("baixarRaiox").classList.toggle("oculto", !(e.fase === "raiox_ok" && e.ultimo_raiox));
+    if (e.ultimo_raiox) $("baixarRaiox").href = "/api/download/" + encodeURIComponent(e.ultimo_raiox);
+    $("etapa").textContent = (e.fase === "processando" || e.fase === "raiox") && e.etapa ? "Agora: " + e.etapa : "";
     $("chips").innerHTML = GRUPOS.map(g => {
       const n = g.status.reduce((s, st) => s + (e.contagem[st] || 0), 0);
       return n ? `<span class="chip ${g.classe}">${g.rotulo}<b>${n}</b></span>` : "";
@@ -506,6 +534,11 @@ async function salvarConfig(url, corpo) {
   $("cfgStatus").textContent = r.problemas.length ? "Salvo com ajustes: " + r.problemas.join("; ") : "Configurações salvas.";
 }
 $("cfgSalvar").onclick = () => salvarConfig("/api/configuracoes", lerFormulario());
+$("cfgRefazer").onclick = async () => {
+  if (!confirm("Apagar a fonte de dados gravada? Na próxima análise o agente procura de novo e pede a conferência.")) return;
+  const r = await fetch("/api/fonte/refazer", { method: "POST" }).then(r => r.json());
+  $("cfgStatus").textContent = r.ok ? "Fonte apagada: a próxima análise pede a conferência." : r.erro;
+};
 $("cfgPadrao").onclick = () => confirm("Restaurar todos os valores padrão?") && salvarConfig("/api/configuracoes/padrao");
 fetch("/api/configuracoes").then(r => r.json()).then(r => { $("nAuditorias").textContent = r.valores.auditorias_por_wo; });
 

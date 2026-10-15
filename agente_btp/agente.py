@@ -28,6 +28,8 @@ from .entrada import wo_valida
 from .modelos import STATUS_FALHA, Auditoria, ErroConsulta, FalhaComunicacao, SessaoExpirada, Status
 from .ponte import PonteAba
 from .processador import processar_lote
+from .raiox import raio_x, resumo_texto
+from .raiox import salvar as salvar_raiox
 from .sondagem import sondar
 
 log = logging.getLogger("agente_btp")
@@ -54,6 +56,7 @@ class Agente:
         self._explorados: set[str] = set()
         self._resposta: dict | None = None
         self._resposta_fonte = threading.Event()
+        self._raiox_pronto = threading.Event()
         self.ponte = PonteAba()
         self.ponte.observador = self._ao_observar
         self._estado = {
@@ -67,6 +70,7 @@ class Agente:
             "etapa": "",
             "indicadores": {},
             "confirmacao": None,
+            "ultimo_raiox": None,
             "aviso": "",
             "mensagens": [],
         }
@@ -400,6 +404,58 @@ class Agente:
             return json.loads(cfg.ARQUIVO_CONFIG.read_text(encoding="utf-8")).get("origem", "")
         except Exception:  # noqa: BLE001
             return ""
+
+    # ------------------------------------------------ Raio-X da fonte (para suporte)
+    def refazer_fonte(self) -> None:
+        """A fonte gravada não serve: ela é recusada (nunca mais usada) e apagada."""
+        if cfg.ARQUIVO_CONFIG.exists():
+            try:
+                _rejeitar(json.loads(cfg.ARQUIVO_CONFIG.read_text(encoding="utf-8")))
+            except (OSError, json.JSONDecodeError):
+                pass
+            cfg.ARQUIVO_CONFIG.unlink(missing_ok=True)
+        self._candidatos, self._testados, self._sondadas, self._explorados = [], set(), set(), set()
+        self._msg("Fonte de dados apagada pelo usuário; será procurada e conferida de novo.")
+
+    def raiox_pronto(self) -> None:
+        self._raiox_pronto.set()
+
+    def _cmd_raiox(self, wo: str, consolidado: str = "", espera_seg: int = 180) -> None:
+        """Fotografa o que o serviço tem para uma WO conhecida + as consultas da tela do BTP."""
+        if not self.ponte.autenticado():
+            self._definir(fase="ocioso", aviso="Conecte a aba do BTP antes de gerar o Raio-X.")
+            return
+        self._raiox_pronto = threading.Event()
+        self._definir(fase="raiox", inicio=time.monotonic(), ultimo_raiox=None, aviso="", etapa="",
+                      progresso={"atual": 0, "total": 0})
+        self.ponte.iniciar_captura()
+        self._msg(f"Raio-X da fonte: WO {wo}" + (f", consolidado {consolidado}" if consolidado else ""))
+        try:
+            rel = raio_x(self.ponte, wo, consolidado, lambda t: self._definir(etapa=t))
+        except SessaoExpirada:
+            self._definir(fase="ocioso", aviso="A sessão do BTP caiu durante o Raio-X. Faça login e repita.")
+            return
+        limite = time.monotonic() + espera_seg
+        while time.monotonic() < limite and not self._raiox_pronto.is_set() and not self._parar.is_set():
+            self._definir(etapa="", aviso=f"Agora, na aba do BTP: filtre a WO {wo} no Monitor de Alertas, abra a "
+                                          f"janela 'Mensagens' e clique em 'Já abri a janela Mensagens' "
+                                          f"(restam {int(limite - time.monotonic())} s).")
+            time.sleep(1)
+        tela = [dict(c, corpo_resposta=str(c.get("corpo_resposta", ""))[:20000],
+                     corpo_requisicao=str(c.get("corpo_requisicao", ""))[:5000])
+                for c in self.ponte.consultas_observadas()[-120:]]
+        rel["tela_do_btp"] = tela
+        rel["resumo"] = resumo_texto(rel)
+        if cfg.ARQUIVO_CONFIG.exists():
+            rel["configuracao_atual"] = json.loads(cfg.ARQUIVO_CONFIG.read_text(encoding="utf-8"))
+            self.ponte.parar_captura()
+        PASTA_SAIDAS.mkdir(parents=True, exist_ok=True)
+        nome = f"RaioX {wo.replace('|', '-')} {datetime.now():%Y%m%d-%H%M%S}.json"
+        salvar_raiox(rel, PASTA_SAIDAS / nome)
+        self._definir(fase="raiox_ok", ultimo_raiox=nome, etapa="",
+                      aviso=f"Raio-X pronto: {len(tela)} consulta(s) da tela observadas. "
+                            "Baixe o arquivo e envie para análise.")
+        self._msg(f"Raio-X gravado: {nome}")
 
     def diagnostico(self) -> dict:
         """Tudo o que ajuda a entender por que a preparação não concluiu (sem senhas/cookies)."""

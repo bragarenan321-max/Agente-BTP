@@ -24,7 +24,7 @@ URL_LAUNCHPAD = os.environ.get(
 CAMPOS_OBRIGATORIOS = ("material", "fornecedor", "quantidade_faltante", "mensagem")
 # Configurações de versões anteriores aceitavam caminhos que não traziam as mensagens:
 # só vale a configuração gravada por esta versão (ou posterior), já validada com dados reais.
-VERSAO_CONFIG = 4   # 4: fonte só vale depois de confirmada pelo usuário com uma amostra real
+VERSAO_CONFIG = 5   # 5: descarta a fonte confirmada em 15/10 (tabela de materiais com "Ok", não a janela Mensagens)
 
 
 @dataclass
