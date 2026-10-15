@@ -52,8 +52,17 @@ def _campos_wo(props: dict[str, str]) -> list[str]:
     return sorted(campos, key=lambda c: (0 if {"id", "order", "num", "numero"} & set(partes(c)) else 1, len(c)))[:2]
 
 
+_MATERIAL_SAP = re.compile(r"^\d{18}$")     # MATNR com zeros à esquerda (como na janela Mensagens)
+_FORNECEDOR_SAP = re.compile(r"^\d{10}$")   # LIFNR com zeros à esquerda
+
+
 def _nota(registros: list[dict], wo: str) -> tuple[int, dict]:
-    """Semelhança com a janela "Mensagens": (pontos, campos mapeados)."""
+    """Semelhança com a janela "Mensagens": (pontos, campos mapeados).
+
+    Além dos nomes, pesa o FORMATO do que a janela mostra: material SAP com 18 dígitos,
+    fornecedor com 10 e mensagem em frase (ex.: "Erro durante baixa de estoque…"). Uma tabela
+    de materiais com "bom"/"estoque" no lugar da mensagem perde pontos.
+    """
     melhor = (0, {})
     for r in registros[:3]:
         campos = mapear_campos(r, wo)
@@ -62,6 +71,15 @@ def _nota(registros: list[dict], wo: str) -> tuple[int, dict]:
             pontos += 2
         if "falt" in campos.get("quantidade_faltante", "").lower():   # coluna "Quantidade faltante"
             pontos += 1
+        if _MATERIAL_SAP.match(str(r.get(campos.get("material", ""), "")).strip()):
+            pontos += 2
+        if _FORNECEDOR_SAP.match(str(r.get(campos.get("fornecedor", ""), "")).strip()):
+            pontos += 2
+        texto = str(r.get(campos.get("mensagem", ""), "") or "").strip()
+        if " " in texto and len(texto) >= 12:
+            pontos += 2
+        elif texto and " " not in texto and len(texto) <= 12:
+            pontos -= 2                       # código curto ("bom", "estoque"), não mensagem
         melhor = max(melhor, (pontos, campos), key=lambda x: x[0])
     return melhor
 
@@ -103,8 +121,29 @@ class Explorador:
             return []
         self._ligados(wo, por_wo, achados)
         achados.sort(key=lambda a: (-a[0], not a[1], len(a[2])))
-        return [(dados, [f"Itens da janela 'Mensagens' achados nos dados de '{nome}' ({pontos} pontos)."])
-                for pontos, _, nome, dados in achados]
+        # Cobertura: a fonte certa traz itens para (quase) todas as WOs que estão no Monitor;
+        # uma tabela auxiliar (ex.: lista de materiais) só tem algumas.
+        avaliados = []
+        for pontos, dica, nome, dados in achados[:8]:
+            cobertura = self._cobertura(dados)
+            self.relato.append({"conjunto": nome, "cobertura": cobertura, "pontos": pontos})
+            avaliados.append((cobertura, pontos, dica, nome, dados))
+        avaliados.sort(key=lambda a: (-a[0], -a[1], not a[2], len(a[3])))
+        return [(dados, [f"Itens da janela 'Mensagens' achados nos dados de '{nome}' "
+                         f"({pontos} pontos; itens em {cobertura} WO(s) da amostra)."])
+                for cobertura, pontos, _, nome, dados in avaliados]
+
+    def _cobertura(self, dados: dict) -> int:
+        """Em quantas WOs da amostra esta fonte traz pelo menos um item."""
+        n = 0
+        for wo in self.amostra[:5]:
+            linhas = self._ler(preencher_modelo(dados["url_lista"] + f"&$top={TOP}", wo=wo))
+            if not linhas:
+                continue
+            if dados.get("url_mensagens"):
+                linhas = self._ler(preencher_modelo(dados["url_mensagens"] + f"&$top={TOP}", linha=linhas[0]))
+            n += bool(linhas)
+        return n
 
     def _pela_wo(self, wo, por_wo, achados) -> None:
         for servico, modelo in self.modelos:
@@ -156,7 +195,9 @@ class Explorador:
                                 f"{servico}{nome}?$filter={campo} eq {_literal(origem, tipo, modelo['v4'])}",
                             "campo_mensagens_expandidas": None,
                             "campo_consolidado_lista": mapear_por_nomes({c: "Edm.String" for c in linha}).get(
-                                "consolidado", ""), "campos": campos}))
+                                "consolidado", ""),
+                            "campo_mensagem_alerta": mapear_campos(linha, wo).get("mensagem"),
+                            "campos": campos}))
 
 
 def _codificar(literal: str) -> str:

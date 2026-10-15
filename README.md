@@ -19,6 +19,13 @@ da tela do Monitor. Um caminho só é aceito se trouxer de fato os itens da jane
 todas as WOs voltarem sem itens, a configuração é refeita e, se necessário, o agente pede
 (uma única vez) que a janela "Mensagens" de uma WO seja aberta na aba do BTP.
 
+### Conferência da fonte (uma vez)
+Antes do primeiro lote, o agente mostra uma amostra real (material, fornecedor, quantidade e
+mensagem de uma WO) e pergunta se é o mesmo que a janela **Mensagens** do BTP mostra. Só depois do
+"Sim" o lote roda; a fonte confirmada fica gravada. "Não — procurar outra fonte" descarta aquela
+fonte para sempre; "Não — vou mostrar no BTP" aprende pela tela (abrir a janela Mensagens da WO).
+Se existir a mensagem do alerta (coluna Mensagem do Monitor), você escolhe qual vai para a planilha.
+
 ### Auditoria (fidelidade dos dados)
 Cada WO é extraída e depois **conferida N vezes** (padrão 5, ajustável na engrenagem ⚙):
 cada auditoria é uma nova leitura no BTP; com "auditorias independentes", as rodadas pares
@@ -28,19 +35,13 @@ divergência nunca é aprovada por maioria: sem evidência (registro de alteraç
 o campo fica vazio e sinalizado para revisão.
 
 ### Relatório (Excel)
-`Análise N - X WOs.xlsx` (N = número sequencial da análise; X = WOs consultadas):
+`Análise N - X WOs.xlsx`:
 
 | Aba | Conteúdo |
 |---|---|
-| Dados extraídos | Exatamente: WO, Material SAP, Fornecedor SAP, Quantidade faltante, Mensagem (texto original) |
-| Situação por WO | Ocorrências, materiais, fornecedores, total (quando válido), mensagens, auditoria e situação operacional |
-| Análise por material SAP | Material + fornecedor, com as WOs relacionadas, ocorrências e mensagens |
-| Itens faltantes | Visão operacional com consolidado e resultado da auditoria |
-| Resumo | Indicadores com o significado de cada um, mensagens, parâmetros e origem dos campos no BTP |
-| Auditoria | Cada leitura feita ao BTP e o resultado da comparação |
-
-Ocorrências não validadas aparecem destacadas em cor, com comentário na célula explicando o motivo.
-Depois de gravado, o arquivo é reaberto e a aba 1 é conferida célula a célula com os dados.
+| Dados | **Todas** as WOs: WO, Material SAP, Fornecedor SAP, Quantidade faltante, Mensagem e Observação (vazia quando conferido sem diferença; WO sem itens aparece numa linha com o motivo) |
+| Análise | Números da análise, materiais mais recorrentes (com as WOs), mensagens e a situação de cada WO |
+| Rastreio | Oculta: cada leitura feita ao BTP, para investigar uma divergência |
 
 ### Configurações (engrenagem)
 Auditoria (quantidade, independência, repetições, conduta diante de divergência), tempos

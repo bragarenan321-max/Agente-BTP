@@ -48,6 +48,15 @@ with sync_playwright() as p:
     from agente_btp.agente import PASTA_SAIDAS, Agente  # noqa: E402
     from agente_btp.servidor import criar_app  # noqa: E402
     agente = Agente()
+
+
+    def _confere_amostra():  # faz o papel do usuário: confirma a amostra mostrada na tela
+        while True:
+            if agente.estado()["fase"] == "confirmando" and agente.estado().get("confirmacao"):
+                agente.responder_fonte({"resposta": "sim", "mensagem": "item"})
+            time.sleep(0.3)
+
+    threading.Thread(target=_confere_amostra, daemon=True).start()
     app = criar_app(agente)
     threading.Thread(target=lambda: app.run(host="127.0.0.1", port=8767, threaded=True), daemon=True).start()
     inicio = time.time()
@@ -70,7 +79,7 @@ with sync_playwright() as p:
     esperar(lambda e: e["fase"] == "concluido" and not e["ocupado"], 90)
     e = agente.estado()
     print("contagem:", e["contagem"])
-    for linha in load_workbook(PASTA_SAIDAS / e["ultimo_arquivo"])["Dados extraídos"].iter_rows(values_only=True):
+    for linha in load_workbook(PASTA_SAIDAS / e["ultimo_arquivo"])["Dados"].iter_rows(values_only=True):
         print("  ", linha)
     ctx.close()
 os._exit(0)

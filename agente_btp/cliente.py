@@ -223,7 +223,14 @@ class ClienteBTP:
             "quantidade_faltante": odata.como_quantidade(campo("quantidade_faltante")),
             "mensagem": odata.como_texto(campo("mensagem")),
             "consolidado": odata.como_texto(consolidado),
+            "mensagem_alerta": odata.como_texto(odata.obter_campo(alerta, self.config.campo_mensagem_alerta))
+                               if self.config.campo_mensagem_alerta else "",
         }
+        valores["mensagem_item"] = valores["mensagem"]
+        if self.config.mensagem_origem == "alerta" and valores["mensagem_alerta"]:
+            valores["mensagem"] = valores["mensagem_alerta"]
+        elif not valores["mensagem"] and valores["mensagem_alerta"]:
+            valores["mensagem"] = valores["mensagem_alerta"]   # o item não tem texto próprio
         fonte = {c: campos[c] for c in ("wo", "material", "fornecedor", "quantidade_faltante", "mensagem")
                  if campos.get(c)}
         quantidades = campos_de_quantidade(bruto)

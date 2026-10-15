@@ -24,7 +24,7 @@ URL_LAUNCHPAD = os.environ.get(
 CAMPOS_OBRIGATORIOS = ("material", "fornecedor", "quantidade_faltante", "mensagem")
 # Configurações de versões anteriores aceitavam caminhos que não traziam as mensagens:
 # só vale a configuração gravada por esta versão (ou posterior), já validada com dados reais.
-VERSAO_CONFIG = 3   # 3: escolha correta da quantidade FALTANTE (antes podia pegar a total)
+VERSAO_CONFIG = 4   # 4: fonte só vale depois de confirmada pelo usuário com uma amostra real
 
 
 @dataclass
@@ -41,6 +41,11 @@ class ApiConfig:
     # Releitura de UM item pela chave (auditoria independente). Ex.: /srv/Itens({linha[ID]})
     url_item: str | None = None
     chaves_item: list | None = None
+    # Mensagem do ALERTA (coluna Mensagem do Monitor, ex.: "Erro durante baixa de estoque…")
+    campo_mensagem_alerta: str | None = None
+    # Qual mensagem vai para a planilha: "item" (janela Mensagens) ou "alerta" (lista do Monitor)
+    mensagem_origem: str = "item"
+    confirmada: bool = False
 
 
 def carregar(caminho: Path | None = None) -> ApiConfig:
@@ -84,7 +89,8 @@ def a_partir_de_dict(dados: dict) -> ApiConfig:
         raise ValueError("Informe de onde vêm as mensagens: " + ", ".join(modos) + ".")
     campos = dados.get("campos", {})
     # Pelo menos 3 das 4 colunas da janela "Mensagens", sempre com Material ou Mensagem.
-    presentes = [c for c in CAMPOS_OBRIGATORIOS if campos.get(c)]
+    presentes = [c for c in CAMPOS_OBRIGATORIOS if campos.get(c)
+                 or (c == "mensagem" and dados.get("campo_mensagem_alerta"))]
     if len(presentes) < 3 or not (campos.get("material") or campos.get("mensagem")):
         faltando = [c for c in CAMPOS_OBRIGATORIOS if not campos.get(c)]
         raise ValueError(f"Campos ausentes na configuração: {', '.join(faltando)}")
@@ -98,4 +104,7 @@ def a_partir_de_dict(dados: dict) -> ApiConfig:
         campo_mensagens_json=dados.get("campo_mensagens_json"),
         url_item=dados.get("url_item"),
         chaves_item=dados.get("chaves_item"),
+        campo_mensagem_alerta=dados.get("campo_mensagem_alerta"),
+        mensagem_origem=dados.get("mensagem_origem") or "item",
+        confirmada=bool(dados.get("confirmada")),
     )

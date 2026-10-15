@@ -27,6 +27,19 @@ from agente_btp.agente import PASTA_SAIDAS, Agente  # noqa: E402
 from agente_btp.servidor import criar_app  # noqa: E402
 
 agente = Agente()
+
+
+def _confere_amostra():  # faz o papel do usuário: confirma a amostra mostrada na tela
+    while True:
+        e = agente.estado()
+        if e["fase"] == "confirmando" and e.get("confirmacao"):
+            print("   amostra conferida:", [(i["material"], i["quantidade"], i["mensagem_item"])
+                                           for i in e["confirmacao"]["itens"]][:3])
+            agente.responder_fonte({"resposta": "sim", "mensagem": "item"})
+        time.sleep(0.3)
+
+
+threading.Thread(target=_confere_amostra, daemon=True).start()
 app = criar_app(agente)
 threading.Thread(target=lambda: app.run(host="127.0.0.1", port=8767, threaded=True), daemon=True).start()
 time.sleep(1)
@@ -67,9 +80,7 @@ def cenario(nome, url_aba, b, wos=None):
     wb = load_workbook(PASTA_SAIDAS / e["ultimo_arquivo"])
     print("arquivo:", e["ultimo_arquivo"], "| abas:", wb.sheetnames)
     print("indicadores:", e["indicadores"])
-    sit = {r[0]: (r[6], r[7], r[8]) for r in wb["Situação por WO"].iter_rows(min_row=5, values_only=True)}
-    print("auditoria por WO:", sit)
-    for linha in wb["Dados extraídos"].iter_rows(values_only=True):
+    for linha in wb["Dados"].iter_rows(values_only=True):
         print("  ", linha)
     aba.close()
 

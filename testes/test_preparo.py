@@ -212,7 +212,7 @@ def test_lote_quase_todo_sem_registros_refaz_a_configuracao(agente):
     cfg.salvar({"url_lista": "/srv/AlertaSet?$filter=Wo eq '{wo}'", "campo_consolidado_lista": "ConsolidadoNum",
                 "url_mensagens": "/srv/MsgSet?$filter=ConsolidadoNum eq '{linha[ConsolidadoNum]}'",
                 "campos": {"material": "Matnr", "fornecedor": "Lifnr", "quantidade_faltante": "QtdFaltante",
-                           "mensagem": "Mensagem"}, "origem": "dicionario"})
+                           "mensagem": "Mensagem"}, "origem": "dicionario", "confirmada": True})
 
     def get(url, accept=None, timeout=None):
         c = unquote(url)
@@ -279,3 +279,78 @@ def test_exploracao_tenta_a_proxima_wo(agente):
     agente.ponte.fontes = lambda: [{"recurso": SRV + "$metadata"}]
     assert preparar(agente, get, wos=("11111|111111111", WO)) is True
     assert gravada()["origem"] == "exploracao"
+
+
+# ---------------------------------------------------------------- conferência da fonte com o usuário
+def _rodar_com_conferencia(agente, wos, respostas, prazo=20):
+    """Roda a análise numa thread e responde à conferência da amostra, como o usuário na tela."""
+    import threading
+    t = threading.Thread(target=agente._cmd_executar, args=(wos, "teste"), daemon=True)
+    t.start()
+    amostras, fim = [], time.monotonic() + prazo
+    while t.is_alive() and time.monotonic() < fim:
+        e = agente.estado()
+        if e["fase"] == "confirmando" and e["confirmacao"] and respostas:
+            amostras.append(e["confirmacao"])
+            agente.responder_fonte(respostas.pop(0))
+        time.sleep(0.05)
+    t.join(timeout=5)
+    return amostras
+
+
+def _conectar(agente, get):
+    agente.ponte.get = get
+    agente.ponte.agente_id, agente.ponte._aba_autenticada = "aba", True
+    agente.ponte._visto_em = time.monotonic() + 3600
+
+
+def test_isca_do_btp_real_nao_e_escolhida(agente):
+    """Caso real de 15/10: tabela com material de 8 dígitos e 'estoque'/'bom' não pode vencer."""
+    get, _ = servico_real()
+    agente.ponte.fontes = lambda: [{"recurso": SRV + "$metadata"}]
+    assert preparar(agente, get) is True
+    assert "MateriaisLancadosStatus" not in gravada()["url_lista"]
+
+
+def test_lote_so_comeca_depois_da_conferencia_e_recusa_troca_a_fonte(agente, monkeypatch, tmp_path):
+    monkeypatch.setattr(agente_mod, "ARQUIVO_REJEITADAS", tmp_path / "recusadas.json")
+    get, _ = servico_real()
+    agente.ponte.fontes = lambda: [{"recurso": SRV + "$metadata"}]
+    _conectar(agente, get)
+    # Começa com a fonte ERRADA (a isca), como aconteceu no BTP real.
+    cfg.salvar({"url_lista": SRV + "MateriaisLancadosStatus?$filter=workOrderID eq '{wo}'",
+                "campo_consolidado_lista": "", "url_mensagens": None, "campo_mensagens_expandidas": ".",
+                "campos": {"wo": "workOrderID", "material": "material", "fornecedor": "fornecedor",
+                           "quantidade_faltante": "quantidade", "mensagem": "tipoErro"}, "origem": "exploracao"})
+    amostras = _rodar_com_conferencia(agente, [WO], [{"resposta": "outra"}, {"resposta": "sim", "mensagem": "item"}])
+    assert [i["mensagem_item"] for i in amostras[0]["itens"]] == ["estoque", "bom"]   # o usuário vê a isca
+    assert amostras[1]["itens"][0]["material"] == "000000000022066463"                # e depois a certa
+    assert gravada()["confirmada"] is True and "ErrosMaterial" in gravada()["url_lista"]
+    e = agente.estado()
+    assert e["fase"] == "concluido" and e["contagem"] == {Status.PROCESSADA.value: 1}
+    from openpyxl import load_workbook
+    d = list(load_workbook(agente_mod.PASTA_SAIDAS / e["ultimo_arquivo"])["Dados"].iter_rows(min_row=2, values_only=True))
+    assert d == [(WO, "000000000022066463", "0000138480", 2, "Estoque indisponível", None)]
+
+
+def test_fonte_confirmada_nao_pergunta_de_novo(agente, monkeypatch, tmp_path):
+    monkeypatch.setattr(agente_mod, "ARQUIVO_REJEITADAS", tmp_path / "recusadas.json")
+    get, _ = servico_real()
+    agente.ponte.fontes = lambda: [{"recurso": SRV + "$metadata"}]
+    _conectar(agente, get)
+    assert _rodar_com_conferencia(agente, [WO], [{"resposta": "sim"}])
+    assert _rodar_com_conferencia(agente, [WO], [{"resposta": "outra"}], prazo=8) == []   # nenhuma pergunta
+    assert agente.estado()["fase"] == "concluido"
+
+
+def test_mensagem_do_alerta_pode_ser_escolhida(agente, monkeypatch, tmp_path):
+    monkeypatch.setattr(agente_mod, "ARQUIVO_REJEITADAS", tmp_path / "recusadas.json")
+    get, _ = servico_real(ligado=True)        # itens ligados ao alerta (Pendencias) pelo consolidado
+    agente.ponte.fontes = lambda: [{"recurso": SRV + "$metadata"}]
+    _conectar(agente, get)
+    amostras = _rodar_com_conferencia(agente, [WO], [{"resposta": "sim", "mensagem": "alerta"}])
+    assert amostras[0]["tem_mensagem_alerta"] and amostras[0]["itens"][0]["mensagem_alerta"]
+    from openpyxl import load_workbook
+    e = agente.estado()
+    d = list(load_workbook(agente_mod.PASTA_SAIDAS / e["ultimo_arquivo"])["Dados"].iter_rows(min_row=2, values_only=True))
+    assert d[0][4] == amostras[0]["itens"][0]["mensagem_alerta"]

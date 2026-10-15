@@ -106,9 +106,9 @@ def test_mensagem_original_e_zeros_preservados(tmp_path):
     rs = processar_lote(ClienteBTP(config_conjunto_unico(), BTP([itens], por_chave=lambda u: next(
         i for i in itens if i["ID"] in u))), [WO], prefs=RAPIDO)
     destino = gerar_planilha(rs, tmp_path / "a.xlsx")
-    linhas = list(load_workbook(destino)["Dados extraídos"].iter_rows(min_row=2, values_only=True))
-    assert linhas == [(WO, "000000000022066463", "0000138480", 2, "Erro durante baixa de estoque"),
-                      (WO, "000000000011000042", "0000000001", 10, "Estoque indisponível")]
+    linhas = list(load_workbook(destino)["Dados"].iter_rows(min_row=2, values_only=True))
+    assert linhas == [(WO, "000000000022066463", "0000138480", 2, "Erro durante baixa de estoque", None),
+                      (WO, "000000000011000042", "0000000001", 10, "Estoque indisponível", None)]
     assert verificar_planilha(destino, rs) == []
 
 
@@ -211,10 +211,9 @@ def test_campo_ausente_fica_incompleto_e_vazio(tmp_path):
     rs = processar_lote(ClienteBTP(config_conjunto_unico(), btp), [WO], prefs=RAPIDO)
     [l] = rs[0].linhas
     assert l.auditoria is Auditoria.INCOMPLETO and l.fornecedor == ""
-    assert "Não obtido" in l.notas["fornecedor"]
-    ws = load_workbook(gerar_planilha(rs, tmp_path / "x.xlsx"))["Dados extraídos"]
-    assert ws["C2"].value is None and "Não obtido" in ws["C2"].comment.text   # sem valor fictício
-    assert "Incompleto" in ws["A2"].comment.text
+    ws = load_workbook(gerar_planilha(rs, tmp_path / "x.xlsx"))["Dados"]
+    assert ws["C2"].value is None                                     # sem valor fictício
+    assert ws["F2"].value == "Fornecedor SAP não informado pelo BTP."
 
 
 def test_quantidade_ambigua_nao_e_validada():
@@ -319,36 +318,30 @@ def test_estrutura_completa_do_excel(tmp_path):
                              fonte_campos={"quantidade_faltante": "quantidadeFaltante"})
     wb = load_workbook(destino)
     assert wb.sheetnames == ABAS
-    d = list(wb["Dados extraídos"].iter_rows(values_only=True))
-    assert d[0] == ("WO", "Material SAP", "Fornecedor SAP", "Quantidade faltante", "Mensagem")
-    assert len(d) == 4                                   # 3 ocorrências; WO sem alerta não gera linha
-    assert d[3] == (WO2, "000000000022066463", "0000138480", None, "Estoque indisponível")  # divergente: sem valor
+    d = list(wb["Dados"].iter_rows(values_only=True))
+    assert len(d) == 5                                    # 3 itens + 1 linha da WO sem alerta (TODAS as WOs)
+    assert d[3][:5] == (WO2, "000000000022066463", "0000138480", None, "Estoque indisponível")  # sem valor
+    assert "Quantidade faltante diferente entre consultas (1 e 4" in d[3][5] and "conferir no BTP" in d[3][5]
+    assert d[4] == ("99999|999999999", None, None, None, None, "Nenhum alerta encontrado no Monitor para esta WO")
+    assert d[1][5] is None and d[2][5] is None            # conferidos: sem observação
     assert verificar_planilha(destino, rs) == []
-    sit = {r[0]: r for r in wb["Situação por WO"].iter_rows(min_row=5, values_only=True)}
-    assert sit[WO][1] == 2 and sit[WO][4] is None and "Vários materiais" in sit[WO][9]   # não soma materiais
-    assert sit[WO][6] == "Validado" and sit[WO][8] == "Com itens faltantes"
-    assert sit[WO2][6] == "Divergente"
-    assert sit["99999|999999999"][8] == "Não consta no Monitor" and sit["99999|999999999"][1] == 0
-    mat = list(wb["Análise por material SAP"].iter_rows(min_row=5, values_only=True))
-    linha = next(m for m in mat if m[0] == "000000000022066463")
-    assert linha[2] == 2 and WO in linha[3] and WO2 in linha[3]        # o material mostra as WOs
-    assert linha[5] is None                                         # soma só com tudo validado
-    itens = list(wb["Itens faltantes"].iter_rows(min_row=5, values_only=True))
-    assert len(itens) == 3 and {i[6] for i in itens} == {"Validado", "Divergente"}
-    resumo = {r[0]: r[1] for r in wb["Resumo"].iter_rows(min_row=5, values_only=True) if r[0]}
-    assert resumo["Ocorrências de alertas"] == 3                 # auditorias não inflam
-    assert resumo["Leituras realizadas ao BTP"] == sum(len(r.leituras) for r in rs) > 3
-    assert resumo["WOs validadas"] == 2 and resumo["WOs com divergências"] == 1
-    assert resumo["Erro durante baixa de estoque"] == 1          # mensagem original, literal
-    aud = list(wb["Auditoria"].iter_rows(min_row=5, values_only=True))
-    assert any(a[0] == WO2 and str(a[9]).startswith("Diferente") for a in aud)
+    a = [r for r in wb["Análise"].iter_rows(values_only=True) if r[0]]
+    numeros = {r[0]: r[1] for r in a}
+    assert numeros["WOs consultadas"] == 3 and numeros["WOs com itens faltantes"] == 2
+    assert numeros["Itens faltantes (linhas com material na aba Dados)"] == 3   # auditorias não inflam
+    assert numeros["Itens com observação (conferir no BTP)"] == 1
+    linha_mat = next(r for r in a if r[0] == "000000000022066463")
+    assert linha_mat[2] == 2 and WO in linha_mat[3] and WO2 in linha_mat[3] and linha_mat[4] is None
+    assert any(r[0] == "Erro durante baixa de estoque" and r[1] == 1 for r in a)   # mensagem literal
+    assert len(list(wb["Rastreio"].iter_rows())) > 5
 
 
 def test_excel_sem_incompletos_quando_configurado(tmp_path):
     rs = _lote_misto()
     destino = gerar_planilha(rs, tmp_path / "x.xlsx", prefs=Preferencias(exportar_incompletos=False))
-    d = list(load_workbook(destino)["Dados extraídos"].iter_rows(min_row=2, values_only=True))
-    assert len(d) == 2 and all(r[0] == WO for r in d)
+    d = list(load_workbook(destino)["Dados"].iter_rows(min_row=2, values_only=True))
+    assert [r[0] for r in d] == [WO, WO, WO2, "99999|999999999"]
+    assert d[2][1] is None and "omitido" in d[2][5]
     assert verificar_planilha(destino, rs, exportar_incompletos=False) == []
 
 
@@ -356,7 +349,7 @@ def test_verificacao_detecta_excel_adulterado(tmp_path):
     rs = _lote_misto()
     destino = gerar_planilha(rs, tmp_path / "x.xlsx")
     wb = load_workbook(destino)
-    wb["Dados extraídos"]["D2"] = 3
+    wb["Dados"]["D2"] = 3
     wb.save(destino)
     assert any("Quantidade faltante" in p for p in verificar_planilha(destino, rs))
 
@@ -499,9 +492,9 @@ def test_texto_com_igual_e_controle_nao_vira_formula_nem_quebra(tmp_path):
     itens = [item(mensagem="=> Saldo insuficiente (-2)"), item(ID="i2", mensagem="Falta\x0bmaterial")]
     rs = processar_lote(ClienteBTP(_sem_chave(), BTP([itens])), [WO], prefs=RAPIDO)
     destino = gerar_planilha(rs, tmp_path / "x.xlsx")
-    ws = load_workbook(destino)["Dados extraídos"]
+    ws = load_workbook(destino)["Dados"]
     assert ws["E2"].value == "=> Saldo insuficiente (-2)" and ws["E2"].data_type == "s"
-    assert ws["E3"].value == "Faltamaterial" and "controle" in ws["E3"].comment.text
+    assert ws["E3"].value == "Faltamaterial"
     assert verificar_planilha(destino, rs) == []
 
 
@@ -509,7 +502,7 @@ def test_verificacao_acusa_formula_na_aba_1(tmp_path):
     rs = processar_lote(ClienteBTP(_sem_chave(), BTP([[item()]])), [WO], prefs=RAPIDO)
     destino = gerar_planilha(rs, tmp_path / "x.xlsx")
     wb = load_workbook(destino)
-    wb["Dados extraídos"]["E2"] = "=1+1"
+    wb["Dados"]["E2"] = "=1+1"
     wb.save(destino)
     assert any("fórmula" in p for p in verificar_planilha(destino, rs))
 

@@ -169,6 +169,28 @@
     </div>
   </section>
 
+  <section class="cartao alerta oculto" id="cartaoConfirma">
+    <h2>Confira a amostra antes de continuar</h2>
+    <p class="suave" id="cfTexto"></p>
+    <div class="rolagem" style="max-height:300px">
+      <table>
+        <thead><tr><th>Material SAP</th><th>Fornecedor SAP</th><th class="num">Qtd. faltante</th>
+          <th>Mensagem do item</th><th id="cfThAlerta">Mensagem do alerta</th></tr></thead>
+        <tbody id="cfTabela"></tbody>
+      </table>
+    </div>
+    <div id="cfEscolha" class="oculto" style="margin-top:12px;font-size:14px">
+      <b>Qual mensagem vai para a planilha?</b><br>
+      <label><input type="radio" name="cfMsg" value="item" checked> Mensagem do item (janela Mensagens)</label><br>
+      <label><input type="radio" name="cfMsg" value="alerta"> Mensagem do alerta (coluna Mensagem do Monitor)</label>
+    </div>
+    <div class="linha" style="margin-top:16px">
+      <button id="cfSim">Sim, são esses os dados</button>
+      <button class="sec" id="cfOutra">Não — procurar outra fonte</button>
+      <button class="sec" id="cfMostrar">Não — vou mostrar no BTP</button>
+    </div>
+  </section>
+
   <section class="cartao oculto" id="cartaoProgresso">
     <h2 id="tituloProg">Em processamento</h2>
     <div class="barra" id="barra"><div id="barraFill"></div></div>
@@ -302,6 +324,37 @@ const GRUPOS = [
   { rotulo: "Formato inválido", classe: "amb", status: ["Formato inválido", "WO inválida"] },
   { rotulo: "Falhas", classe: "err", status: ["Erro", "Falha de comunicação", "Sessão expirada", "Tempo esgotado", "Não processada"] },
 ];
+let confirmacaoAtual = "";
+function desenharConfirmacao(e) {
+  const c = e.fase === "confirmando" ? e.confirmacao : null;
+  $("cartaoConfirma").classList.toggle("oculto", !c);
+  if (!c) { confirmacaoAtual = ""; return; }
+  const chave = JSON.stringify(c);
+  if (chave === confirmacaoAtual) return;          // não redesenha (não perde a escolha do usuário)
+  confirmacaoAtual = chave;
+  $("cfTexto").innerHTML = c.wo
+    ? `No BTP, abra a janela <b>Mensagens</b> da WO <b>${esc(c.wo)}</b> e compare com o que o agente leu `
+      + `— ${c.total} item(ns)${c.total > c.itens.length ? `, mostrando ${c.itens.length}` : ""}. `
+      + `A análise só começa depois da sua confirmação; ela fica gravada para as próximas vezes.`
+    : `O agente não encontrou itens nas primeiras WOs da lista (${esc((c.lidas || []).join("; "))}). `
+      + `Se essas WOs têm mensagens no BTP, a fonte está errada.`;
+  $("cfThAlerta").classList.toggle("oculto", !c.tem_mensagem_alerta);
+  $("cfTabela").innerHTML = c.itens.map(i => `<tr><td style="font-family:Consolas,monospace">${esc(i.material)}</td>
+    <td style="font-family:Consolas,monospace">${esc(i.fornecedor)}</td><td class="num">${esc(i.quantidade)}</td>
+    <td>${esc(i.mensagem_item)}</td>${c.tem_mensagem_alerta ? `<td>${esc(i.mensagem_alerta)}</td>` : ""}</tr>`).join("")
+    || `<tr><td colspan="5" class="vazio">Nenhum item lido.</td></tr>`;
+  $("cfEscolha").classList.toggle("oculto", !c.tem_mensagem_alerta);
+  $("cfSim").disabled = !c.itens.length;
+}
+async function responderFonte(resposta) {
+  const m = document.querySelector('input[name="cfMsg"]:checked');
+  await fetch("/api/fonte", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resposta, mensagem: m ? m.value : "item" }) });
+  $("cartaoConfirma").classList.add("oculto"); confirmacaoAtual = "";
+}
+$("cfSim").onclick = () => responderFonte("sim");
+$("cfOutra").onclick = () => responderFonte("outra");
+$("cfMostrar").onclick = () => responderFonte("mostrar");
 const tempo = s => s < 60 ? `${Math.max(1, Math.round(s))} s` : `${Math.round(s / 60)} min`;
 
 async function atualizar() {
@@ -316,6 +369,7 @@ async function atualizar() {
   $("pt").className = "ponto" + (conectado ? " ok" : e.conexao === "sem_login" ? " esp" : "");
   $("cartaoConexao").classList.toggle("oculto", conectado);
 
+  desenharConfirmacao(e);
   $("aviso").textContent = e.aviso || "";
   $("aviso").classList.toggle("oculto", !e.aviso);
 
@@ -328,6 +382,7 @@ async function atualizar() {
   if (ativo) {
     const p = e.progresso, pct = p.total ? Math.round(100 * p.atual / p.total) : 0;
     $("tituloProg").textContent = e.fase === "falhou" ? "Configuração não concluída"
+      : e.fase === "confirmando" ? "Aguardando sua conferência da amostra"
       : e.fase === "preparando" ? "Configurando o acesso aos dados (primeira execução)"
       : e.fase === "concluido" ? (e.ultimo_numero ? `Análise nº ${e.ultimo_numero} concluída` : "Análise concluída")
       : "Extraindo e auditando";
@@ -342,7 +397,7 @@ async function atualizar() {
     [["iProcessadas", "processadas"], ["iPendentes", "pendentes"], ["iValidadas", "validadas"],
      ["iDivergentes", "divergentes"], ["iIncompletas", "incompletas"], ["iFalhas", "falhas"]]
       .forEach(([el, k]) => { $(el).textContent = ind[k] ?? 0; });
-    $("painel").classList.toggle("oculto", e.fase === "preparando" || e.fase === "falhou");
+    $("painel").classList.toggle("oculto", ["preparando", "falhou", "confirmando"].includes(e.fase));
     $("etapa").textContent = e.fase === "processando" && e.etapa ? "Agora: " + e.etapa : "";
     $("chips").innerHTML = GRUPOS.map(g => {
       const n = g.status.reduce((s, st) => s + (e.contagem[st] || 0), 0);

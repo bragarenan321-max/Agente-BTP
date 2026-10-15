@@ -33,7 +33,7 @@ def servico_real(ligado=False):
         tipos.append(f'<EntityType Name="{nome}"><Key><PropertyRef Name="{chave}"/></Key>{p}</EntityType>')
         conjuntos.append(f'<EntitySet Name="{nome}" EntityType="S.{nome}"/>')
     S, G, D = "Edm.String", "Edm.Guid", "Edm.Decimal"
-    ent("Pendencias", [("ID", G), ("workOrderID", S), ("consolidID", S), ("status", S)])
+    ent("Pendencias", [("ID", G), ("workOrderID", S), ("consolidID", S), ("status", S), ("mensagem", S)])
     ent("ErrosMaterial", [("ID", G), ("consolidID" if ligado else "workOrderID_workOrderID", S),
                           ("material", S), ("descricao", S),
                           ("fornecedor", S), ("quantidade", D), ("quantidadeFaltante", D), ("mensagem", S)])
@@ -41,6 +41,10 @@ def servico_real(ligado=False):
                              ("quantidade", D)])
     ent("LogMaterialConsolid", [("ID", G), ("workOrderID", S), ("material", S), ("fornecedor", S),
                                 ("quantidade", D), ("mensagem", S)])
+    # Isca igual à tabela que o agente escolheu no BTP real (15/10): material de 8 dígitos,
+    # fornecedor fixo, quantidade 0 e "mensagem" = tipo do erro ("estoque"/"bom").
+    ent("MateriaisLancadosStatus", [("ID", G), ("workOrderID", S), ("material", S), ("fornecedor", S),
+                                    ("quantidade", D), ("quantidadeLancada", D), ("tipoErro", S)])
     ent("LimpaWorkOrder", [("ID", G), ("workOrderID", S)])
     for nome in NOMES_REAIS:
         ent(nome, [("ID", G), ("workOrderID", S), ("tipoWo", S), ("descricao", S)])
@@ -79,7 +83,13 @@ def servico_real(ligado=False):
             return ok({"value": [{"ID": "l1", "workOrderID": valor, "material": "000000000022066463",
                                   "fornecedor": "0000138480", "quantidade": 5, "mensagem": "Material alterado"}]})
         if conjunto == "Pendencias" and valor in itens:
-            return ok({"value": [{"ID": "p1", "workOrderID": valor, "consolidID": CONSOL, "status": "Pendente"}]})
+            return ok({"value": [{"ID": "p1", "workOrderID": valor, "consolidID": CONSOL, "status": "Pendente",
+                                  "mensagem": "Erro durante baixa de estoque. Clique para mais detalhes"}]})
+        if conjunto == "MateriaisLancadosStatus" and valor in itens:
+            return ok({"value": [{"ID": "d1", "workOrderID": valor, "material": "22065513", "fornecedor": "148963",
+                                  "quantidade": 0, "quantidadeLancada": 0, "tipoErro": "estoque"},
+                                 {"ID": "d2", "workOrderID": valor, "material": "22057657", "fornecedor": "148963",
+                                  "quantidade": 0, "quantidadeLancada": 0, "tipoErro": "bom"}]})
         if conjunto == "LimpaWorkOrder":
             raise AssertionError("conjunto com nome de ação não pode ser consultado")
         return ok({"value": [{"ID": "x", "workOrderID": valor, "tipoWo": "INST", "descricao": "Instalação"}]

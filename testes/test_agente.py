@@ -8,7 +8,7 @@ from agente_btp import config as cfg
 from agente_btp.cliente import ClienteBTP, Resposta
 from agente_btp.entrada import ler_wos_planilha, ler_wos_texto, wo_valida
 from agente_btp.exportacao import gerar_planilha
-from agente_btp.modelos import COLUNAS_RESULTADO, Status
+from agente_btp.modelos import Status
 from agente_btp.odata import como_quantidade, extrair_registros, preencher_modelo
 from agente_btp.processador import processar_lote
 
@@ -157,21 +157,16 @@ def test_planilha_preserva_zeros_e_tipos(tmp_path):
     rs = processar_lote(ClienteBTP(CONFIG, t), ["88412|126579742"])
     destino = gerar_planilha(rs, tmp_path / "out.xlsx", numero=7)
     wb = load_workbook(destino)
-    assert wb.sheetnames == ["Dados extraídos", "Situação por WO", "Análise por material SAP",
-                             "Itens faltantes", "Resumo", "Auditoria"]
-    ws = wb["Dados extraídos"]
-    assert [c.value for c in ws[1]] == COLUNAS_RESULTADO == [
-        "WO", "Material SAP", "Fornecedor SAP", "Quantidade faltante", "Mensagem"]
-    assert ws.max_column == 5
+    assert wb.sheetnames == ["Dados", "Análise", "Rastreio"] and wb["Rastreio"].sheet_state == "hidden"
+    ws = wb["Dados"]
+    assert [c.value for c in ws[1]] == ["WO", "Material SAP", "Fornecedor SAP", "Quantidade faltante",
+                                        "Mensagem", "Observação"]
     assert [c.value for c in ws[2]] == ["88412|126579742", "000000000022026169", "0000137628", 2,
-                                        "Estoque indisponível"]
+                                        "Estoque indisponível", None]   # conferido: sem observação
     assert ws["B2"].data_type == "s" and ws["C2"].data_type == "s" and ws["D2"].data_type == "n"
-    assert ws.freeze_panes == "A2" and ws.auto_filter.ref == "A1:E2"
+    assert ws.freeze_panes == "A2" and ws.auto_filter.ref == "A1:F2"
     assert ws["E2"].alignment.wrap_text
-    sit = wb["Situação por WO"]
-    assert [c.value for c in sit[5]][:2] == ["88412|126579742", 1]
-    resumo = {r[0]: r[1] for r in wb["Resumo"].iter_rows(min_row=5, values_only=True) if r[0]}
-    assert resumo["Nº da análise"] == 7 and resumo["Ocorrências de alertas"] == 1
+    assert "Análise nº 7" in wb["Análise"]["A1"].value
 
 
 def test_nome_da_planilha(tmp_path):

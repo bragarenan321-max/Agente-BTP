@@ -167,6 +167,14 @@ def criar_app(agente: Agente) -> Flask:
         agente.enviar("executar", wos, " + ".join(partes))
         return jsonify(ok=True, total=len(wos))
 
+    @app.post("/api/fonte")
+    def responder_fonte():
+        dados = request.get_json(force=True, silent=True) or {}
+        if dados.get("resposta") not in ("sim", "outra", "mostrar"):
+            return jsonify(ok=False, erro="Resposta inválida."), 400
+        agente.responder_fonte(dados)
+        return jsonify(ok=True)
+
     # ------------------------------------------------ configurações (engrenagem)
     @app.get("/api/configuracoes")
     def ler_configuracoes():

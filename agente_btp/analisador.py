@@ -206,6 +206,7 @@ def analisar(captura: dict, wo: str | None = None) -> tuple[dict, list[str]]:
                     "campo_mensagens_expandidas": None}
     campos_lista = mapear_campos(lista.registros[0], wo)
     config["campo_consolidado_lista"] = campos_lista.get("consolidado", "")
+    config["campo_mensagem_alerta"] = campos_lista.get("mensagem")
 
     # Mensagens expandidas dentro da linha da lista?
     for chave, valor in lista.registros[0].items():

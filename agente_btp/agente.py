@@ -52,6 +52,8 @@ class Agente:
         self._sondadas: set[str] = set()
         self._modelos: list = []
         self._explorados: set[str] = set()
+        self._resposta: dict | None = None
+        self._resposta_fonte = threading.Event()
         self.ponte = PonteAba()
         self.ponte.observador = self._ao_observar
         self._estado = {
@@ -64,6 +66,7 @@ class Agente:
             "ultimo_numero": None,
             "etapa": "",
             "indicadores": {},
+            "confirmacao": None,
             "aviso": "",
             "mensagens": [],
         }
@@ -103,7 +106,96 @@ class Agente:
 
     def parar(self) -> None:
         self._parar.set()
+        self._resposta_fonte.set()
         self._msg("Interrupção solicitada; a WO atual será concluída.")
+
+    def responder_fonte(self, dados: dict) -> None:
+        """Resposta do usuário à conferência da fonte (tela): sim | outra | mostrar."""
+        self._resposta = dados
+        self._resposta_fonte.set()
+
+    # ------------------------------------------------ conferência da fonte com o usuário
+    def _confirmar_fonte(self, wos: list[str]) -> bool:
+        """Antes do lote, mostra uma amostra REAL e só segue com a confirmação do usuário.
+
+        Evita o erro de processar 499 WOs com uma tabela parecida mas errada: quem conhece a
+        janela Mensagens confere uma vez; a fonte confirmada fica gravada para as próximas.
+        """
+        for _ in range(6):                      # no máximo 6 fontes diferentes por execução
+            if not cfg.ARQUIVO_CONFIG.exists():
+                return False
+            api = cfg.carregar()
+            if api.confirmada:
+                return True
+            amostra = self._amostra_da_fonte(api, wos)
+            self._resposta, self._resposta_fonte = None, threading.Event()
+            self._definir(fase="confirmando", confirmacao=amostra, aviso="")
+            self._msg("Aguardando a conferência da amostra na tela do agente.")
+            self._resposta_fonte.wait(timeout=1800)
+            resposta = self._resposta or {}
+            self._definir(confirmacao=None)
+            if self._parar.is_set() or not resposta:
+                self._definir(aviso="Análise não iniciada: a amostra não foi conferida.")
+                return False
+            if resposta.get("resposta") == "sim":
+                dados = json.loads(cfg.ARQUIVO_CONFIG.read_text(encoding="utf-8"))
+                dados.update(confirmada=True, mensagem_origem=resposta.get("mensagem") or "item")
+                cfg.salvar(dados)
+                self._msg("Fonte de dados confirmada pelo usuário.")
+                self._definir(fase="preparando")
+                return True
+            # Não é a janela Mensagens: esta fonte nunca mais é usada.
+            dados = json.loads(cfg.ARQUIVO_CONFIG.read_text(encoding="utf-8"))
+            _rejeitar(dados)
+            cfg.ARQUIVO_CONFIG.unlink(missing_ok=True)
+            self._msg("Fonte recusada na conferência; procurando outra.")
+            self._candidatos, self._testados, self._sondadas, self._explorados = [], set(), set(), set()
+            self._definir(fase="preparando")
+            if resposta.get("resposta") == "mostrar":
+                if not self._aprender_pela_tela(amostra.get("wo") or next((w for w in wos if wo_valida(w)), "")):
+                    return False
+            elif not self._garantir_preparo(wos):
+                return False
+        self._definir(aviso="Nenhuma das fontes encontradas foi confirmada. Use \"Vou mostrar no BTP\".")
+        return False
+
+    def _amostra_da_fonte(self, api, wos: list[str]) -> dict:
+        """Lê as primeiras WOs (sem auditoria) até achar itens, para o usuário conferir."""
+        cliente = ClienteBTP(api, self.ponte.get)
+        lidas = []
+        for wo in [w for w in wos if wo_valida(w)][:8]:
+            try:
+                leitura = cliente.ler_wo(wo)
+            except (ErroConsulta, FalhaComunicacao) as exc:
+                lidas.append(f"{wo}: {exc}")
+                continue
+            if leitura.itens:
+                itens = list(leitura.itens.values())[:6]
+                return {"wo": wo, "total": len(leitura.itens), "lidas": lidas,
+                        "tem_mensagem_alerta": any(o.valores.get("mensagem_alerta") for o in itens),
+                        "itens": [{"material": o.valores["material"], "fornecedor": o.valores["fornecedor"],
+                                   "quantidade": odata_texto(o.valores["quantidade_faltante"]),
+                                   "mensagem_item": o.valores.get("mensagem_item", ""),
+                                   "mensagem_alerta": o.valores.get("mensagem_alerta", "")} for o in itens],
+                        "campos": api.campos}
+            lidas.append(f"{wo}: nenhum item")
+        return {"wo": "", "total": 0, "lidas": lidas, "itens": [], "campos": api.campos,
+                "tem_mensagem_alerta": False}
+
+    def _aprender_pela_tela(self, wo: str) -> bool:
+        """O usuário abre a janela Mensagens no BTP; o agente aprende com as consultas da tela."""
+        self.ponte.iniciar_captura()
+        limite = time.monotonic() + ESPERA_APRENDIZADO_SEG
+        while time.monotonic() < limite and not self._parar.is_set():
+            if cfg.ARQUIVO_CONFIG.exists():
+                self._definir(aviso="")
+                return True
+            restante = int(limite - time.monotonic())
+            self._definir(aviso=f"Na aba do BTP: filtre a WO {wo} no Monitor de Alertas e abra a janela "
+                                f"'Mensagens'. O agente aprende com isso e mostra a amostra de novo. ({restante} s)")
+            time.sleep(1)
+        self._definir(aviso="A janela 'Mensagens' não foi aberta a tempo. Execute de novo.")
+        return False
 
     # ------------------------------------------------ execução
     def _laco(self) -> None:
@@ -210,6 +302,8 @@ class Agente:
             for dados, relatorio in achados[:15]:
                 if self._parar.is_set():
                     break
+                if _rejeitada(dados):
+                    continue
                 nota = self._validar(dados, amostra, get, {})
                 testes.append({"lista": dados["url_lista"], "nota": nota, "exploracao": relatorio[0],
                                "mensagens": dados.get("url_mensagens") or "mesmo conjunto"})
@@ -218,6 +312,8 @@ class Agente:
                     return True
         fraca = None
         for dados, relatorio in candidatos[:LIMITE_CANDIDATOS]:
+            if _rejeitada(dados):
+                continue
             chave = json.dumps(dados, sort_keys=True)
             if chave in self._testados:
                 continue
@@ -326,9 +422,9 @@ class Agente:
         if not self.ponte.autenticado():
             self._definir(fase="ocioso", aviso="Conecte a aba do BTP: clique no favorito 'Agente BTP' na aba já logada.")
             return
-        if not self._garantir_preparo(wos):
-            if self._estado["fase"] != "falhou":
-                self._definir(fase="ocioso")
+        if not self._garantir_preparo(wos) or not self._confirmar_fonte(wos):
+            if self._estado["fase"] not in ("falhou",):
+                self._definir(fase="ocioso", confirmacao=None)
             self._registrar_historico(inicio_relogio, descricao, wos, [], None,
                                       "Interrompida" if self._parar.is_set() else "Não preparada")
             return
@@ -497,6 +593,37 @@ class Agente:
         log.info(texto)
         with self._trava:
             self._estado["mensagens"].append(f"{datetime.now():%H:%M:%S}  {texto}")
+
+
+ARQUIVO_REJEITADAS = RAIZ / "config" / "fontes_recusadas.json"
+
+
+def _assinatura(dados: dict) -> str:
+    chaves = ("url_lista", "url_mensagens", "campo_mensagens_expandidas", "campo_mensagens_link",
+              "campo_mensagens_json")
+    return json.dumps([dados.get(k) for k in chaves] + [sorted((dados.get("campos") or {}).items())])
+
+
+def _rejeitar(dados: dict) -> None:
+    try:
+        lista = json.loads(ARQUIVO_REJEITADAS.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        lista = []
+    lista.append(_assinatura(dados))
+    ARQUIVO_REJEITADAS.parent.mkdir(parents=True, exist_ok=True)
+    ARQUIVO_REJEITADAS.write_text(json.dumps(sorted(set(lista)), ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+def _rejeitada(dados: dict) -> bool:
+    try:
+        return _assinatura(dados) in json.loads(ARQUIVO_REJEITADAS.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return False
+
+
+def odata_texto(valor) -> str:
+    from .exportacao import _txt
+    return _txt(valor)
 
 
 def _indicadores(resultados: list, total: int) -> dict:
