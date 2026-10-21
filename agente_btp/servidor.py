@@ -13,6 +13,7 @@ from flask import Flask, Response, abort, jsonify, request, send_file
 
 from . import historico, preferencias
 from .agente import Agente, caminho_saida
+from .ponte import LIMITE_TRABALHADORES_ABA
 from .entrada import ler_wos_planilha, ler_wos_texto, wo_valida
 from .config import URL_LAUNCHPAD
 
@@ -93,7 +94,18 @@ def criar_app(agente: Agente) -> Flask:
         dados = request.get_json(force=True, silent=True) or {}
         agente.ponte.registrar_agente(str(dados.get("agente", "")), str(dados.get("pagina", "")))
         agente.aba_conectada()
-        return jsonify(ok=True)
+        # Trabalhadores na aba = paralelismo configurado (até o limite de conexões do navegador).
+        paralelo = max(1, min(preferencias.carregar().concorrencia, LIMITE_TRABALHADORES_ABA))
+        return jsonify(ok=True, trabalhadores=paralelo)
+
+    @app.post("/api/agente/ciclo")
+    def agente_ciclo():
+        exigir_origem_sap()
+        d = request.get_json(force=True, silent=True) or {}
+        resposta = d.get("resposta") if isinstance(d.get("resposta"), dict) else None
+        return jsonify(agente.ponte.ciclo(str(d.get("agente", "")), bool(d.get("autenticado")),
+                                          str(d.get("pagina", "")), bool(d.get("capturando")),
+                                          versao=str(d.get("versao", "")), resposta=resposta))
 
     @app.get("/api/agente/tarefa")
     def agente_tarefa():
@@ -146,6 +158,19 @@ def criar_app(agente: Agente) -> Flask:
 
     @app.post("/api/executar")
     def executar():
+        dados = request.get_json(silent=True) if request.is_json else None
+        if dados and dados.get("modo") == "retomar":
+            run_id = str(dados.get("run_id", ""))
+            ex = agente.loja.obter(run_id)
+            if not ex:
+                return jsonify(ok=False, erro="Análise não encontrada."), 404
+            if agente.estado()["ocupado"]:
+                if agente.estado().get("run_id") == run_id:      # já rodando/pausada: só cutuca
+                    agente.continuar()
+                    return jsonify(ok=True, run_id=run_id, ja_em_execucao=True)
+                return jsonify(ok=False, erro="O agente já está executando outra análise."), 409
+            agente.enviar("retomar", run_id)
+            return jsonify(ok=True, run_id=run_id, total=ex["total"], a_fazer=len(agente.loja.a_processar(run_id)))
         if agente.estado()["ocupado"]:
             return jsonify(ok=False, erro="O agente já está executando uma análise."), 409
         wos = ler_wos_texto(request.form.get("texto", ""))
@@ -166,6 +191,25 @@ def criar_app(agente: Agente) -> Flask:
             return jsonify(ok=False, erro="Informe ao menos uma WO."), 400
         agente.enviar("executar", wos, " + ".join(partes))
         return jsonify(ok=True, total=len(wos))
+
+    @app.post("/api/pausar")
+    def pausar():
+        return jsonify(ok=agente.pausar())
+
+    @app.post("/api/retomar")
+    def retomar():
+        return jsonify(ok=agente.continuar())
+
+    @app.get("/api/execucoes")
+    def execucoes():
+        return jsonify(agente.loja.listar(20))
+
+    @app.get("/api/execucoes/<run_id>/planilha")
+    def planilha_parcial(run_id: str):
+        arquivo = agente.planilha_parcial(run_id)
+        if not arquivo:
+            abort(404)
+        return send_file(arquivo, as_attachment=True)
 
     @app.post("/api/raiox")
     def iniciar_raiox():
@@ -231,10 +275,12 @@ def criar_app(agente: Agente) -> Flask:
 
     def _apagar(ids):
         removidas = historico.apagar(ids)
-        for a in removidas:                    # a planilha da análise vai junto
+        for a in removidas:                    # a planilha e o registro da análise vão junto
             caminho = caminho_saida(a.get("arquivo") or "")
             if caminho:
                 caminho.unlink(missing_ok=True)
+            if a.get("run_id") and a.get("run_id") != agente.estado().get("run_id"):
+                agente.loja.apagar(a["run_id"])
         return jsonify(ok=True, apagadas=len(removidas))
 
     @app.delete("/api/historico/<id_>")
@@ -249,9 +295,17 @@ def criar_app(agente: Agente) -> Flask:
 
     @app.get("/api/diagnostico")
     def diagnostico():
-        corpo = json.dumps(agente.diagnostico(), ensure_ascii=False, indent=1)
-        return Response(corpo, mimetype="application/json", headers={
-            "Content-Disposition": "attachment; filename=diagnostico_agente_btp.json"})
+        run_id = request.args.get("run_id")
+        if run_id:
+            dados = agente.diagnostico_execucao(run_id)
+            if dados is None:
+                abort(404)
+            nome = f"diagnostico_analise_{dados['numero']}.json"
+        else:
+            dados, nome = agente.diagnostico(), "diagnostico_agente_btp.json"
+        corpo = json.dumps(dados, ensure_ascii=False, indent=1, default=str)
+        cabecalhos = {"Content-Disposition": f"attachment; filename={nome}"} if request.args.get("baixar", "1") != "0" else {}
+        return Response(corpo, mimetype="application/json", headers=cabecalhos)
 
     @app.post("/api/parar")
     def parar():

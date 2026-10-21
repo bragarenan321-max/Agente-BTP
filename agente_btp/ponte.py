@@ -17,12 +17,16 @@ from datetime import datetime
 from pathlib import Path
 
 from .cliente import Resposta
+from .diagnostico import evidencia
 from .modelos import FalhaComunicacao, SessaoExpirada
 
 ESPERA_LONG_POLL = 15.0      # quanto o pedido do agente fica aguardando uma tarefa
 TOLERANCIA_SILENCIO = 25.0   # sem contato há mais que isso = aba desconectada
 TIMEOUT_TAREFA = 90.0
 LIMITE_CAPTURA = 400
+# Máximo de trabalhadores simultâneos na aba (cada um com UM pedido aberto ao programa local por
+# vez): o navegador limita 6 conexões por servidor. O número usado = paralelismo configurado.
+LIMITE_TRABALHADORES_ABA = 6
 
 
 class PonteAba:
@@ -42,6 +46,7 @@ class PonteAba:
         self.versao_agente: str | None = None
         self._versoes_avisadas: set[str] = set()
         self.observadas = 0
+        self.anuncios = 0            # quantas vezes uma aba se anunciou (favorito/extensão/recarga)
 
     # ------------------------------------------------ lado da aba (threads HTTP)
     def registrar_agente(self, agente: str, pagina: str) -> None:
@@ -49,6 +54,7 @@ class PonteAba:
             self.agente_id = agente
             self.pagina = pagina
             self._visto_em = time.monotonic()
+            self.anuncios += 1
             self._devolver_entregues()
 
     def despedir(self, agente: str) -> None:
@@ -97,6 +103,19 @@ class PonteAba:
                 resposta["tarefa"] = tarefa
             return resposta
 
+    def ciclo(self, agente: str, autenticado: bool, pagina: str, capturando_na_aba: bool = False,
+              versao: str | None = None, resposta: dict | None = None, espera: float = ESPERA_LONG_POLL) -> dict:
+        """Um pedido da aba = entrega a resposta anterior (se houver) + recebe a próxima tarefa.
+        Assim cada trabalhador da aba usa UMA conexão por vez com o programa local."""
+        if resposta:
+            self.entregar_resposta(resposta)
+        return self.proxima_tarefa(agente, autenticado, pagina, capturando_na_aba, espera, versao)
+
+    @property
+    def silencio_seg(self) -> float | None:
+        """Há quanto tempo a aba não fala com o programa (None = nunca falou)."""
+        return None if not self._visto_em else round(time.monotonic() - self._visto_em, 1)
+
     def entregar_resposta(self, dados: dict) -> None:
         with self._cond:
             self._visto_em = time.monotonic()
@@ -139,10 +158,13 @@ class PonteAba:
         r = self._executar(tarefa, (timeout + 10) if timeout else TIMEOUT_TAREFA)
         if r.get("status") == -1:
             if str(r.get("body")).startswith("TEMPO_ESGOTADO"):
-                raise FalhaComunicacao(f"Tempo máximo da consulta ({timeout or 60:g} s) excedido.")
-            raise FalhaComunicacao(f"Falha de rede na aba: {str(r.get('body'))[:200]}")
+                raise FalhaComunicacao(f"Tempo máximo da consulta ({timeout or 60:g} s) excedido.", "timeout_wo",
+                                       evidencia(url, -1, "", str(r.get("body"))))
+            raise FalhaComunicacao(f"Falha de rede na aba: {str(r.get('body'))[:200]}", "falha_rede",
+                                   evidencia(url, -1, "", str(r.get("body"))))
         return Resposta(status=int(r.get("status", 0)), content_type=r.get("ct") or "",
-                        corpo=r.get("body") or "", redirecionado=bool(r.get("redir")))
+                        corpo=r.get("body") or "", redirecionado=bool(r.get("redir")),
+                        retry_after=str(r.get("ra") or ""))
 
     def fontes(self) -> list[dict]:
         """Serviços OData usados pelos apps abertos na aba (lidos da configuração do UI5)."""
@@ -155,7 +177,8 @@ class PonteAba:
 
     def _executar(self, tarefa: dict, espera_max: float | None = None) -> dict:
         if not self.conectada:
-            raise SessaoExpirada("A aba do BTP não está conectada. Clique no favorito 'Agente BTP' na aba.")
+            raise SessaoExpirada("A aba do BTP não está conectada. Clique no favorito 'Agente BTP' na aba.",
+                                 "aba_desconectada", evidencia(str(tarefa.get("url", "")), silencio=self.silencio_seg))
         tarefa = dict(tarefa, id=uuid.uuid4().hex)
         pendente = {"evento": threading.Event(), "resposta": None}
         with self._cond:
@@ -168,9 +191,11 @@ class PonteAba:
             while not pendente["evento"].wait(0.5):
                 if not self.conectada:
                     raise SessaoExpirada("A aba do BTP foi fechada ou recarregada. "
-                                         "Clique no favorito 'Agente BTP' na aba do BTP.")
+                                         "Clique no favorito 'Agente BTP' na aba do BTP.", "aba_desconectada",
+                                         evidencia(str(tarefa.get("url", "")), silencio=self.silencio_seg))
                 if time.monotonic() > limite:
-                    raise FalhaComunicacao("A aba do BTP não respondeu a tempo.")
+                    raise FalhaComunicacao("A aba do BTP não respondeu a tempo.", "aba_sem_resposta",
+                                           evidencia(str(tarefa.get("url", ""))))
         finally:
             with self._cond:
                 self._pendentes.pop(tarefa["id"], None)

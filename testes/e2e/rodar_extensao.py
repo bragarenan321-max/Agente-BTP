@@ -69,7 +69,7 @@ with sync_playwright() as p:
             aba.wait_for_timeout(300)
         raise SystemExit("TIMEOUT\n" + json.dumps(agente.estado(), ensure_ascii=False, indent=1))
 
-    esperar(lambda e: e["conexao"] == "conectado", 30)       # nenhum clique na aba
+    esperar(lambda e: e["conexao"] in ("conectado", "aba_conectada"), 30)       # nenhum clique na aba
     print(f"conectou sozinha em {time.time() - inicio:.1f} s após abrir o programa")
     print("selo na aba:", aba.inner_text("#agente-btp-selo"),
           "| aviso de erro da extensão:", aba.locator("#agente-btp-extensao-aviso").count() > 0)

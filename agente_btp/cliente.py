@@ -9,14 +9,17 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import threading
 import time
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Callable
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import quote, urljoin, urlsplit
 
 from . import odata
 from .config import ApiConfig
 from .campos import campos_de_quantidade
+from .diagnostico import evidencia
 from .modelos import (ErroConsulta, FalhaComunicacao, Leitura, LinhaMensagem, Ocorrencia,
                       SessaoExpirada, TempoEsgotado)
 
@@ -27,6 +30,7 @@ class Resposta:
     content_type: str
     corpo: str
     redirecionado: bool = False
+    retry_after: str = ""
 
 
 # Transporte: recebe uma URL e devolve a Resposta de um GET feito com a sessão
@@ -36,22 +40,136 @@ Transporte = Callable[[str], Resposta]
 LIMITE_PAGINAS = 50
 
 
-def classificar(resposta: Resposta) -> str:
-    """Valida a resposta HTTP e devolve o corpo, ou levanta a exceção adequada."""
-    if resposta.redirecionado or resposta.status in (0, 401):
-        raise SessaoExpirada("Sessão expirada ou não autenticada.")
+# Página de login/SSO no lugar dos dados (approuter/IdP). Só padrões de formulário/URL de
+# autenticação — nunca uma palavra solta que possa aparecer numa mensagem do BTP.
+_LOGIN = re.compile(r"(j_security_check|SAMLRequest|SAMLResponse|/saml2?/|idp/SSO|/oauth/authorize|"
+                    r"accounts\.sap\.com|name=[\"']j_username|id=[\"']logOnForm|sap-login|/login/callback)", re.I)
+
+
+def marcador_login(corpo: str) -> str | None:
+    m = _LOGIN.search(corpo[:20000] if corpo else "")
+    return m.group(0) if m else None
+
+
+def classificar(resposta: Resposta, url: str = "") -> str:
+    """Valida a resposta HTTP e devolve o corpo, ou levanta a exceção adequada.
+
+    Cada exceção leva o MOTIVO (taxonomia do diagnóstico) e a EVIDÊNCIA da resposta.
+    Sessão (pausa a análise): redirecionamento, 401, 403, HTML ou página de login.
+    """
+    def ev(**extra):
+        return evidencia(url, resposta.status, resposta.content_type, resposta.corpo, **extra)
+    if resposta.redirecionado or resposta.status == 0:
+        raise SessaoExpirada("Sessão expirada: o BTP redirecionou para o login.", "sessao_expirada",
+                             ev(redirecionado=True))
+    if resposta.status == 401:
+        raise SessaoExpirada("Sessão expirada ou não autenticada (HTTP 401).", "http_401", ev())
     if resposta.status == 403:
-        raise ErroConsulta("Acesso negado (HTTP 403).")
+        raise SessaoExpirada("Acesso negado (HTTP 403).", "http_403", ev())
+    if resposta.status == 429:
+        raise FalhaComunicacao("O BTP pediu para reduzir o ritmo (HTTP 429).", "http_429",
+                               ev(retry_after=resposta.retry_after))
     if resposta.status >= 500:
-        raise FalhaComunicacao(f"Servidor indisponível (HTTP {resposta.status}).")
+        raise FalhaComunicacao(f"Servidor indisponível (HTTP {resposta.status}).", "http_5xx", ev())
     if resposta.status == 404:
-        raise ErroConsulta("Endereço de dados não encontrado (HTTP 404).")
+        raise ErroConsulta("Endereço de dados não encontrado (HTTP 404).", "http_404", ev())
     if resposta.status >= 400:
-        raise ErroConsulta(f"Consulta rejeitada (HTTP {resposta.status}).")
-    if "html" in resposta.content_type.lower():
-        # O approuter devolve a página de login em HTML quando a sessão cai.
-        raise SessaoExpirada("Recebida página HTML no lugar de dados (provável login).")
-    return resposta.corpo
+        raise ErroConsulta(f"Consulta rejeitada (HTTP {resposta.status}).", "consulta_rejeitada", ev())
+    corpo = resposta.corpo or ""
+    marca = marcador_login(corpo) if corpo.lstrip()[:1] == "<" or "html" in resposta.content_type.lower() else None
+    if marca or "html" in resposta.content_type.lower():
+        # O approuter devolve a página de login em HTML (status 200) quando a sessão cai.
+        raise SessaoExpirada("Recebida página HTML no lugar de dados (provável login).", "sessao_expirada",
+                             ev(marcador_login=marca or "content-type html"))
+    return corpo
+
+
+class Ritmo:
+    """Ritmo ADAPTATIVO compartilhado por todas as consultas da análise (sem pausas fixas).
+
+    Começa sem espera. HTTP 429 ou 5xx => espera cresce (respeita Retry-After); cada sucesso
+    reduz a espera até voltar a zero. `minimo` = intervalo mínimo configurado pelo usuário.
+    """
+
+    def __init__(self, minimo: float = 0.0, dormir=time.sleep):
+        self.minimo = max(0.0, minimo)
+        self.espera = 0.0
+        self._ultima = 0.0
+        self._trava = threading.Lock()
+        self._dormir = dormir
+        self.limitadas = 0
+
+    def antes(self) -> None:
+        with self._trava:
+            alvo = max(self.espera, self.minimo)
+            agora = time.monotonic()
+            pausa = self._ultima + alvo - agora if alvo else 0.0
+            self._ultima = max(agora, self._ultima + alvo) if alvo else agora
+        if pausa > 0:
+            self._dormir(pausa)
+
+    def depois(self, status: int, retry_after: str = "") -> None:
+        with self._trava:
+            if status == 429 or status >= 500:
+                self.limitadas += status == 429
+                pedido = 0.0
+                try:
+                    pedido = float(retry_after) if retry_after else 0.0
+                except ValueError:
+                    pedido = 0.0
+                self.espera = min(30.0, max(self.espera * 2, 0.5 if status == 429 else 0.2, pedido))
+            elif 200 <= status < 300:
+                self.espera = self.espera * 0.8 if self.espera > 0.01 else 0.0
+
+
+class CacheExecucao:
+    """O que vale para a análise inteira e não é dado do BTP (cada leitura continua indo ao BTP):
+    modelos de URL já interpretados, disponibilidade da releitura por chave e da consulta em lote,
+    contagem de consultas."""
+
+    def __init__(self):
+        self._trava = threading.Lock()
+        self.consultas = 0
+        self.releitura_falhas = 0
+        self.releitura_sucessos = 0
+        self.lote_ativo = True
+        self.lote_motivo = ""
+        self.tamanho_lote: int | None = None
+        self.filtros: dict = {}
+
+    def contar(self) -> None:
+        with self._trava:
+            self.consultas += 1
+
+    @property
+    def releitura_indisponivel(self) -> bool:
+        # 3 WOs seguidas sem conseguir reler NENHUM item pela chave => o serviço não oferece o caminho.
+        return self.releitura_sucessos == 0 and self.releitura_falhas >= 3
+
+    def registrar_releitura(self, ok: bool) -> None:
+        with self._trava:
+            if ok:
+                self.releitura_sucessos += 1
+            else:
+                self.releitura_falhas += 1
+
+    def desativar_lote(self, motivo: str) -> bool:
+        with self._trava:
+            if not self.lote_ativo:
+                return False
+            self.lote_ativo, self.lote_motivo = False, motivo
+            return True
+
+    def reduzir_lote(self, atual: int) -> int:
+        with self._trava:
+            self.tamanho_lote = max(1, min(self.tamanho_lote or atual, atual) // 2)
+            if self.tamanho_lote <= 1:
+                self.lote_ativo, self.lote_motivo = False, "consultas em lote recusadas pelo BTP"
+            return self.tamanho_lote
+
+
+class LoteInconsistente(Exception):
+    """A consulta em lote não pôde ser repartida por WO com segurança: o chamador refaz WO a WO."""
 
 
 class ClienteBTP:
@@ -59,45 +177,81 @@ class ClienteBTP:
     instante (time.monotonic) em que acaba o tempo da WO atual; `intervalo` = pausa entre consultas."""
 
     def __init__(self, config: ApiConfig, transporte: Transporte, tempos: dict | None = None,
-                 intervalo: float = 0.0):
+                 intervalo: float = 0.0, ritmo: Ritmo | None = None, cache: CacheExecucao | None = None,
+                 ao_erro: Callable[[Exception], None] | None = None,
+                 ao_sucesso: Callable[[], None] | None = None):
         self.config = config
         self._transporte = transporte
         self.tempos = tempos or {}
         self.intervalo = intervalo
         self.prazo: float | None = None
         self._ultima = 0.0
+        self.ritmo = ritmo
+        self.cache = cache or CacheExecucao()
+        self.ao_erro = ao_erro
+        self.ao_sucesso = ao_sucesso
+        self.consultas = 0
         m = re.search(r"\$filter=([\w/]+)\s+eq\s+'\{wo\}'", config.url_lista)
         self.campo_wo_lista = m.group(1) if m else None
 
     # ------------------------------------------------ transporte com limites de tempo
     def _chamar(self, url: str, tipo: str) -> Resposta:
-        if self.intervalo:
+        if self.intervalo and not self.ritmo:
             espera = self._ultima + self.intervalo - time.monotonic()
             if espera > 0:
                 time.sleep(espera)
-        limite = self.tempos.get(tipo)
+        limite = self.tempos.get("lista" if tipo == "lote_lista" else "detalhes" if tipo == "lote" else tipo)
         if self.prazo is not None:
             restante = self.prazo - time.monotonic()
             if restante < 0.2:   # não dá tempo para uma consulta: encerra em vez de abortar no meio
-                raise TempoEsgotado("Tempo máximo da WO atingido.")
+                raise TempoEsgotado("Tempo máximo da WO atingido.", "timeout_lote" if tipo.startswith("lote")
+                                    else "timeout_wo", evidencia(url))
             limite = min(limite, restante) if limite else restante
         if limite:
             limite = max(limite, 1.0)   # a aba nunca recebe 0 (lá, 0 viraria o padrão de 60 s)
+        if self.ritmo:
+            self.ritmo.antes()
+        self.consultas += 1
+        self.cache.contar()
         try:
-            return self._transporte(url, timeout=limite) if (limite and self.tempos) else self._transporte(url)
+            resposta = self._transporte(url, timeout=limite) if (limite and self.tempos) else self._transporte(url)
+        except FalhaComunicacao as exc:
+            if tipo.startswith("lote") and exc.motivo == "timeout_wo":
+                exc.motivo = "timeout_lote"
+            raise
         finally:
             self._ultima = time.monotonic()
+        if self.ritmo:
+            self.ritmo.depois(resposta.status, resposta.retry_after)
+        return resposta
 
     def _get(self, url: str, tipo: str = "detalhes") -> list[dict]:
         """GET com paginação do servidor (__next / @odata.nextLink)."""
         registros: list[dict] = []
-        for _ in range(LIMITE_PAGINAS):
-            pagina, proximo = odata.extrair_pagina(classificar(self._chamar(url, tipo)))
-            registros.extend(pagina)
-            if not proximo:
-                return registros
-            url = urljoin(url, proximo)
-        raise ErroConsulta(f"Mais de {LIMITE_PAGINAS} páginas de resultado; consulta interrompida.")
+        try:
+            for _ in range(LIMITE_PAGINAS):
+                resposta = self._chamar(url, tipo)
+                corpo = classificar(resposta, url)
+                try:
+                    pagina, proximo = odata.extrair_pagina(corpo)
+                except ErroConsulta as exc:
+                    exc.evidencia = evidencia(url, resposta.status, resposta.content_type, corpo)
+                    if exc.motivo == "consulta_rejeitada":
+                        exc.motivo = "erro_servico" if "erro" in str(exc) else "parse_falhou"
+                    raise
+                registros.extend(pagina)
+                if self.ao_sucesso:
+                    self.ao_sucesso()
+                if not proximo:
+                    return registros
+                url = urljoin(url, proximo)
+            raise ErroConsulta(f"Mais de {LIMITE_PAGINAS} páginas de resultado; consulta interrompida.",
+                               "parse_falhou", evidencia(url))
+        except (SessaoExpirada, FalhaComunicacao, ErroConsulta, TempoEsgotado) as exc:
+            exc.evidencia.setdefault("url", url)
+            if self.ao_erro:
+                self.ao_erro(exc)
+            raise
 
     def buscar_alertas(self, wo: str) -> list[dict]:
         return self._get(odata.preencher_modelo(self.config.url_lista, wo=wo), "lista")
@@ -127,8 +281,12 @@ class ClienteBTP:
         - O mesmo item que chega duas vezes (ex.: dois alertas da WO apontando para os
           mesmos itens) é contado UMA vez; a repetição fica registrada em `duplicadas`.
         """
+        return self._montar(wo, rodada, tipo, self.buscar_alertas(wo), self.buscar_mensagens)
+
+    def _montar(self, wo: str, rodada: int, tipo: str, alertas: list[dict], mensagens_de) -> Leitura:
+        """Monta a Leitura de UMA WO a partir das linhas da lista e das mensagens de cada linha.
+        Usado igualmente pela leitura individual e pela leitura em lote (mesmas regras)."""
         leitura = Leitura(rodada, tipo)
-        alertas = self.buscar_alertas(wo)
         validos = []
         for a in alertas:
             lido = odata.como_texto(odata.obter_campo(a, self.campo_wo_lista)) if self.campo_wo_lista else ""
@@ -144,7 +302,7 @@ class ClienteBTP:
         for a in validos:
             if not mesma_consulta:
                 vistos_no_alerta = {}
-            for m in self.buscar_mensagens(a):
+            for m in mensagens_de(a):
                 o = self.ocorrencia(wo, a, m)
                 if o.valores["wo"] != wo:
                     leitura.avisos.append(f"Item de outra WO ({o.valores['wo']}) descartado.")
@@ -169,6 +327,154 @@ class ClienteBTP:
         if leitura.duplicadas:
             leitura.avisos.append(f"{leitura.duplicadas} item(ns) repetido(s) no retorno do BTP contado(s) uma vez.")
         return leitura
+
+    # ------------------------------------------------ leitura EM LOTE (várias WOs por consulta)
+    @property
+    def pode_ler_em_lote(self) -> bool:
+        """Só quando a consulta da lista é exatamente `$filter=<campo> eq '{wo}'` (repartível por WO)
+        e as mensagens vêm de um modo que a leitura em lote reproduz sem ambiguidade."""
+        if not self.cache.lote_ativo or not self.campo_wo_lista:
+            return False
+        if self.config.campo_mensagens_link:
+            return True   # lista em lote; cada link continua individual
+        if self.config.url_mensagens and not self.config.campo_mensagens_expandidas:
+            return self._filtro_mensagens(None) is not None
+        return bool(self.config.campo_mensagens_expandidas or self.config.campo_mensagens_json)
+
+    def _url_lista_lote(self, wos: list[str]) -> str:
+        modelo = self.config.url_lista
+        m = re.search(r"\$filter=([\w/]+)\s+eq\s+'\{wo\}'", modelo)
+        campo = m.group(1)
+        filtro = " or ".join(f"{campo} eq '{odata.codificar_valor(w)}'" for w in wos)
+        return quote(modelo[:m.start()] + f"$filter=({filtro})" + modelo[m.end():], safe=odata._SEGUROS_MODELO)
+
+    def _filtro_mensagens(self, alerta: dict | None):
+        """Divide a consulta de mensagens de UMA linha em (caminho, condições, resto da query).
+        Condições = [(campo, tipo, valor)] de um filtro que é só `campo eq valor` ligados por `and`.
+        None = formato que a leitura em lote não sabe repartir com segurança.
+        `alerta=None` só verifica o formato do modelo."""
+        modelo = self.config.url_mensagens or ""
+        if "{wo}" in modelo or "?" not in modelo:
+            return None
+        caminho, _, query = modelo.partition("?")
+        partes = query.split("&")
+        filtros = [p for p in partes if p.startswith("$filter=")]
+        if len(filtros) != 1 or "{" in caminho:
+            return None
+        resto = "&".join(p for p in partes if not p.startswith("$filter="))
+        if "{" in resto:
+            return None
+        expr = filtros[0][len("$filter="):]
+        conds = []
+        for termo in re.split(r"\s+and\s+", expr.strip()):
+            m = re.fullmatch(r"([\w/]+)\s+eq\s+(?:'([^']*)'|(-?\d+(?:\.\d+)?))", termo.strip())
+            if not m:
+                return None
+            campo, texto, numero = m.groups()
+            if texto is None:
+                conds.append((campo, "n", numero))
+                continue
+            v = re.fullmatch(r"\{linha\[(\w+)\]\}", texto)
+            if v:
+                bruto = alerta.get(v.group(1)) if alerta is not None else ""
+                if bruto is None or isinstance(bruto, (dict, list)):
+                    return None   # a consulta individual também não teria como ser montada
+                conds.append((campo, "s", str(bruto)))   # igual a preencher_modelo (sem strip)
+            elif "{" in texto:
+                return None
+            else:
+                conds.append((campo, "s", texto))
+        return caminho, conds, resto
+
+    @staticmethod
+    def _expr(conds) -> str:
+        partes = []
+        for campo, tipo, valor in conds:
+            partes.append(f"{campo} eq '{odata.codificar_valor(valor)}'" if tipo == "s" else f"{campo} eq {valor}")
+        return " and ".join(partes)
+
+    @staticmethod
+    def _casa(registro: dict, conds) -> bool:
+        for campo, tipo, valor in conds:
+            lido = odata.obter_campo(registro, campo)
+            if tipo == "s":
+                if lido is None or isinstance(lido, (dict, list)) or str(lido) != valor:
+                    return False
+            else:
+                try:
+                    if Decimal(str(lido)) != Decimal(valor):
+                        return False
+                except (InvalidOperation, ValueError):
+                    return False
+        return True
+
+    def _mensagens_em_lote(self, alertas: list[dict], limite_url: int = 6000) -> dict[int, list[dict]]:
+        """Mensagens de várias linhas da lista em poucas consultas (filtros unidos por `or`).
+        Cada registro devolvido é atribuído a TODAS as linhas cujo filtro ele satisfaz — o mesmo que
+        a consulta individual de cada linha devolveria. Registro que não casa com nenhuma => erro."""
+        planos = []
+        for i, a in enumerate(alertas):
+            plano = self._filtro_mensagens(a)
+            if plano is None:
+                raise LoteInconsistente("filtro de mensagens não repartível")
+            planos.append((i, plano))
+        if not planos:
+            return {}
+        caminho, _, resto = planos[0][1]
+        if any(p[0] != caminho or p[2] != resto for _, p in planos):
+            raise LoteInconsistente("consultas de mensagens com caminhos diferentes")
+        unicos: dict[str, tuple] = {}
+        for _, (_, conds, _) in planos:
+            unicos.setdefault(self._expr(conds), conds)
+        grupos, atual, tamanho = [], [], 0
+        for expr in unicos:
+            if atual and (tamanho + len(expr) + 8 > limite_url or len(atual) >= 40):
+                grupos.append(atual)
+                atual, tamanho = [], 0
+            atual.append(expr)
+            tamanho += len(expr) + 8
+        if atual:
+            grupos.append(atual)
+        recebidos: list[dict] = []
+        for exprs in grupos:
+            filtro = " or ".join(f"({e})" for e in exprs) if len(exprs) > 1 else exprs[0]
+            url = quote(caminho + "?" + "&".join(x for x in ([f"$filter={filtro}"] + ([resto] if resto else []))),
+                        safe=odata._SEGUROS_MODELO)
+            recebidos.extend(self._get(url, "lote"))
+        saida: dict[int, list[dict]] = {i: [] for i, _ in planos}
+        for registro in recebidos:
+            donos = [i for i, (_, conds, _) in planos if self._casa(registro, conds)]
+            if not donos:
+                raise LoteInconsistente("registro de mensagem que não pertence a nenhuma linha consultada")
+            for i in donos:
+                saida[i].append(registro)
+        return saida
+
+    def ler_lote(self, wos: list[str], rodada: int, tipo: str) -> dict[str, Leitura]:
+        """Lê várias WOs com UMA consulta da lista (+ poucas de mensagens) e reparte por WO.
+
+        O resultado de cada WO é montado pelas MESMAS regras da leitura individual (_montar).
+        Linha devolvida que não é de nenhuma WO pedida => LoteInconsistente (refazer WO a WO)."""
+        if not self.pode_ler_em_lote:
+            raise LoteInconsistente("leitura em lote indisponível")
+        pedidas = set(wos)
+        por_wo: dict[str, list[dict]] = {w: [] for w in wos}
+        for a in self._get(self._url_lista_lote(wos), "lote_lista"):
+            lido = odata.como_texto(odata.obter_campo(a, self.campo_wo_lista))
+            if lido not in pedidas:
+                raise LoteInconsistente(f"linha da lista de WO não pedida ({lido or 'vazio'})")
+            por_wo[lido].append(a)
+        todos = [a for w in wos for a in por_wo[w]]
+        if self.config.url_mensagens and not self.config.campo_mensagens_expandidas \
+                and not self.config.campo_mensagens_link and not self.config.campo_mensagens_json:
+            msgs = self._mensagens_em_lote(todos)
+            indice = {id(a): i for i, a in enumerate(todos)}
+
+            def mensagens_de(a):
+                return msgs[indice[id(a)]]
+        else:
+            mensagens_de = self.buscar_mensagens
+        return {w: self._montar(w, rodada, tipo, por_wo[w], mensagens_de) for w in wos}
 
     @property
     def pode_reler_por_chave(self) -> bool:

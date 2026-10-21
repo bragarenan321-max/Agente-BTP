@@ -24,7 +24,10 @@ from openpyxl.utils import get_column_letter
 from .modelos import CAMPOS, ROTULO, STATUS_FALHA, Auditoria, LinhaMensagem, ResultadoWO, Status
 
 ABAS = ["Dados", "Análise", "Rastreio"]
-COLUNAS_DADOS = ["WO", "Material SAP", "Fornecedor SAP", "Quantidade faltante", "Mensagem", "Observação"]
+COLUNAS_DADOS = ["WO", "Material SAP", "Fornecedor SAP", "Quantidade faltante", "Mensagem", "Observação", "Status"]
+# Status da WO na análise (o mesmo da base de execução e da tela).
+ROTULO_ESTADO = {"validada": "Validada", "divergente": "Divergente", "incompleta": "Incompleta",
+                 "falha": "Falha", "pendente": "Pendente"}
 
 VERMELHO = "DA291C"
 _CAB_FONTE = Font(bold=True, color="FFFFFF")
@@ -43,7 +46,7 @@ SITUACAO = {
     Status.SESSAO_EXPIRADA: "Não consultada: sessão do BTP expirou",
     Status.FALHA_COMUNICACAO: "Não consultada: falha de comunicação",
     Status.TEMPO_ESGOTADO: "Não consultada: tempo esgotado",
-    Status.NAO_PROCESSADA: "Não consultada",
+    Status.NAO_PROCESSADA: "Pendente: ainda não consultada",
     Status.ERRO: "Não consultada: erro na consulta",
 }
 
@@ -99,20 +102,31 @@ def observacao_item(l: LinhaMensagem) -> str:
     return "; ".join(partes) + ("." if partes else "")
 
 
+def estado_rotulo(r: ResultadoWO) -> str:
+    if r.status is Status.NAO_PROCESSADA:
+        return ROTULO_ESTADO["pendente"]
+    from .loja import estado_da_wo
+    return ROTULO_ESTADO[estado_da_wo(r)]
+
+
 def linhas_dados(resultados: list[ResultadoWO], exportar_incompletos: bool = True) -> list[list]:
     """Linhas da aba Dados: um item por linha; WO sem itens aparece numa linha com a observação."""
     saida = []
     for r in resultados:
+        estado = estado_rotulo(r)
         itens = [l for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO]
         for l in itens:
-            saida.append([l.wo, l.material, l.fornecedor, l.quantidade_faltante, l.mensagem, observacao_item(l)])
+            saida.append([l.wo, l.material, l.fornecedor, l.quantidade_faltante, l.mensagem, observacao_item(l),
+                          estado])
         if not itens:
             obs = SITUACAO[r.status]
             if r.linhas:   # havia itens, mas não validados e a exportação deles está desligada
                 obs = f"{len(r.linhas)} item(ns) com divergência omitido(s): conferir no BTP"
+            elif r.status is Status.NAO_PROCESSADA:
+                obs = r.observacao or obs
             elif r.status in STATUS_FALHA and r.observacao and r.observacao != "OK":
                 obs = f"{obs} ({r.observacao})"
-            saida.append([r.wo, None, None, None, None, obs])
+            saida.append([r.wo, None, None, None, None, obs, estado])
     return saida
 
 
@@ -133,15 +147,15 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
     for valores in linhas_dados(resultados, exportar_incompletos):
         _append(ws, valores)
         n = ws.max_row
-        for col in (1, 2, 3, 5, 6):
+        for col in (1, 2, 3, 5, 6, 7):
             ws.cell(row=n, column=col).number_format = "@"
-        for col in (1, 2, 3, 4):
+        for col in (1, 2, 3, 4, 7):
             ws.cell(row=n, column=col).alignment = _TOPO
         for col in (5, 6):
             ws.cell(row=n, column=col).alignment = _QUEBRA
         if valores[5] and valores[1] is not None:      # item com observação: destaca só a observação
             ws.cell(row=n, column=6).fill = _ATENCAO
-    _finalizar(ws, [18, 22, 16, 12, 55, 55], linha_cab=1, filtro=True)
+    _finalizar(ws, [18, 22, 16, 12, 55, 55, 13], linha_cab=1, filtro=True)
 
     # ================================================================ Análise
     wa = wb.create_sheet(ABAS[1])
@@ -156,7 +170,8 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
         ("WOs com itens faltantes", st[Status.PROCESSADA]),
         ("WOs no Monitor sem itens na janela Mensagens", st[Status.SEM_REGISTROS]),
         ("WOs não encontradas no Monitor de Alertas", st[Status.NAO_ENCONTRADA]),
-        ("WOs não consultadas (erro, tempo ou sessão)", sum(st[s] for s in STATUS_FALHA)),
+        ("WOs não consultadas (erro, tempo ou sessão)", sum(st[s] for s in STATUS_FALHA if s is not Status.NAO_PROCESSADA)),
+        ("WOs pendentes (análise ainda não concluída)", st[Status.NAO_PROCESSADA]),
         ("WOs com número inválido", st[Status.WO_INVALIDA]),
         ("Itens faltantes (linhas com material na aba Dados)", len(linhas)),
         ("Itens conferidos sem diferença", len(linhas) - com_obs),

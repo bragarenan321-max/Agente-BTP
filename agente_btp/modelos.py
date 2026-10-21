@@ -113,6 +113,8 @@ class ResultadoWO:
     leituras: list[Leitura] = field(default_factory=list)
     rodadas_previstas: int = 0
     registros_auditoria: list[dict] = field(default_factory=list)
+    motivo: str = ""     # motivo classificado (diagnóstico) quando a consulta falhou
+    origem: str = ""     # caminho das leituras: "consulta individual" | "consulta em lote (N WOs)"
 
     @property
     def registros(self) -> int:
@@ -123,17 +125,32 @@ class ResultadoWO:
         return sum(1 for l in self.leituras if l.rodada > 0 and l.ok and l.tipo != "Leitura extra")
 
 
-class SessaoExpirada(Exception):
-    """A sessão autenticada não é mais válida (redirecionou ao SSO, 401, HTML)."""
+class _ComMotivo(Exception):
+    """Exceção com MOTIVO classificado (taxonomia do diagnóstico) e EVIDÊNCIA da 1ª observação
+    (URL, status HTTP, tipo e trecho do corpo da resposta — sem cookies nem tokens)."""
+    motivo_padrao = "excecao_app"
+
+    def __init__(self, mensagem: str = "", motivo: str | None = None, evidencia: dict | None = None):
+        super().__init__(mensagem)
+        self.motivo = motivo or self.motivo_padrao
+        self.evidencia = dict(evidencia or {})
 
 
-class FalhaComunicacao(Exception):
-    """Timeout de uma consulta, erro de rede ou HTTP 5xx (pode ser repetida)."""
+class SessaoExpirada(_ComMotivo):
+    """A sessão autenticada não é mais válida (redirecionou ao SSO, 401, 403, HTML de login)."""
+    motivo_padrao = "sessao_expirada"
 
 
-class ErroConsulta(Exception):
+class FalhaComunicacao(_ComMotivo):
+    """Timeout de uma consulta, erro de rede, HTTP 429 ou 5xx (pode ser repetida)."""
+    motivo_padrao = "falha_rede"
+
+
+class ErroConsulta(_ComMotivo):
     """Resposta inesperada do serviço (HTTP 4xx, JSON inválido etc.)."""
+    motivo_padrao = "consulta_rejeitada"
 
 
-class TempoEsgotado(Exception):
+class TempoEsgotado(_ComMotivo):
     """O tempo máximo da WO (ou do lote) acabou; não adianta repetir."""
+    motivo_padrao = "timeout_wo"

@@ -97,6 +97,12 @@
   .campo select { width:210px; }
   .campo .un { font-size:12px; color:var(--suave); min-width:20px; }
   .padrao { font-size:11px; color:var(--cinza); }
+  .categoria { border:1px solid var(--borda); border-radius:8px; padding:10px 12px; margin-top:10px; background:#FCFCFC; }
+  .categoria h3 { margin:0 0 4px; font-size:14px; }
+  .categoria .ev { font:12px Consolas, monospace; color:#555; white-space:pre-wrap; word-break:break-all; margin:6px 0 0; }
+  .rotulo-cat { font-size:11px; font-weight:700; letter-spacing:.4px; border-radius:4px; padding:1px 6px; margin-right:6px; }
+  .rotulo-cat.FONTE { background:#FDE8E7; color:#A1150C; } .rotulo-cat.APP { background:#E8EEFD; color:#1C3FA1; }
+  .rotulo-cat.ENTRADA { background:#FFF3DC; color:#8A5A00; }
 </style>
 </head>
 <body>
@@ -151,11 +157,22 @@
     Feche a janela preta do Agente BTP e abra o <b>Abrir Agente BTP.bat</b> de novo.</div>
   <div class="notificacao oculto" id="aviso"></div>
 
+  <section class="cartao alerta oculto" id="cartaoRetomar">
+    <h2 id="retTitulo">Retomar análise</h2>
+    <p class="suave" id="retTexto"></p>
+    <div class="linha">
+      <button id="bRetomarAnalise">Retomar</button>
+      <a class="botao" id="retPlanilha" href="#" style="background:#fff;color:var(--vermelho);border:1px solid var(--vermelho);padding:10px 18px">Baixar planilha parcial</a>
+      <a class="link" id="retDiag" href="#" style="color:var(--vermelho);font-weight:600;font-size:14px">Baixar diagnóstico (.json)</a>
+    </div>
+  </section>
+
   <section class="cartao">
     <h2>Consulta de WOs</h2>
     <p class="suave">Informe uma WO por linha (formato 00000|000000000) ou importe uma planilha. Para cada WO o
       agente extrai do BTP os alertas da janela Mensagens — WO, material SAP, fornecedor SAP, quantidade faltante e
-      mensagem — e confere cada dado <b id="nAuditorias">5</b> vez(es) antes de considerá-lo validado.</p>
+      mensagem — e confere cada dado <b id="nAuditorias">2</b> vez(es) antes de considerá-lo validado
+      (até <b id="nMaximo">5</b> quando há divergência).</p>
     <textarea id="texto" placeholder="Cole aqui as WOs, uma por linha"></textarea>
     <div class="linha" style="margin-top:10px">
       <span class="arquivo"><label for="arquivo">Importar planilha (.xlsx)</label>
@@ -165,6 +182,8 @@
     </div>
     <div class="linha" style="margin-top:16px">
       <button id="bExecutar">Executar análise</button>
+      <button id="bPausar" class="sec oculto">Pausar</button>
+      <button id="bContinuar" class="oculto">Retomar</button>
       <button id="bParar" class="sec oculto">Parar</button>
     </div>
   </section>
@@ -207,8 +226,16 @@
     <p class="suave oculto" id="prepInfo" style="margin:8px 0 0">Consultas da aba observadas: <b id="observadas">0</b>
       · <a href="/api/diagnostico" style="color:var(--vermelho)">Baixar diagnóstico</a></p>
     <div class="chips" id="chips"></div>
+    <div class="chips" id="errosCat"></div>
+    <details id="caixaDiag" style="margin-top:12px">
+      <summary>O que deu errado</summary>
+      <p class="suave" id="diagAcao" style="margin:8px 0 0"></p>
+      <div id="diagConteudo"></div>
+      <p style="margin:10px 0 0"><a class="link" id="diagBaixar" href="#" style="color:var(--vermelho);font-weight:600;font-size:14px">Baixar diagnóstico completo (.json)</a></p>
+    </details>
     <div class="linha" style="margin-top:16px">
       <a id="baixar" class="botao oculto" href="#">Baixar relatório auditado (.xlsx)</a>
+      <a id="baixarParcial" class="botao oculto" href="#" style="background:#fff;color:var(--vermelho);border:1px solid var(--vermelho);padding:10px 18px">Baixar planilha parcial (.xlsx)</a>
       <button id="bRaioxPronto" class="oculto">Já abri a janela Mensagens</button>
       <a id="baixarRaiox" class="botao oculto" href="#">Baixar Raio-X (.json)</a>
     </div>
@@ -333,6 +360,43 @@ $("bExecutar").onclick = async () => {
   if (!r.ok) alert(r.erro);
 };
 $("bParar").onclick = () => post("/api/parar");
+$("bPausar").onclick = () => post("/api/pausar");
+$("bContinuar").onclick = () => post("/api/retomar");
+let retomavel = null;
+$("bRetomarAnalise").onclick = async () => {
+  if (!retomavel) return;
+  const r = await fetch("/api/executar", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ run_id: retomavel.run_id, modo: "retomar" }) }).then(r => r.json());
+  if (!r.ok) alert(r.erro);
+};
+const CATEGORIA = { FONTE: "BTP / sessão", APP: "Agente", ENTRADA: "Entrada" };
+const SESSAO = ["sessao_expirada", "http_401", "http_403", "aba_desconectada"];
+let runAtual = null, diagEm = 0;
+async function carregarDiagnostico(forcar) {
+  if (!runAtual || !$("caixaDiag").open || (!forcar && Date.now() - diagEm < 5000)) return;
+  diagEm = Date.now();
+  let d;
+  try { d = await fetch(`/api/diagnostico?run_id=${encodeURIComponent(runAtual)}&baixar=0`).then(r => r.json()); }
+  catch (_) { return; }
+  $("diagAcao").innerHTML = "<b>Próxima ação:</b> " + esc(d.proxima_acao);
+  const problemas = d.problemas.filter(p => p.categoria !== "ENTRADA" || p.wos_afetadas);
+  $("diagConteudo").innerHTML = problemas.length ? problemas.map(p => {
+    const ev = p.primeira_ocorrencia || {};
+    const origem = ev.origem && ev.origem.modulo ? `${ev.origem.modulo}.${ev.origem.funcao}, linha ${ev.origem.linha}` : "";
+    const evid = [ev.quando && "quando: " + ev.quando, ev.wo && "WO: " + ev.wo, ev.url && "URL: " + ev.url,
+                  ev.status !== undefined && ev.status !== null && "status: " + ev.status,
+                  ev.content_type && "tipo: " + ev.content_type, ev.corpo && "resposta: " + ev.corpo.slice(0, 300),
+                  ev.erro && "erro: " + ev.erro, origem && "no código: " + origem].filter(Boolean).join("\n");
+    return `<div class="categoria"><h3><span class="rotulo-cat ${p.categoria}">${CATEGORIA[p.categoria] || p.categoria}</span>${esc(p.descricao)}</h3>
+      <div class="suave" style="margin:0">${SESSAO.includes(p.motivo)
+        ? `${p.wos_afetadas} WO(s) em andamento voltaram para a fila (nenhuma virou falha)`
+        : `${p.wos_afetadas} WO(s) afetada(s)`} · ${p.ocorrencias} ocorrência(s)${p.exemplos_wo.length ? " · ex.: " + esc(p.exemplos_wo.slice(0, 3).join(", ")) : ""}</div>
+      <div style="font-size:13px;margin-top:4px"><b>O que fazer:</b> ${esc(p.proxima_acao)}</div>
+      ${evid ? `<pre class="ev">${esc(evid)}</pre>` : ""}</div>`;
+  }).join("") : `<p class="suave" style="margin:8px 0 0">Nenhum problema registrado nesta análise.</p>`;
+  $("diagBaixar").href = `/api/diagnostico?run_id=${encodeURIComponent(runAtual)}`;
+}
+$("caixaDiag").addEventListener("toggle", () => carregarDiagnostico(true));
 
 const GRUPOS = [
   { rotulo: "Com itens", classe: "ok", status: ["Com itens faltantes", "Processada"] },
@@ -385,12 +449,28 @@ async function atualizar() {
   try { e = await fetch("/api/estado").then(r => r.json()); }
   catch (_) { $("conexao").textContent = "Agente fechado"; $("pt").className = "ponto"; return; }
 
-  conectado = e.conexao === "conectado"; ocupado = e.ocupado;
+  // Conexão honesta: "conectado" só com batimento recente da aba E sessão do BTP confirmada.
+  conectado = ["conectado", "aba_conectada"].includes(e.conexao); ocupado = e.ocupado;
   // Programa antigo servindo a tela nova (janela preta antiga ainda aberta)?
   $("desatualizado").classList.toggle("oculto", !VERSAO_TELA.startsWith("__") && e.versao === VERSAO_TELA);
-  $("conexao").textContent = conectado ? "Conectado ao BTP" : e.conexao === "sem_login" ? "BTP sem login" : "Aguardando o BTP";
-  $("pt").className = "ponto" + (conectado ? " ok" : e.conexao === "sem_login" ? " esp" : "");
-  $("cartaoConexao").classList.toggle("oculto", conectado);
+  const ROT = { conectado: "Conectado ao BTP · sessão válida", aba_conectada: "Aba conectada · sessão a verificar",
+                sessao_expirada: "Sessão do BTP expirada — faça login na aba", desconectado: "Aguardando o BTP" };
+  $("conexao").textContent = ROT[e.conexao] || "Aguardando o BTP";
+  $("conexao").title = e.batimento_seg != null ? `Último contato da aba: há ${e.batimento_seg} s` +
+    (e.sessao_verificada_ha_seg != null ? ` · sessão verificada há ${e.sessao_verificada_ha_seg} s` : "") : "";
+  $("pt").className = "ponto" + (e.conexao === "conectado" ? " ok" : ["aba_conectada", "sessao_expirada"].includes(e.conexao) ? " esp" : "");
+  $("cartaoConexao").classList.toggle("oculto", e.conexao !== "desconectado");
+
+  retomavel = e.retomavel;
+  $("cartaoRetomar").classList.toggle("oculto", !retomavel);
+  if (retomavel) {
+    $("retTitulo").textContent = `Retomar análise nº ${retomavel.numero}`;
+    $("retTexto").textContent = `${retomavel.validadas} de ${retomavel.total} já validadas, ${retomavel.restantes} restantes. ` +
+      "Só as WOs pendentes ou com falha são consultadas de novo.";
+    $("retPlanilha").href = `/api/execucoes/${encodeURIComponent(retomavel.run_id)}/planilha`;
+    $("retDiag").href = `/api/diagnostico?run_id=${encodeURIComponent(retomavel.run_id)}`;
+    $("bRetomarAnalise").disabled = !conectado;
+  }
 
   desenharConfirmacao(e);
   $("aviso").textContent = e.aviso || "";
@@ -399,6 +479,9 @@ async function atualizar() {
   $("bExecutar").disabled = ocupado || !conectado;
   $("bExecutar").title = conectado ? "" : "Conecte a aba do BTP primeiro";
   $("bParar").classList.toggle("oculto", !(ocupado && e.fase !== "ocioso"));
+  const sit = e.situacao || "";
+  $("bPausar").classList.toggle("oculto", !(ocupado && e.fase === "processando" && sit === "em_andamento"));
+  $("bContinuar").classList.toggle("oculto", !(ocupado && sit === "pausado_usuario"));
 
   const ativo = e.fase !== "ocioso";
   $("cartaoProgresso").classList.toggle("oculto", !ativo);
@@ -409,15 +492,27 @@ async function atualizar() {
       : e.fase === "raiox" ? "Raio-X da fonte em andamento"
       : e.fase === "raiox_ok" ? "Raio-X pronto"
       : e.fase === "preparando" ? "Configurando o acesso aos dados (primeira execução)"
-      : e.fase === "concluido" ? (e.ultimo_numero ? `Análise nº ${e.ultimo_numero} concluída` : "Análise concluída")
+      : e.fase === "concluido" ? (e.ultimo_numero ? `Análise nº ${e.ultimo_numero} ${sit === "interrompida" ? "interrompida" : "concluída"}` : "Análise concluída")
+      : sit === "pausado_sessao" ? "Pausada: a sessão do BTP expirou (nada foi perdido)"
+      : sit === "pausado_usuario" ? "Pausada"
       : "Extraindo e auditando";
     $("barra").classList.toggle("indef", ["preparando", "raiox"].includes(e.fase));
     $("prepInfo").classList.toggle("oculto", !["preparando", "falhou"].includes(e.fase));
     $("observadas").textContent = e.observadas;
-    $("barraFill").style.width = (e.fase === "concluido" ? 100 : pct) + "%";
+    $("barraFill").style.width = (e.fase === "concluido" && !e.execucao ? 100 : pct) + "%";
     $("progTxt").textContent = p.total ? `${p.atual} de ${p.total} WOs · ${pct}%` : "";
-    $("etaTxt").textContent = (e.fase === "processando" && p.atual > 0 && p.atual < p.total)
-      ? `faltam ~${tempo(e.decorrido_seg / p.atual * (p.total - p.atual))}` : "";
+    const ex = e.execucao || null;
+    const rodando = ex && e.fase === "processando" && sit === "em_andamento";
+    $("etaTxt").textContent = rodando
+      ? (ex.taxa_wo_s ? `${ex.taxa_wo_s.toLocaleString("pt-BR")} WO/s` : "medindo o ritmo…")
+        + (ex.eta_seg ? ` · faltam ~${tempo(ex.eta_seg)}` : "")
+      : (ex && sit.startsWith("pausado") ? "pausada — o tempo restante volta a ser calculado ao retomar" : "");
+    runAtual = ex ? ex.run_id : null;
+    const cats = ex ? ex.erros_por_categoria || {} : {};
+    $("errosCat").innerHTML = Object.entries(cats).map(([cat, m]) =>
+      `<span class="chip ${cat === "ENTRADA" ? "amb" : "err"}">${CATEGORIA[cat] || cat}: ${Object.entries(m).map(([k, n]) => `${esc(k)} ${n}`).join(", ")}</span>`).join("");
+    $("caixaDiag").classList.toggle("oculto", !ex);
+    carregarDiagnostico(false);
     const ind = e.indicadores || {};
     [["iProcessadas", "processadas"], ["iPendentes", "pendentes"], ["iValidadas", "validadas"],
      ["iDivergentes", "divergentes"], ["iIncompletas", "incompletas"], ["iFalhas", "falhas"]]
@@ -426,7 +521,8 @@ async function atualizar() {
     $("bRaioxPronto").classList.toggle("oculto", e.fase !== "raiox");
     $("baixarRaiox").classList.toggle("oculto", !(e.fase === "raiox_ok" && e.ultimo_raiox));
     if (e.ultimo_raiox) $("baixarRaiox").href = "/api/download/" + encodeURIComponent(e.ultimo_raiox);
-    $("etapa").textContent = (e.fase === "processando" || e.fase === "raiox") && e.etapa ? "Agora: " + e.etapa : "";
+    $("etapa").textContent = ((e.fase === "processando" && !sit.startsWith("pausado")) || e.fase === "raiox") && e.etapa
+      ? "Agora: " + e.etapa : "";
     $("chips").innerHTML = GRUPOS.map(g => {
       const n = g.status.reduce((s, st) => s + (e.contagem[st] || 0), 0);
       return n ? `<span class="chip ${g.classe}">${g.rotulo}<b>${n}</b></span>` : "";
@@ -434,6 +530,8 @@ async function atualizar() {
     const pronto = e.fase === "concluido" && e.ultimo_arquivo;
     $("baixar").classList.toggle("oculto", !pronto);
     if (pronto) $("baixar").href = "/api/download/" + encodeURIComponent(e.ultimo_arquivo);
+    $("baixarParcial").classList.toggle("oculto", !(ex && e.fase === "processando"));
+    if (ex) $("baixarParcial").href = `/api/execucoes/${encodeURIComponent(ex.run_id)}/planilha`;
   }
 
   const log = $("log"), fim = log.scrollTop + log.clientHeight >= log.scrollHeight - 5;
@@ -460,7 +558,7 @@ $("abaConfig").onclick = () => abrirAba("config");
 const CONFIG = [
   { grupo: "Auditoria", descricao: "Conferência dos dados extraídos. Divergências nunca são aprovadas automaticamente.", itens: [
     { id: "auditorias_por_wo", rotulo: "Auditorias por WO", tipo: "int", min: 0, max: 20, un: "",
-      ajuda: "Quantas vezes cada WO é lida de novo no BTP e comparada campo a campo. Com 0, nada fica \"Validado\"." },
+      ajuda: "Quantas vezes cada WO é lida de novo no BTP e comparada campo a campo (padrão 2; com divergência, as leituras extras abaixo elevam para 5). Com 0, nada fica \"Validado\"." },
     { id: "auditorias_independentes", rotulo: "Auditorias independentes", tipo: "bool",
       ajuda: "Alterna a nova consulta da WO com a releitura de cada item pelo seu endereço próprio (outro caminho no BTP), quando o serviço permitir." },
     { id: "repeticoes_falha", rotulo: "Repetições em caso de falha", tipo: "int", min: 0, max: 10, un: "",
@@ -469,7 +567,7 @@ const CONFIG = [
       opcoes: [["reconsultar", "Reconsultar e sinalizar"], ["revisar", "Só sinalizar para revisão"]],
       ajuda: "Reconsultar faz leituras extras para tentar esclarecer. Em nenhum caso o valor divergente é aprovado sem evidência." },
     { id: "consultas_extras_divergencia", rotulo: "Leituras extras por divergência", tipo: "int", min: 0, max: 10, un: "",
-      ajuda: "Usado quando a opção acima é \"Reconsultar\"." },
+      ajuda: "Leituras individuais extras quando há divergência (padrão 3: 2 + 3 = 5 conferências). Usado quando a opção acima é \"Reconsultar\"." },
   ]},
   { grupo: "Tempo", descricao: "Limites reais: ao estourar, a consulta é abortada e a falha fica registrada.", itens: [
     { id: "tempo_consulta_wo_seg", rotulo: "Tempo máximo — consulta da WO no Monitor", tipo: "num", min: 5, max: 600, un: "s",
@@ -477,11 +575,11 @@ const CONFIG = [
     { id: "tempo_consulta_detalhes_seg", rotulo: "Tempo máximo — detalhes do alerta", tipo: "num", min: 5, max: 600, un: "s",
       ajuda: "Equivale a abrir a janela Mensagens e esperar os itens." },
     { id: "intervalo_auditorias_seg", rotulo: "Intervalo entre auditorias", tipo: "num", min: 0, max: 60, un: "s",
-      ajuda: "Pausa entre uma rodada de conferência e a próxima." },
+      ajuda: "Pausa fixa entre rodadas (padrão 0: o ritmo se ajusta sozinho se o BTP pedir para ir mais devagar)." },
     { id: "tempo_max_wo_seg", rotulo: "Tempo máximo por WO", tipo: "num", min: 10, max: 3600, un: "s",
       ajuda: "Extração + todas as auditorias da WO. Ao estourar, a WO fica \"Não concluído\"." },
     { id: "tempo_max_lote_min", rotulo: "Tempo máximo da análise completa", tipo: "num", min: 1, max: 1440, un: "min",
-      ajuda: "Ao estourar, as WOs restantes ficam como \"Não processada\" e o relatório é gerado." },
+      ajuda: "Ao estourar, as WOs restantes ficam pendentes (dá para Retomar) e o relatório é gerado." },
   ]},
   { grupo: "Execução", descricao: "Comportamento do lote.", itens: [
     { id: "intervalo_consultas_seg", rotulo: "Intervalo entre consultas ao BTP", tipo: "num", min: 0, max: 30, un: "s",
@@ -494,6 +592,12 @@ const CONFIG = [
       ajuda: "Erro de consulta, falha de comunicação ou tempo esgotado em uma WO." },
     { id: "exportar_incompletos", rotulo: "Exportar resultados não validados", tipo: "bool",
       ajuda: "Inclui no Excel, destacadas em cor, as ocorrências divergentes, incompletas ou não concluídas." },
+  ]},
+  { grupo: "Desempenho", descricao: "Velocidade sem perder a conferência: a consulta em lote é comparada com a individual durante a análise.", itens: [
+    { id: "concorrencia", rotulo: "Consultas em paralelo", tipo: "int", min: 1, max: 8, un: "",
+      ajuda: "Grupos de WOs consultados ao mesmo tempo (padrão 4). Se o BTP pedir para ir mais devagar, o agente reduz o ritmo sozinho." },
+    { id: "tamanho_lote", rotulo: "WOs por consulta em lote", tipo: "int", min: 1, max: 50, un: "",
+      ajuda: "Quantas WOs vão numa mesma consulta (padrão 20; 1 = uma WO por consulta). Se o lote der qualquer diferença, o agente volta a consultar WO a WO." },
   ]},
 ];
 let cfgPadrao = {};
@@ -531,6 +635,7 @@ async function salvarConfig(url, corpo) {
   if (!r.ok) { $("cfgStatus").textContent = r.erro; return; }
   desenharConfig(r.valores);
   $("nAuditorias").textContent = r.valores.auditorias_por_wo;
+  $("nMaximo").textContent = r.valores.auditorias_por_wo + (r.valores.divergencia === "reconsultar" ? r.valores.consultas_extras_divergencia : 0);
   $("cfgStatus").textContent = r.problemas.length ? "Salvo com ajustes: " + r.problemas.join("; ") : "Configurações salvas.";
 }
 $("cfgSalvar").onclick = () => salvarConfig("/api/configuracoes", lerFormulario());
@@ -540,7 +645,10 @@ $("cfgRefazer").onclick = async () => {
   $("cfgStatus").textContent = r.ok ? "Fonte apagada: a próxima análise pede a conferência." : r.erro;
 };
 $("cfgPadrao").onclick = () => confirm("Restaurar todos os valores padrão?") && salvarConfig("/api/configuracoes/padrao");
-fetch("/api/configuracoes").then(r => r.json()).then(r => { $("nAuditorias").textContent = r.valores.auditorias_por_wo; });
+fetch("/api/configuracoes").then(r => r.json()).then(r => {
+  $("nAuditorias").textContent = r.valores.auditorias_por_wo;
+  $("nMaximo").textContent = r.valores.auditorias_por_wo + (r.valores.divergencia === "reconsultar" ? r.valores.consultas_extras_divergencia : 0);
+});
 
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const dataBR = iso => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });

@@ -330,7 +330,7 @@ def test_lote_so_comeca_depois_da_conferencia_e_recusa_troca_a_fonte(agente, mon
     assert e["fase"] == "concluido" and e["contagem"] == {Status.PROCESSADA.value: 1}
     from openpyxl import load_workbook
     d = list(load_workbook(agente_mod.PASTA_SAIDAS / e["ultimo_arquivo"])["Dados"].iter_rows(min_row=2, values_only=True))
-    assert d == [(WO, "000000000022066463", "0000138480", 2, "Estoque indisponível", None)]
+    assert d == [(WO, "000000000022066463", "0000138480", 2, "Estoque indisponível", None, "Validada")]
 
 
 def test_fonte_confirmada_nao_pergunta_de_novo(agente, monkeypatch, tmp_path):

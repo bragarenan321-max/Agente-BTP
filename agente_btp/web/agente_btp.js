@@ -197,7 +197,8 @@
         headers: { 'Accept': t.accept || 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       });
       if (r.type === 'opaqueredirect') return { id: t.id, status: 0, ct: '', body: '', redir: true };
-      return { id: t.id, status: r.status, ct: r.headers.get('content-type') || '', body: await r.text(), redir: false };
+      return { id: t.id, status: r.status, ct: r.headers.get('content-type') || '', body: await r.text(), redir: false,
+               ra: r.headers.get('retry-after') || '' };
     } catch (e) {
       return { id: t.id, status: -1, ct: '', body: (estourou ? 'TEMPO_ESGOTADO ' : '') + String(e), redir: false };
     } finally { clearTimeout(timer); }
@@ -225,28 +226,16 @@
   };
   principal.addEventListener('pagehide', despedida);
 
-  async function laco() {
-    let falhas = 0;
-    for (;;) {
-      try { await servidor('/api/agente/ola', { agente: ID, pagina: location.pathname + location.hash }); break; }
-      catch (e) {
-        if (!VIA_EXTENSAO) {
-          aviso('não encontrei o programa local. Abra o Agente BTP e clique no favorito de novo.', '#b0191e');
-          parar();
-          return;
-        }
-        // Pela extensão: espera o programa abrir, sem desistir.
-        aviso('aguardando o programa (Abrir Agente BTP.bat)…', '#6b6b6b');
-        await new Promise((ok) => setTimeout(ok, 5000));
-        if (!estado.ativo) return;
-      }
-    }
-    aviso('conectado');
+  // Um trabalhador: cada pedido ao programa entrega a resposta anterior e recebe a próxima
+  // tarefa (uma conexão por vez). Vários trabalhadores = consultas ao BTP em paralelo.
+  async function trabalhador(n) {
+    let falhas = 0, resposta = null;
     while (estado.ativo) {
       try {
-        const r = await servidor('/api/agente/tarefa?agente=' + ID + '&autenticado=' + (autenticado() ? 1 : 0) +
-                                 '&capturando=' + (estado.capturando ? 1 : 0) + '&versao=' + VERSAO +
-                                 '&pagina=' + encodeURIComponent(location.pathname + location.hash));
+        const r = await servidor('/api/agente/ciclo', {
+          agente: ID, trabalhador: n, autenticado: autenticado(), capturando: estado.capturando,
+          versao: VERSAO, pagina: location.pathname + location.hash, resposta: resposta });
+        resposta = null;
         falhas = 0;
         // Pedido de atualização: no máximo UMA recarga por minuto. Se a versão continuar
         // diferente (ex.: extensão de outra pasta), segue com esta mesma — nunca em laço.
@@ -278,15 +267,39 @@
           principal.__btpSubstituido = true;   // a extensão não reconecta esta aba sozinha
           return;
         }
+        if (!estado.ativo) return;
         estado.capturando = principal.__btpCapturando = !!r.capturar;
         aviso('conectado');
-        if (r.tarefa) await servidor('/api/agente/resposta', await executar(r.tarefa));
+        if (r.tarefa) resposta = await executar(r.tarefa);
       } catch (e) {
         falhas++;
         if (falhas >= 3) aviso('sem contato com o programa local. Ele está aberto?', '#b0191e');
         await new Promise((ok) => setTimeout(ok, Math.min(5000, 1000 * falhas)));
       }
     }
+  }
+
+  async function laco() {
+    let quantos = 1;
+    for (;;) {
+      try {
+        const r = await servidor('/api/agente/ola', { agente: ID, pagina: location.pathname + location.hash });
+        quantos = Math.max(1, Math.min(8, (r && r.trabalhadores) || 1));
+        break;
+      } catch (e) {
+        if (!VIA_EXTENSAO) {
+          aviso('não encontrei o programa local. Abra o Agente BTP e clique no favorito de novo.', '#b0191e');
+          parar();
+          return;
+        }
+        // Pela extensão: espera o programa abrir, sem desistir.
+        aviso('aguardando o programa (Abrir Agente BTP.bat)…', '#6b6b6b');
+        await new Promise((ok) => setTimeout(ok, 5000));
+        if (!estado.ativo) return;
+      }
+    }
+    aviso('conectado');
+    for (let i = 0; i < quantos; i++) trabalhador(i);
   }
   aviso('conectando…', '#555');
   laco();

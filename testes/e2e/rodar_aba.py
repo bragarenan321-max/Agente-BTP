@@ -67,7 +67,7 @@ def cenario(nome, url_aba, b, wos=None):
             aba.wait_for_timeout(300)
         raise SystemExit("TIMEOUT\n" + json.dumps(agente.estado(), ensure_ascii=False, indent=1))
 
-    esperar(lambda e: e["conexao"] == "conectado")
+    esperar(lambda e: e["conexao"] in ("conectado", "aba_conectada"))
     agente.enviar("executar", wos or WOS)               # o usuário só clica em Executar
     aba.wait_for_timeout(500)
     esperar(lambda e: e["fase"] == "concluido" and not e["ocupado"])

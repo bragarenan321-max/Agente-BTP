@@ -64,7 +64,7 @@ class BTP:
         return Resposta(200, "application/json", json.dumps({"value": regs}))
 
 
-RAPIDO = Preferencias(intervalo_auditorias_seg=0)
+RAPIDO = Preferencias(auditorias_por_wo=5, intervalo_auditorias_seg=0)   # 5 rodadas: cobre o rodízio de tipos
 
 
 # ============================================================ 1. a divergência 2 x 3 (causa)
@@ -107,8 +107,8 @@ def test_mensagem_original_e_zeros_preservados(tmp_path):
         i for i in itens if i["ID"] in u))), [WO], prefs=RAPIDO)
     destino = gerar_planilha(rs, tmp_path / "a.xlsx")
     linhas = list(load_workbook(destino)["Dados"].iter_rows(min_row=2, values_only=True))
-    assert linhas == [(WO, "000000000022066463", "0000138480", 2, "Erro durante baixa de estoque", None),
-                      (WO, "000000000011000042", "0000000001", 10, "Estoque indisponível", None)]
+    assert linhas == [(WO, "000000000022066463", "0000138480", 2, "Erro durante baixa de estoque", None, "Validada"),
+                      (WO, "000000000011000042", "0000000001", 10, "Estoque indisponível", None, "Validada")]
     assert verificar_planilha(destino, rs) == []
 
 
@@ -192,7 +192,7 @@ def test_divergencia_resolvida_pelo_registro_de_alteracao_do_btp():
 def test_leituras_extras_em_divergencia_sao_feitas_e_registradas():
     btp = BTP([[item()], [item(quantidadeFaltante=3)]], por_chave=lambda u: item(quantidadeFaltante=3))
     r = processar_wo(ClienteBTP(config_conjunto_unico(), btp), WO,
-                     Preferencias(intervalo_auditorias_seg=0, consultas_extras_divergencia=2))
+                     Preferencias(auditorias_por_wo=5, intervalo_auditorias_seg=0, consultas_extras_divergencia=2))
     assert [l.tipo for l in r.leituras].count("Leitura extra") == 2
     assert r.rodadas_concluidas == 5 and r.auditoria is Auditoria.DIVERGENTE   # extras não contam como auditoria
 
@@ -248,7 +248,7 @@ def test_auditoria_que_falha_deixa_nao_concluido():
             return Resposta(503, "text/plain", "")
         return Resposta(200, "application/json", json.dumps({"value": [item()]}))
     r = processar_wo(ClienteBTP(config_conjunto_unico(url_item=None, chaves_item=None), t), WO,
-                     Preferencias(intervalo_auditorias_seg=0, repeticoes_falha=0))
+                     Preferencias(auditorias_por_wo=5, intervalo_auditorias_seg=0, repeticoes_falha=0))
     assert r.linhas[0].auditoria is Auditoria.NAO_CONCLUIDO and r.auditoria is Auditoria.NAO_CONCLUIDO
     assert r.rodadas_concluidas == 0 and "0 de 5" in r.observacao_auditoria
 
@@ -322,7 +322,9 @@ def test_estrutura_completa_do_excel(tmp_path):
     assert len(d) == 5                                    # 3 itens + 1 linha da WO sem alerta (TODAS as WOs)
     assert d[3][:5] == (WO2, "000000000022066463", "0000138480", None, "Estoque indisponível")  # sem valor
     assert "Quantidade faltante diferente entre consultas (1 e 4" in d[3][5] and "conferir no BTP" in d[3][5]
-    assert d[4] == ("99999|999999999", None, None, None, None, "Nenhum alerta encontrado no Monitor para esta WO")
+    assert d[4] == ("99999|999999999", None, None, None, None, "Nenhum alerta encontrado no Monitor para esta WO",
+                    "Validada")
+    assert d[3][6] == "Divergente" and d[0][6] == "Status"
     assert d[1][5] is None and d[2][5] is None            # conferidos: sem observação
     assert verificar_planilha(destino, rs) == []
     a = [r for r in wb["Análise"].iter_rows(values_only=True) if r[0]]
@@ -357,7 +359,7 @@ def test_verificacao_detecta_excel_adulterado(tmp_path):
 # ============================================================ 6. configurações
 def test_preferencias_persistem_e_sao_validadas(tmp_path):
     arq = tmp_path / "p.json"
-    assert preferencias.carregar(arq).auditorias_por_wo == 5          # padrão
+    assert preferencias.carregar(arq).auditorias_por_wo == 2          # padrão (escalona para 5 em divergência)
     prefs, problemas = preferencias.salvar({"auditorias_por_wo": "7", "tempo_max_wo_seg": 99999,
                                             "em_erro": "explodir", "auditorias_independentes": False}, arq)
     assert prefs.auditorias_por_wo == 7 and prefs.tempo_max_wo_seg == 3600 and prefs.em_erro == "continuar"
@@ -371,11 +373,11 @@ def test_tela_de_configuracoes_salva_pela_api(tmp_path, monkeypatch):
     from agente_btp.agente import Agente
     from agente_btp.servidor import criar_app
     c = criar_app(Agente()).test_client()
-    assert c.get("/api/configuracoes").get_json()["valores"]["auditorias_por_wo"] == 5
+    assert c.get("/api/configuracoes").get_json()["valores"]["auditorias_por_wo"] == 2
     r = c.post("/api/configuracoes", json={"auditorias_por_wo": 3, "intervalo_auditorias_seg": 1.5})
     assert r.get_json()["valores"]["auditorias_por_wo"] == 3
     assert json.loads((tmp_path / "p.json").read_text())["intervalo_auditorias_seg"] == 1.5
-    assert c.post("/api/configuracoes/padrao").get_json()["valores"]["auditorias_por_wo"] == 5
+    assert c.post("/api/configuracoes/padrao").get_json()["valores"]["auditorias_por_wo"] == 2
 
 
 def test_endereco_de_releitura_pelo_dicionario():
