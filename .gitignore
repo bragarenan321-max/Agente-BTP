@@ -12,3 +12,4 @@ config/preferencias.json
 historico/
 config/fontes_recusadas.json
 dados/
+*.zip
