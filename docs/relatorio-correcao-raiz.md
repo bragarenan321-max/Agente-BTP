@@ -119,3 +119,16 @@ tamanho — todos atingiriam a análise real **depois** das horas de extração:
 **Equivalência:** a planilha da escrita contínua foi comparada célula a célula com a da versão anterior
 (valor, tipo, formato, fonte, preenchimento, alinhamento, borda, larguras, painel congelado, filtro, aba
 oculta) — **0 diferenças**. Teste de regressão novo garante que a geração não volta a ser quadrática.
+
+**Medição completa, 13.623 WOs, mesmo processo (BTP falso sem latência):**
+
+| Etapa | Antes desta rodada | Depois |
+|---|---|---|
+| Motor (custo do próprio agente) | 48,8 s | 55,2 s |
+| Leitura da base para o Excel | 5,1 s | 3,0 s |
+| Geração do Excel | travava (quadrático); 34,7 s após a 1ª correção | 35,3 s |
+| Conferência do Excel | 38,6 s | 12,3 s |
+| Pico de RAM do processo | 1.487 MB | **387 MB** |
+| Tela (`/api/estado`) / diagnóstico | 49 ms / 47 ms | 55 ms / 45 ms |
+
+Base: 24 MB; Excel: 10,9 MB (≈37 mil linhas na aba Dados). Nenhuma diferença na conferência.
