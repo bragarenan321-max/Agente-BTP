@@ -759,7 +759,7 @@ class Agente:
                          f"{duracao:.0f} s" + (f" ({(c['validada'] + c['divergente'] + c['incompleta'] + c['falha']) / duracao:.2f} WO/s)"
                                                if duracao > 0 else "")
                          + ("" if cache.lote_ativo else f"; consulta em lote desativada ({cache.lote_motivo})"))
-        resultados = self.loja.resultados(run_id)
+        resultados = self.loja.resultados(run_id, leve=True)
         arquivo, erro_planilha = self._planilha(run_id, resultados, prefs, api, inicio_relogio, ex["descricao"])
         contagem: dict[str, int] = {}
         for r in resultados:
@@ -837,7 +837,7 @@ class Agente:
             return None
         prefs = preferencias.validar(ex["prefs"])[0]
         api = cfg.a_partir_de_dict(ex["config"])
-        arquivo, _ = self._planilha(run_id, self.loja.resultados(run_id), prefs, api,
+        arquivo, _ = self._planilha(run_id, self.loja.resultados(run_id, leve=True), prefs, api,
                                     datetime.fromisoformat(ex["criada_em"]), ex["descricao"], parcial=True)
         return arquivo
 

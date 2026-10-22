@@ -73,8 +73,8 @@ A medição reproduz o observado: **3,39 s/WO**, das quais cerca de 2,5–3 s er
 - **Evidência da 1ª ocorrência:** URL, status, content-type, corpo sanitizado (tokens/SAML removidos), WO e horário, mais a origem no código (módulo/função/linha) e o traceback.
 - **Linha do tempo** e **próxima ação**.
 
-## 3. Testes (138 passando) e validação
-- `testes/test_execucao.py` (29 testes):
+## 3. Testes (141 passando) e validação
+- `testes/test_execucao.py` (28 testes):
   - **R1:** 50 validadas e queda na WO 51 ⇒ as 50 continuam validadas (mesmo hash, 1 tentativa); a análise retoma sozinha. A queda também foi testada com lote + paralelismo nos 4 modos (302, 401, 403, HTML de login).
   - **R2:** retomada refaz só as 3 que falharam; 2ª retomada = só a sonda, nada muda; testes da API e da planilha parcial.
   - **R3:** detecção de 401, redirecionamento, HTML e 403; 403 isolado não pausa; sonda inicial; conexão honesta; 429.
@@ -103,3 +103,19 @@ agente registra no fim da análise: "Desempenho: N consultas em T s (X WO/s)".
 - **Login:** o agente não faz login nem contorna o MFA: na queda, ele **pausa e espera**.
 - **Lote no BTP real:** depende de o BTP aceitar `or`. Se recusar ou divergir, o agente volta sozinho para WO a WO (cerca de 23 min projetados).
 - **Preferências antigas:** quem tinha 5 auditorias / 0,5 s gravados (padrão antigo) é migrado para 2 (+3 em divergência) / 0 s, com aviso no registro. Valores escolhidos explicitamente são mantidos.
+
+## 6. Rodada 2 — teste de escala com 13.623 WOs (o tamanho real)
+Os testes anteriores iam até 1.000 WOs. Rodei uma análise completa de 13.623 WOs no BTP falso
+(sem latência, para medir só o custo do agente) e encontrei três problemas que só aparecem nesse
+tamanho — todos atingiriam a análise real **depois** das horas de extração:
+
+| Problema | Causa | Antes | Depois |
+|---|---|---|---|
+| Geração do Excel travava | `ws.max_row` chamado a cada linha (percorre a planilha inteira): custo quadrático | 3.000 WOs > 60 s e crescendo; 13.623 ≈ horas | 13.623 WOs: ~35 s |
+| Conferência do Excel pesada | arquivo aberto inteiro na memória | 38,6 s e ~840 MB | 15,3 s e 22 MB (modo somente leitura, ainda detecta fórmula) |
+| Pico de memória ~1,5 GB | planilha montada inteira na memória + resultados completos | ~1 GB só no Excel | escrita contínua (write-only) + resultados "leves" |
+| historico.json inchado | lista de todas as WOs de cada análise no resumo (até 300 análises) | ~2 MB por análise de 13 mil WOs, lido a cada abertura | resumo leve; lista de WOs num arquivo por análise |
+
+**Equivalência:** a planilha da escrita contínua foi comparada célula a célula com a da versão anterior
+(valor, tipo, formato, fonte, preenchimento, alinhamento, borda, larguras, painel congelado, filtro, aba
+oculta) — **0 diferenças**. Teste de regressão novo garante que a geração não volta a ser quadrática.

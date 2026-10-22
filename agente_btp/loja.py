@@ -160,7 +160,11 @@ def serializar(r: ResultadoWO) -> dict:
     })
 
 
-def desserializar(d: dict) -> ResultadoWO:
+def desserializar(d: dict, leve: bool = False) -> ResultadoWO:
+    """`leve`: leituras sem os itens lidos em cada rodada (só para Excel/histórico, que usam as
+    linhas finais e a aba de rastreio). Mantém quais leituras deram certo (rodadas concluídas)."""
+    if leve:
+        d = dict(d, leituras=[dict(l, itens=None if l["itens"] is None else []) for l in d["leituras"]])
     d = _dec(d)
 
     def ocorr(o):
@@ -358,12 +362,13 @@ class Loja:
                     "concluido_em FROM wos WHERE run_id=? AND wo=?", (run_id, wo))
         return l[0] if l else None
 
-    def resultados(self, run_id: str) -> list[ResultadoWO]:
-        """Todas as WOs na ordem da entrada; as não concluídas aparecem como pendentes."""
+    def resultados(self, run_id: str, leve: bool = False) -> list[ResultadoWO]:
+        """Todas as WOs na ordem da entrada; as não concluídas aparecem como pendentes.
+        `leve=True` para Excel e histórico (13 mil WOs cabem com folga na memória)."""
         saida = []
         for l in self._q("SELECT wo, status, motivo, payload FROM wos WHERE run_id=? ORDER BY ordem", (run_id,)):
             if l["status"] in FINAIS and l["payload"]:
-                saida.append(desserializar(json.loads(zlib.decompress(l["payload"]).decode("utf-8"))))
+                saida.append(desserializar(json.loads(zlib.decompress(l["payload"]).decode("utf-8")), leve))
             else:
                 saida.append(pendente_como_resultado(l["wo"]))
         return saida

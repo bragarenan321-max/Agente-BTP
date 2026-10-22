@@ -26,15 +26,36 @@ def _ler(arquivo: Path) -> list[dict]:
         return []
 
 
+def _pasta_detalhes(arquivo: Path) -> Path:
+    return arquivo.parent / "analises"
+
+
+def _detalhe(arquivo: Path, id_: str) -> Path:
+    seguro = "".join(c for c in str(id_) if c.isalnum() or c in "-_")
+    return _pasta_detalhes(arquivo) / f"{seguro}.json"
+
+
+def _gravar(caminho: Path, dados) -> None:
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    tmp = caminho.with_suffix(".tmp")
+    tmp.write_text(json.dumps(dados, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(caminho)
+
+
 def registrar(analise: dict, arquivo: Path | None = None) -> None:
+    """O resumo vai para historico.json; a lista de WOs (pode ter dezenas de milhares) vai para
+    um arquivo próprio da análise — o histórico continua leve para listar."""
     arquivo = arquivo or ARQUIVO
+    analise = dict(analise)
+    wos = analise.pop("wos", None)
     with _trava:
+        if wos is not None:
+            _gravar(_detalhe(arquivo, analise.get("id")), wos)
         dados = [a for a in _ler(arquivo) if a.get("id") != analise.get("id")]
         dados.insert(0, analise)
-        arquivo.parent.mkdir(parents=True, exist_ok=True)
-        tmp = arquivo.with_suffix(".tmp")
-        tmp.write_text(json.dumps(dados[:LIMITE], ensure_ascii=False, indent=1), encoding="utf-8")
-        tmp.replace(arquivo)
+        for antiga in dados[LIMITE:]:
+            _detalhe(arquivo, antiga.get("id")).unlink(missing_ok=True)
+        _gravar(arquivo, dados[:LIMITE])
 
 
 def listar(arquivo: Path | None = None) -> list[dict]:
@@ -47,7 +68,16 @@ def listar(arquivo: Path | None = None) -> list[dict]:
 def obter(id_: str, arquivo: Path | None = None) -> dict | None:
     arquivo = arquivo or ARQUIVO
     with _trava:
-        return next((a for a in _ler(arquivo) if a.get("id") == id_), None)
+        item = next((a for a in _ler(arquivo) if a.get("id") == id_), None)
+        if item is None or "wos" in item:          # análises antigas guardavam as WOs no resumo
+            return item
+        try:
+            wos = json.loads(_detalhe(arquivo, id_).read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return item                            # registrada sem lista de WOs
+        except json.JSONDecodeError:
+            wos = []
+        return dict(item, wos=wos)
 
 
 def apagar(ids: list[str] | None = None, arquivo: Path | None = None) -> list[dict]:
@@ -58,10 +88,9 @@ def apagar(ids: list[str] | None = None, arquivo: Path | None = None) -> list[di
         removidas = [a for a in dados if ids is None or a.get("id") in ids]
         restantes = [a for a in dados if a not in removidas]
         if removidas:
-            arquivo.parent.mkdir(parents=True, exist_ok=True)
-            tmp = arquivo.with_suffix(".tmp")
-            tmp.write_text(json.dumps(restantes, ensure_ascii=False, indent=1), encoding="utf-8")
-            tmp.replace(arquivo)
+            _gravar(arquivo, restantes)
+            for a in removidas:
+                _detalhe(arquivo, a.get("id")).unlink(missing_ok=True)
         return removidas
 
 

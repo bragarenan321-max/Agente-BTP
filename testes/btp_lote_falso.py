@@ -202,7 +202,13 @@ class BTPLote:
         filtro = q.get("$filter", "")
         try:
             teste = compilar(filtro) if filtro else (lambda r: True)
-            regs = [r for r in tabela if teste(r)]
+            # Índice por WO (só acelera o falso: o filtro completo continua decidindo cada linha).
+            citadas = {v.replace("''", "'") for v in re.findall(r"'((?:[^']|'')*)'", filtro)} if "workOrderID" in filtro else None
+            candidatas = tabela if citadas is None else [r for w in citadas for r in self._por_wo(conjunto).get(w, [])]
+            if citadas is not None:   # mesma ordem da tabela, sem repetir linha
+                posicao = self._posicoes[conjunto]
+                candidatas = sorted({id(r): r for r in candidatas}.values(), key=lambda r: posicao[id(r)])
+            regs = [r for r in candidatas if teste(r)]
         except (ValueError, AssertionError, IndexError) as exc:
             return Resposta(400, "application/json", json.dumps({"error": {"message": f"filtro: {exc}"}}))
         pulo = int(q.get("$skip", 0))
@@ -212,6 +218,19 @@ class BTPLote:
             corpo["@odata.nextLink"] = (f"{conjunto}?$filter={quote(filtro, safe=chr(39) + '()')}&$skip={pulo + self.pagina}" if filtro
                                         else f"{conjunto}?$skip={pulo + self.pagina}")
         return Resposta(200, "application/json", json.dumps(corpo))
+
+    def _por_wo(self, conjunto: str) -> dict:
+        if not hasattr(self, "_indices"):
+            self._indices = {}
+        if conjunto not in self._indices:
+            tabela = {"Pendencias": self.pendencias, "UltimoRetornoView": self.retorno}[conjunto]
+            indice: dict = {}
+            for r in tabela:
+                indice.setdefault(r["workOrderID"], []).append(r)
+            self._indices[conjunto] = indice
+            self._posicoes = getattr(self, "_posicoes", {})
+            self._posicoes[conjunto] = {id(r): i for i, r in enumerate(tabela)}
+        return self._indices[conjunto]
 
     def _vivo(self, r: dict) -> dict:
         if r.get("workOrderID") in self.volateis and r.get("status") == "E":

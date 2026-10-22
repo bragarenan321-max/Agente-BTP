@@ -6,6 +6,7 @@ import subprocess
 import sys
 import threading
 import time
+from datetime import datetime
 from collections import Counter
 from pathlib import Path
 
@@ -590,3 +591,38 @@ def test_preferencias_da_versao_1_migram_para_a_politica_nova(tmp_path):
     assert p.tempo_max_wo_seg == 200                                   # o resto é mantido
     arq.write_text(json.dumps({"auditorias_por_wo": 7, "versao": 1}))
     assert preferencias.carregar(arq).auditorias_por_wo == 7           # escolha explícita do usuário fica
+
+
+def test_excel_de_lote_grande_nao_e_quadratico(tmp_path, monkeypatch):
+    """ws.max_row percorre a planilha inteira: chamá-lo por linha tornava o Excel de 13 mil WOs
+    (≈40 mil linhas) impossível de gerar. O número de chamadas não pode crescer com as linhas."""
+    from openpyxl.worksheet.worksheet import Worksheet
+    from agente_btp.modelos import Auditoria, LinhaMensagem, ResultadoWO, Status
+    chamadas = {"n": 0}
+    original = Worksheet.max_row
+
+    def contar(self):
+        chamadas["n"] += 1
+        return original.fget(self)
+    monkeypatch.setattr(Worksheet, "max_row", property(contar))
+    resultados = [ResultadoWO(f"{i:05d}|{i:09d}", Status.PROCESSADA, auditoria=Auditoria.VALIDADO, linhas=[
+        LinhaMensagem("c", f"{i:05d}|{i:09d}", f"{i:018d}", "0000000001", 1, "Estoque indisponível",
+                      auditoria=Auditoria.VALIDADO)]) for i in range(3000)]
+    gerar_planilha(resultados, tmp_path / "grande.xlsx")
+    assert chamadas["n"] < 30, chamadas["n"]
+
+
+def test_resultados_leves_geram_a_mesma_planilha_e_historico(tmp_path):
+    btp = BTPLote(60)
+    btp.volateis = {btp.wos[3]}
+    amb = Ambiente(btp, Preferencias())
+    amb.rodar()
+    completos, leves = amb.loja.resultados("r1"), amb.loja.resultados("r1", leve=True)
+    assert linhas_dados(leves) == linhas_dados(completos)
+    assert [r.rodadas_concluidas for r in leves] == [r.rodadas_concluidas for r in completos]
+    assert [r.registros_auditoria for r in leves] == [r.registros_auditoria for r in completos]
+    a = gerar_planilha(completos, tmp_path / "a.xlsx", emitida_em=datetime(2026, 1, 1))
+    b = gerar_planilha(leves, tmp_path / "b.xlsx", emitida_em=datetime(2026, 1, 1))
+    for aba in ("Dados", "Análise", "Rastreio"):
+        assert list(load_workbook(a)[aba].iter_rows(values_only=True)) == \
+            list(load_workbook(b)[aba].iter_rows(values_only=True))

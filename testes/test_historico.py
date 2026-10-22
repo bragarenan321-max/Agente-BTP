@@ -21,3 +21,22 @@ def test_arquivo_corrompido_nao_quebra(tmp_path):
     assert historico.listar(arq) == []
     historico.registrar({"id": "a"}, arq)
     assert historico.obter("a", arq) == {"id": "a"}
+
+
+def test_lista_de_wos_fica_fora_do_resumo(tmp_path):
+    """Análise de 13 mil WOs não pode inchar o historico.json (lido a cada listagem)."""
+    arq = tmp_path / "h.json"
+    wos = [{"wo": f"{i:05d}|{i:09d}", "status": "Com itens faltantes"} for i in range(13623)]
+    historico.registrar({"id": "grande", "total": 13623, "wos": wos}, arq)
+    assert arq.stat().st_size < 2000
+    assert historico.obter("grande", arq)["wos"] == wos
+    historico.apagar(["grande"], arq)
+    assert not list((tmp_path / "analises").glob("*.json"))
+
+
+def test_historico_antigo_com_wos_no_resumo_continua_legivel(tmp_path):
+    import json
+    arq = tmp_path / "h.json"
+    arq.write_text(json.dumps([{"id": "v", "wos": [{"wo": "1"}]}]), encoding="utf-8")
+    assert historico.obter("v", arq)["wos"] == [{"wo": "1"}]
+    assert "wos" not in historico.listar(arq)[0]
