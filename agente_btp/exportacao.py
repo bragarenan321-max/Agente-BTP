@@ -2,7 +2,9 @@
 
 Abas:
   Dados    — TODAS as WOs consultadas: WO, Material SAP, Fornecedor SAP, Quantidade faltante,
-             Mensagem e Observação (vazia quando está tudo certo; em português claro quando não).
+             Mensagem e Observação ("-" quando está tudo certo; em português claro quando não).
+             Célula sem informação leva "-" (nunca fica em branco). O mesmo item que o BTP
+             devolve mais de uma vez com dados idênticos aparece numa linha só, com a observação.
   Análise  — números da análise, materiais mais recorrentes, mensagens e a situação de cada WO.
   Rastreio — (oculta) cada leitura feita ao BTP, para investigar uma divergência se preciso.
 
@@ -110,15 +112,38 @@ def estado_rotulo(r: ResultadoWO) -> str:
     return ROTULO_ESTADO[estado_da_wo(r)]
 
 
+SEM_INFO = "-"          # célula sem informação: nunca em branco
+NOTA_REPETIDO = "O BTP traz este item {n} vezes nesta WO, com os mesmos dados (alertas diferentes); listado uma vez."
+
+
+def itens_unicos(linhas: list[LinhaMensagem]) -> list[tuple[LinhaMensagem, int]]:
+    """Itens da WO sem repetição: o MESMO item (material, fornecedor, quantidade, mensagem e
+    conferência idênticos) que o BTP devolve mais de uma vez vira UMA linha, com a contagem.
+    Nada é somado nem escolhido: as cópias são iguais em tudo que vai para a planilha."""
+    vistos: dict[tuple, list] = OrderedDict()
+    for l in linhas:
+        chave = (l.wo, l.material, l.fornecedor, _txt(l.quantidade_faltante), l.mensagem, observacao_item(l))
+        if chave in vistos:
+            vistos[chave][1] += 1
+        else:
+            vistos[chave] = [l, 1]
+    return [(l, n) for l, n in vistos.values()]
+
+
+def _preencher(valores: list) -> list:
+    return [SEM_INFO if v is None or v == "" else v for v in valores]
+
+
 def linhas_dados(resultados: list[ResultadoWO], exportar_incompletos: bool = True) -> list[list]:
     """Linhas da aba Dados: um item por linha; WO sem itens aparece numa linha com a observação."""
     saida = []
     for r in resultados:
         estado = estado_rotulo(r)
         itens = [l for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO]
-        for l in itens:
-            saida.append([l.wo, l.material, l.fornecedor, l.quantidade_faltante, l.mensagem, observacao_item(l),
-                          estado])
+        for l, n in itens_unicos(itens):
+            obs = "; ".join(o for o in (observacao_item(l), NOTA_REPETIDO.format(n=n) if n > 1 else "") if o)
+            saida.append(_preencher([l.wo, l.material, l.fornecedor, l.quantidade_faltante, l.mensagem, obs,
+                                     estado]))
         if not itens:
             obs = SITUACAO[r.status]
             if r.linhas:   # havia itens, mas não validados e a exportação deles está desligada
@@ -127,7 +152,7 @@ def linhas_dados(resultados: list[ResultadoWO], exportar_incompletos: bool = Tru
                 obs = r.observacao or obs
             elif r.status in STATUS_FALHA and r.observacao and r.observacao != "OK":
                 obs = f"{obs} ({r.observacao})"
-            saida.append([r.wo, None, None, None, None, obs, estado])
+            saida.append(_preencher([r.wo, None, None, None, None, obs, estado]))
     return saida
 
 
@@ -140,7 +165,9 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
     destino.parent.mkdir(parents=True, exist_ok=True)
     emitida_em = emitida_em or datetime.now()
     exportar_incompletos = True if prefs is None else prefs.exportar_incompletos
-    linhas = [l for r in resultados for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO]
+    # Itens como na aba Dados (o mesmo item repetido pelo BTP conta uma vez: não dobra quantidade).
+    linhas = [l for r in resultados for l, _ in itens_unicos(
+        [l for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO])]
     wb = Workbook(write_only=True)
 
     # ================================================================ Dados
@@ -151,7 +178,8 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
         ws.auto_filter.ref = f"A1:{get_column_letter(len(COLUNAS_DADOS))}{len(dados) + 1}"
     ws.append(_cabecalho(ws, COLUNAS_DADOS))
     for valores in dados:
-        destaque = bool(valores[5]) and valores[1] is not None   # item com observação: só a observação
+        # Item com observação de conferência: destaca só a célula de Observação.
+        destaque = valores[1] != SEM_INFO and valores[5] != SEM_INFO and not valores[5].startswith("O BTP traz")
         ws.append([_celula(ws, v, formato="@" if col in (1, 2, 3, 5, 6, 7) else None,
                            alinhamento=_QUEBRA if col in (5, 6) else _TOPO, borda=_BORDA,
                            fundo=_ATENCAO if col == 6 and destaque else None)
@@ -201,7 +229,7 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
 
     por_wo = []
     for r in resultados:
-        ls = [l for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO]
+        ls = [l for l, _ in itens_unicos([l for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO])]
         obs = "; ".join(o for o in OrderedDict.fromkeys(observacao_item(l) for l in ls) if o)
         por_wo.append((r.wo, SITUACAO[r.status], len(ls),
                        ", ".join(OrderedDict.fromkeys(l.material for l in ls if l.material)),

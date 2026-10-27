@@ -330,7 +330,19 @@ def test_lote_so_comeca_depois_da_conferencia_e_recusa_troca_a_fonte(agente, mon
     assert e["fase"] == "concluido" and e["contagem"] == {Status.PROCESSADA.value: 1}
     from openpyxl import load_workbook
     d = list(load_workbook(agente_mod.PASTA_SAIDAS / e["ultimo_arquivo"])["Dados"].iter_rows(min_row=2, values_only=True))
-    assert d == [(WO, "000000000022066463", "0000138480", 2, "Estoque indisponível", None, "Validada")]
+    assert d == [(WO, "000000000022066463", "0000138480", 2, "Estoque indisponível", "-", "Validada")]
+    # Histórico: o relatório é gerado de novo a partir da base (regras atuais), substituindo o
+    # arquivo gravado na época — sem nenhuma consulta nova ao BTP.
+    import io
+    from agente_btp.servidor import criar_app
+    gravado = agente_mod.PASTA_SAIDAS / e["ultimo_arquivo"]
+    gravado.write_bytes(b"arquivo antigo")
+    agente.ponte.get = lambda *a, **k: (_ for _ in ()).throw(AssertionError("consultou o BTP"))
+    r = criar_app(agente).test_client().get(f"/api/execucoes/{e['run_id']}/relatorio")
+    assert r.status_code == 200
+    assert list(load_workbook(io.BytesIO(r.data))["Dados"].iter_rows(min_row=2, values_only=True)) == d
+    assert load_workbook(gravado)["Dados"].max_row == 2                               # arquivo substituído
+    assert criar_app(agente).test_client().get("/api/execucoes/naoexiste/relatorio").status_code == 404
 
 
 def test_fonte_confirmada_nao_pergunta_de_novo(agente, monkeypatch, tmp_path):

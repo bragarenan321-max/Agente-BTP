@@ -163,7 +163,7 @@ def test_planilha_preserva_zeros_e_tipos(tmp_path):
     assert [c.value for c in ws[1]] == ["WO", "Material SAP", "Fornecedor SAP", "Quantidade faltante",
                                         "Mensagem", "Observação", "Status"]
     assert [c.value for c in ws[2]] == ["88412|126579742", "000000000022026169", "0000137628", 2,
-                                        "Estoque indisponível", None, "Validada"]   # conferido: sem observação
+                                        "Estoque indisponível", "-", "Validada"]   # conferido: sem observação ("-")
     assert ws["B2"].data_type == "s" and ws["C2"].data_type == "s" and ws["D2"].data_type == "n"
     assert ws.freeze_panes == "A2" and ws.auto_filter.ref == "A1:G2"
     assert ws["E2"].alignment.wrap_text

@@ -252,6 +252,21 @@ def criar_app(agente: Agente) -> Flask:
             abort(404)
         return send_file(arquivo, as_attachment=True)
 
+    @app.get("/api/execucoes/<run_id>/relatorio")
+    def relatorio(run_id: str):
+        """Relatório gerado de novo a partir da base (regras atuais). Fora da base (ex.: base
+        apagada), entrega o arquivo gravado na época, se existir."""
+        arquivo, erro = agente.regerar_relatorio(run_id)
+        if erro:
+            return jsonify(ok=False, erro=erro), 500
+        if arquivo:
+            return send_file(arquivo, as_attachment=True)
+        gravado = next((a.get("arquivo") for a in historico.listar() if a.get("run_id") == run_id), None)
+        caminho = caminho_saida(gravado) if gravado else None
+        if not caminho:
+            abort(404)
+        return send_file(caminho, as_attachment=True)
+
     @app.post("/api/raiox")
     def iniciar_raiox():
         dados = request.get_json(force=True, silent=True) or {}

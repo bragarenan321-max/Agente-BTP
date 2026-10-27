@@ -366,10 +366,26 @@ def test_r4_equivalencia_campo_a_campo_em_500_wos_contra_a_versao_anterior(tmp_p
                   if (a.wo, a.status.name, a.auditoria.name,
                       [(l.wo, l.material, l.fornecedor, str(l.quantidade_faltante), l.mensagem, l.consolidado,
                         l.chave, l.auditoria.name) for l in a.linhas]) != campos(n)]
-    assert diferentes == []
+    # Única diferença permitida: a WO cuja linha aparece REPETIDA na lista (mesmo consolidado).
+    # A versão anterior lia os mesmos registros duas vezes e listava cada item em dobro; a nova
+    # lista cada registro uma vez. Fora as cópias, tudo idêntico campo a campo.
+    def sem_copias(c):
+        vistos, itens = set(), []
+        for i in c[3]:
+            dados = i[:6] + i[7:]          # sem a identificação interna (hash da linha da lista)
+            if dados not in vistos:
+                vistos.add(dados)
+                itens.append(i)
+        return c[:3] + (itens,)
+    assert {w for w, _, _ in diferentes} <= {w for w, t in btp_novo.tipos.items() if t == "lista_repetida"}
+    assert all(sem_copias(a) == n and len(n[3]) < len(a[3]) for _, a, n in diferentes)
+    assert diferentes, "o BTP falso tem WOs com a linha da lista repetida"
     # a aba Dados (o que o usuário recebe) é idêntica nas 6 colunas de dados
+    # (a versão nova escreve "-" onde a anterior deixava a célula em branco)
     from agente_btp.exportacao import _txt
-    velhas = [[_txt(x) for x in l] for l in exp_v.linhas_dados(antigos)]
+    velhas = [[_txt(x) or "-" for x in l] for l in exp_v.linhas_dados(antigos)]
+    vistas = set()                                                       # sem as cópias acima
+    velhas = [l for l in velhas if not (tuple(l) in vistas or vistas.add(tuple(l)))]
     assert [[_txt(x) for x in l[:6]] for l in linhas_dados(novos)] == velhas
     assert amb.cache.lote_ativo, amb.cache.lote_motivo                       # o lote foi validado no caminho
     # menos consultas ao BTP: relatório antes/depois

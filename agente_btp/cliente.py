@@ -11,6 +11,7 @@ import json
 import re
 import threading
 import time
+from collections import OrderedDict
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Callable
@@ -295,6 +296,7 @@ class ClienteBTP:
                 continue
             validos.append(a)
         leitura.alertas = len(validos)
+        validos = self._sem_consulta_repetida(validos, leitura)
         itens: dict = {}
         sem_chave = 0
         mesma_consulta = self.config.campo_mensagens_expandidas == "."   # cada linha já é um item
@@ -448,6 +450,49 @@ class ClienteBTP:
                 raise LoteInconsistente("registro de mensagem que não pertence a nenhuma linha consultada")
             for i in donos:
                 saida[i].append(registro)
+        return saida
+
+    def _consulta_dos_itens(self, alerta: dict) -> str | None:
+        """Endereço que busca os itens desta linha da lista, quando os itens vêm por consulta
+        própria (ex.: UltimoRetornoView filtrado por consolidado + WO + status)."""
+        c = self.config
+        if not c.url_mensagens or c.campo_mensagens_expandidas or c.campo_mensagens_link or c.campo_mensagens_json:
+            return None
+        return odata.preencher_modelo(c.url_mensagens, linha=alerta)
+
+    def _sem_consulta_repetida(self, alertas: list[dict], leitura: Leitura) -> list[dict]:
+        """Linhas da lista que levam à MESMA consulta de itens (ex.: duas linhas da WO em
+        Pendencias com o mesmo consolidado) trazem os MESMOS registros do BTP: são lidas uma
+        vez. Antes, cada linha gerava uma cópia de cada item (linhas repetidas na planilha).
+
+        A linha que representa o grupo é escolhida pelo conteúdo (não pela ordem da resposta),
+        para a identificação dos itens ser a mesma em todas as leituras. Se a mensagem do
+        alerta entra na planilha e difere entre as linhas do grupo, nada é juntado."""
+        grupos: dict[str, list[dict]] = OrderedDict()
+        soltos: list[dict] = []
+        for a in alertas:
+            consulta = self._consulta_dos_itens(a)
+            if consulta is None:
+                soltos.append(a)
+            else:
+                grupos.setdefault(consulta, []).append(a)
+        if not grupos or all(len(g) == 1 for g in grupos.values()):
+            return alertas
+        usa_alerta = self.config.mensagem_origem in ("alerta", "ambas") and self.config.campo_mensagem_alerta
+        saida = list(soltos)
+        juntadas = 0
+        for grupo in grupos.values():
+            if usa_alerta and len({odata.como_texto(odata.obter_campo(a, self.config.campo_mensagem_alerta))
+                                   for a in grupo}) > 1:
+                saida.extend(grupo)
+                continue
+            saida.append(min(grupo, key=lambda a: json.dumps(
+                {k: v for k, v in a.items() if not k.startswith(("__", "@")) and not isinstance(v, (dict, list))},
+                sort_keys=True, default=str)))
+            juntadas += len(grupo) - 1
+        if juntadas:
+            leitura.avisos.append(f"{juntadas} linha(s) da lista com a mesma consulta de itens (mesmo consolidado): "
+                                  "itens lidos uma vez, sem repetir na planilha.")
         return saida
 
     def ler_lote(self, wos: list[str], rodada: int, tipo: str) -> dict[str, Leitura]:

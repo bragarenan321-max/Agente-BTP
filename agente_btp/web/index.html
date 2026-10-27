@@ -1031,7 +1031,7 @@ async function carregarRecentes() {
       <button class="abrir" data-id="${esc(a.id)}" title="Ver o detalhe desta análise"><span class="info">
         <b>${esc(a.origem)}</b><small>${dataBR(a.inicio)} · ${fmt(a.total)} WOs · ${duracao(a.duracao_seg)}</small></span></button>
       <span class="tag ${SIT_TAG[a.situacao] || "err"}">${esc(a.situacao)}</span>
-      <span class="res">${resumoHistorico(a)}${a.arquivo ? ` <a class="btn-texto" href="/api/download/${encodeURIComponent(a.arquivo)}">Excel</a>` : ""}</span></li>`).join("")
+      <span class="res">${resumoHistorico(a)}${a.arquivo ? ` <a class="btn-texto" href="${linkRelatorio(a)}">Excel</a>` : ""}</span></li>`).join("")
     : `<li class="meta">Nenhuma análise ainda. As análises concluídas ou interrompidas aparecem aqui, com acesso ao relatório.</li>`;
   document.querySelectorAll("#listaRecentes button.abrir").forEach(b => b.onclick = () => { abrirAba("historico"); abrirDetalhe(b.dataset.id); });
   const u = ultimas[0];
@@ -1039,7 +1039,7 @@ async function carregarRecentes() {
   $("vazioUltima").classList.toggle("oculto", !u);
   if (u) $("vazioUltima").innerHTML = `<span>Última análise: <b>nº ${u.numero || "—"}</b> · ${dataBR(u.inicio)} · ${fmt(u.total)} WOs</span>
     <span class="tag ${SIT_TAG[u.situacao] || "err"}">${esc(u.situacao)}</span> ${resumoHistorico(u)}
-    ${u.arquivo ? `<a class="btn btn-sec" href="/api/download/${encodeURIComponent(u.arquivo)}">Baixar relatório</a>` : ""}`;
+    ${u.arquivo ? `<a class="btn btn-sec" href="${linkRelatorio(u)}">Baixar relatório</a>` : ""}`;
 }
 $("bVerHistorico").onclick = () => abrirAba("historico");
 $("bVerDiag").onclick = async () => { if (!runAtual) return; abrirAba("historico"); await abrirDetalhe(runAtual); };
@@ -1195,6 +1195,11 @@ const classeAud = s => s === "Validado" ? "ok" : s === "Divergente" || s === "In
   : s === "Não se aplica" ? "" : "err";
 let selecionada = null, detalheAtual = null;
 
+// Relatório do histórico: gerado de novo a partir da base com as regras atuais da planilha
+// (sem consultar o BTP); sem a análise na base, o servidor entrega o arquivo gravado na época.
+function linkRelatorio(a) {
+  return a.run_id ? `/api/execucoes/${encodeURIComponent(a.run_id)}/relatorio` : "/api/download/" + encodeURIComponent(a.arquivo);
+}
 function resumoHistorico(a) {
   const i = a.indicadores;
   if (!i) return "—";
@@ -1211,7 +1216,7 @@ async function carregarHistorico() {
       <td class="num">${fmt(a.total)}</td><td>${resumoHistorico(a)}</td>
       <td class="num">${duracao(a.duracao_seg)}</td>
       <td><span class="tag ${classeSit(a.situacao)}">${esc(a.situacao)}</span></td>
-      <td style="white-space:nowrap">${a.arquivo ? `<a class="btn-texto" href="/api/download/${encodeURIComponent(a.arquivo)}" onclick="event.stopPropagation()">Excel</a>` : ""}
+      <td style="white-space:nowrap">${a.arquivo ? `<a class="btn-texto" href="${linkRelatorio(a)}" onclick="event.stopPropagation()">Excel</a>` : ""}
         <button class="btn-texto apagar" data-id="${esc(a.id)}" title="Apagar esta análise" aria-label="Apagar a análise ${a.numero || ""}" style="color:var(--texto-3)">Apagar</button></td>
     </tr>`).join("") : `<tr><td colspan="8" class="vazio">Nenhuma análise registrada.</td></tr>`;
   document.querySelectorAll("#tabHist tr.clicavel").forEach(tr => {
@@ -1233,7 +1238,7 @@ async function abrirDetalhe(id) {
   $("detChips").innerHTML = Object.entries(a.contagem || {}).map(([s, n]) =>
     `<span class="chip ${classeStatus(s)}">${esc(s)}<b>${fmt(n)}</b></span>`).join("");
   $("detBaixar").classList.toggle("oculto", !a.arquivo);
-  if (a.arquivo) $("detBaixar").href = "/api/download/" + encodeURIComponent(a.arquivo);
+  if (a.arquivo) $("detBaixar").href = linkRelatorio(a);
   $("detFiltro").innerHTML = `<option value="">Todas as situações</option>` +
     Object.keys(a.contagem || {}).map(s => `<option>${esc(s)}</option>`).join("");
   desenharDetalhe();

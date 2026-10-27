@@ -237,3 +237,25 @@ em 6 colunas fixas. Uso da largura: 1920 px = 66%; zoom 67% (2150 px CSS) = 59%;
   - pytest 152 ok;
   - `rodar_tela` 71/71 (o teste do tema escuro agora confere o novo fundo `rgb(15, 16, 18)`);
   - `rodar_aba`, `rodar_sessao` e `rodar_extensao` ok.
+
+## 11. Rodada 7 — linhas repetidas na planilha e células vazias (análise real de 13.623 WOs)
+
+**Medido na planilha real:** 17.617 linhas para 13.623 WOs.
+- 1.884 WOs têm vários materiais faltando. Uma linha por material está correto e não é repetição; foi isso que o "Remover duplicadas" do Excel, aplicado só na coluna WO, contou como 3.994 "duplicadas".
+- **Repetição de verdade:** 157 WOs com 218 linhas 100% idênticas.
+
+**Causa raiz:** a linha da WO aparece mais de uma vez em `Pendencias` com o mesmo consolidado.
+- Cada linha disparava a mesma consulta em `UltimoRetornoView` e recebia os mesmos registros.
+- A identificação do item incluía o ID da linha da lista, por isso cada cópia virava um item "novo".
+- O BTP falso já simulava esse caso (`lista_repetida`), e o teste de equivalência aceitava a cópia.
+
+**Correções:**
+- **Leitura** (`cliente._sem_consulta_repetida`): linhas da lista que levam à mesma consulta de itens são lidas uma vez. A linha que representa o grupo é escolhida pelo conteúdo, não pela ordem, para a identificação ficar estável entre auditorias. Se a mensagem do alerta vai para a planilha e difere entre as linhas, nada é juntado.
+- **Planilha** (`exportacao.itens_unicos`): o mesmo item com dados idênticos em tudo que vai para a planilha vira uma linha, com a Observação "O BTP traz este item N vezes nesta WO...". Isso cobre também alertas diferentes (consolidados diferentes) com o mesmo item. Nada é somado: a quantidade não dobra no resumo de materiais.
+  - Itens do mesmo material com dados diferentes continuam em linhas separadas, porque são registros distintos do BTP. Na análise real há 3 casos assim (ex.: 05659|231320584, material 22056366: "Estor.EstqForn..." e "Estoque indisponível").
+- **Células vazias:** nenhuma célula da aba Dados fica em branco; sem informação = "-".
+- **Histórico:** "Baixar relatório" gera a planilha de novo a partir da base (`/api/execucoes/<id>/relatorio`), sem consultar o BTP, e substitui o arquivo antigo. Sem a análise na base, entrega o arquivo gravado na época.
+
+**Validação:**
+- pytest 153 ok, incluindo os testes novos: item igual em alertas diferentes, relatório regerado sem consultar o BTP, e equivalência que exige a remoção das cópias e nada mais;
+- `rodar_tela` 71/71; `rodar_sessao`, `rodar_aba` e `rodar_extensao` ok.

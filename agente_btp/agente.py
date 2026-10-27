@@ -931,6 +931,21 @@ class Agente:
                                     datetime.fromisoformat(ex["criada_em"]), ex["descricao"], parcial=True)
         return arquivo
 
+    def regerar_relatorio(self, run_id: str) -> tuple[Path | None, str]:
+        """Gera de novo o relatório de uma análise a partir da BASE (sem consultar o BTP), com as
+        regras atuais da planilha, e substitui o arquivo da análise. Análise em andamento: parcial.
+        Devolve (arquivo, erro); (None, "") quando a análise não está na base."""
+        ex = self.loja.obter(run_id)
+        if not ex:
+            return None, ""
+        with self._trava:
+            rodando = self._estado["ocupado"] and self._estado.get("run_id") == run_id
+        prefs = preferencias.validar(ex["prefs"])[0]
+        api = cfg.a_partir_de_dict(ex["config"])
+        return self._planilha(run_id, self.loja.resultados(run_id, leve=True), prefs, api,
+                              datetime.fromisoformat(ex["criada_em"]), ex["descricao"],
+                              parcial=rodando or not ex.get("arquivo"))
+
     def _registrar_historico(self, inicio, descricao, wos, resultados, arquivo, situacao, numero=None,
                              run_id=None, total=None) -> None:
         fim = datetime.now()

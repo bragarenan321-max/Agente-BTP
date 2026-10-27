@@ -107,8 +107,8 @@ def test_mensagem_original_e_zeros_preservados(tmp_path):
         i for i in itens if i["ID"] in u))), [WO], prefs=RAPIDO)
     destino = gerar_planilha(rs, tmp_path / "a.xlsx")
     linhas = list(load_workbook(destino)["Dados"].iter_rows(min_row=2, values_only=True))
-    assert linhas == [(WO, "000000000022066463", "0000138480", 2, "Erro durante baixa de estoque", None, "Validada"),
-                      (WO, "000000000011000042", "0000000001", 10, "Estoque indisponível", None, "Validada")]
+    assert linhas == [(WO, "000000000022066463", "0000138480", 2, "Erro durante baixa de estoque", "-", "Validada"),
+                      (WO, "000000000011000042", "0000000001", 10, "Estoque indisponível", "-", "Validada")]
     assert verificar_planilha(destino, rs) == []
 
 
@@ -142,13 +142,57 @@ def test_item_repetido_conta_uma_vez():
         "campos": {"material": "material", "fornecedor": "fornecedor", "quantidade_faltante": "quantidadeFaltante",
                    "mensagem": "mensagem"}})
 
+    consultas_itens = []
+
     def t(url, timeout=None):
         if "/s/A" in url:
             return Resposta(200, "application/json", json.dumps({"value": [{"Wo": WO, "C": "X"}, {"Wo": WO, "C": "X"}]}))
+        consultas_itens.append(url)
         return Resposta(200, "application/json", json.dumps({"value": [item()]}))
     r = processar_wo(ClienteBTP(config, t), WO, RAPIDO)
     assert r.registros == 1 and r.linhas[0].quantidade_faltante == 2
-    assert r.leituras[0].duplicadas == 1 and "repetido" in r.observacao
+    # as duas linhas levam à MESMA consulta de itens: ela é feita uma vez por leitura (não duplica)
+    assert len(consultas_itens) == len(r.leituras) and "mesma consulta de itens" in r.observacao
+
+
+
+def test_item_igual_em_alertas_diferentes_vira_uma_linha_na_planilha(tmp_path):
+    """Caso real (análise de 13.623 WOs): a WO tem dois alertas (consolidados X e Y) e o BTP
+    traz o MESMO item nos dois, com dados idênticos. A planilha lista o item UMA vez, explica
+    na Observação, não dobra a quantidade e mantém separado o item de material diferente.
+    WO sem alerta: nenhuma célula em branco ("-")."""
+    config = cfg.a_partir_de_dict({
+        "url_lista": "/s/A?$filter=Wo eq '{wo}'", "campo_consolidado_lista": "C",
+        "url_mensagens": "/s/M?$filter=C eq '{linha[C]}'",
+        "campos": {"material": "material", "fornecedor": "fornecedor", "quantidade_faltante": "quantidadeFaltante",
+                   "mensagem": "mensagem"}})
+
+    def t(url, timeout=None):
+        if "/s/A" in url:
+            if WO2 in url:
+                return Resposta(200, "application/json", json.dumps({"value": []}))
+            return Resposta(200, "application/json", json.dumps({"value": [{"Wo": WO, "C": "X"}, {"Wo": WO, "C": "Y"}]}))
+        c = "X" if "'X'" in url else "Y"
+        itens = [item(ID=f"{c}1", C=c, quantidadeFaltante=1)]
+        if c == "Y":
+            itens.append(item(ID="Y2", C=c, material="000000000022060289", quantidadeFaltante=3))
+        return Resposta(200, "application/json", json.dumps({"value": itens}))
+    rs = processar_lote(ClienteBTP(config, t), [WO, WO2], prefs=RAPIDO)
+    assert rs[0].registros == 3                      # a base guarda os 3 registros como o BTP entrega
+    destino = gerar_planilha(rs, tmp_path / "a.xlsx")
+    assert verificar_planilha(destino, rs) == []
+    wb = load_workbook(destino)
+    d = [tuple(c.value for c in linha) for linha in wb["Dados"].iter_rows(min_row=2)]
+    assert len(d) == 3
+    assert d[0][:5] == (WO, "000000000022066463", "0000138480", 1, "Estoque indisponível")
+    assert "2 vezes" in d[0][5] and d[0][6] == "Validada"
+    assert d[1][:4] == (WO, "000000000022060289", "0000138480", 3) and d[1][5] == "-"
+    assert d[2][:5] == (WO2, "-", "-", "-", "-") and "Nenhum alerta" in d[2][5]
+    assert all(v not in (None, "") for linha in d for v in linha)
+    analise = {r[0]: r[1] for r in wb["Análise"].iter_rows(values_only=True) if r and len(r) > 1}
+    assert analise["Itens faltantes (linhas com material na aba Dados)"] == 2
+    materiais = [r for r in wb["Análise"].iter_rows(values_only=True) if r and r[0] == "000000000022066463"]
+    assert materiais[0][4] == 1                      # quantidade não dobrada pela repetição
 
 
 # ============================================================ 3. auditoria
@@ -212,7 +256,7 @@ def test_campo_ausente_fica_incompleto_e_vazio(tmp_path):
     [l] = rs[0].linhas
     assert l.auditoria is Auditoria.INCOMPLETO and l.fornecedor == ""
     ws = load_workbook(gerar_planilha(rs, tmp_path / "x.xlsx"))["Dados"]
-    assert ws["C2"].value is None                                     # sem valor fictício
+    assert ws["C2"].value == "-"                                      # sem valor fictício: "-"
     assert ws["F2"].value == "Fornecedor SAP não informado pelo BTP."
 
 
@@ -320,12 +364,12 @@ def test_estrutura_completa_do_excel(tmp_path):
     assert wb.sheetnames == ABAS
     d = list(wb["Dados"].iter_rows(values_only=True))
     assert len(d) == 5                                    # 3 itens + 1 linha da WO sem alerta (TODAS as WOs)
-    assert d[3][:5] == (WO2, "000000000022066463", "0000138480", None, "Estoque indisponível")  # sem valor
+    assert d[3][:5] == (WO2, "000000000022066463", "0000138480", "-", "Estoque indisponível")  # sem valor: "-"
     assert "Quantidade faltante diferente entre consultas (1 e 4" in d[3][5] and "conferir no BTP" in d[3][5]
-    assert d[4] == ("99999|999999999", None, None, None, None, "Nenhum alerta encontrado no Monitor para esta WO",
+    assert d[4] == ("99999|999999999", "-", "-", "-", "-", "Nenhum alerta encontrado no Monitor para esta WO",
                     "Validada")
     assert d[3][6] == "Divergente" and d[0][6] == "Status"
-    assert d[1][5] is None and d[2][5] is None            # conferidos: sem observação
+    assert d[1][5] == "-" and d[2][5] == "-"              # conferidos: sem observação ("-")
     assert verificar_planilha(destino, rs) == []
     a = [r for r in wb["Análise"].iter_rows(values_only=True) if r[0]]
     numeros = {r[0]: r[1] for r in a}
@@ -343,7 +387,7 @@ def test_excel_sem_incompletos_quando_configurado(tmp_path):
     destino = gerar_planilha(rs, tmp_path / "x.xlsx", prefs=Preferencias(exportar_incompletos=False))
     d = list(load_workbook(destino)["Dados"].iter_rows(min_row=2, values_only=True))
     assert [r[0] for r in d] == [WO, WO, WO2, "99999|999999999"]
-    assert d[2][1] is None and "omitido" in d[2][5]
+    assert d[2][1] == "-" and "omitido" in d[2][5]
     assert verificar_planilha(destino, rs, exportar_incompletos=False) == []
 
 
