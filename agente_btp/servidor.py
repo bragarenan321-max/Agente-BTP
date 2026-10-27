@@ -220,6 +220,19 @@ def criar_app(agente: Agente) -> Flask:
         validas = sum(1 for w in wos if wo_valida(w))
         return jsonify(ok=True, total=len(wos), validas=validas, invalidas=len(wos) - validas)
 
+    @app.get("/api/execucoes/<run_id>/registro")
+    def registro_execucao(run_id: str):
+        if not agente.loja.obter(run_id):
+            abort(404)
+        return jsonify(linhas=agente.loja.log(run_id, 5000))
+
+    @app.post("/api/fonte/mensagem")
+    def mensagem_planilha():
+        if agente.estado()["ocupado"]:
+            return jsonify(ok=False, erro="Aguarde a análise em andamento terminar."), 409
+        ok, erro = agente.definir_mensagem(str((request.get_json(force=True, silent=True) or {}).get("mensagem", "")))
+        return (jsonify(ok=True), 200) if ok else (jsonify(ok=False, erro=erro), 400)
+
     @app.post("/api/pausar")
     def pausar():
         return jsonify(ok=agente.pausar())

@@ -114,8 +114,8 @@ with sync_playwright() as p:
     print("tela:", titulo, "|", tela.inner_text("#conexao"))
     if "sessão do BTP expirou" not in titulo:
         falhas.append(f"título da tela durante a pausa: {titulo!r}")
-    tela.click("#caixaDiag summary")
-    tela.wait_for_timeout(1500)
+    tela.click("#bVerDiag")                 # o diagnóstico de cada análise fica no Histórico (ao vivo)
+    tela.wait_for_timeout(2000)
     diag = tela.inner_text("#diagConteudo")
     print("o que deu errado:", diag.splitlines()[:3])
     if "sessão do BTP expirou" not in diag:

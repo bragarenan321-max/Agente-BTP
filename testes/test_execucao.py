@@ -737,3 +737,37 @@ def test_interrupcao_superada_pela_retomada_fica_resolvida_e_nao_dita_a_proxima_
     d = a.diagnostico_execucao("r9")
     parada = next(p for p in d["problemas"] if p["motivo"] == "interrompida_usuario")
     assert parada["resolvido"] is True and "Retomar" not in d["proxima_acao"]
+
+
+def test_mensagem_ambas_coloca_item_e_alerta_na_planilha():
+    from dataclasses import replace
+    btp = BTPLote(20)
+    w = next(w for w in btp.wos if btp.tipos[w] == "normal")
+    api = config()
+    assert api.campo_mensagem_alerta                           # a lista (Pendencias) tem a mensagem do alerta
+    r = processar_wo(ClienteBTP(replace(api, mensagem_origem="ambas"), btp), w, Preferencias())
+    alerta = "Erro durante baixa de estoque. Clique para mais detalhes"
+    assert r.linhas and all(l.mensagem.endswith(" — Alerta: " + alerta) for l in r.linhas)
+    assert r.auditoria.name == "VALIDADO"                      # a mensagem composta também é conferida
+    so_item = processar_wo(ClienteBTP(api, btp), w, Preferencias())
+    assert [l.mensagem.split(" — Alerta: ")[0] for l in r.linhas] == [l.mensagem for l in so_item.linhas]
+
+
+def test_historico_mostra_a_analise_desde_o_inicio_e_registro_por_analise(tmp_path, monkeypatch):
+    from agente_btp import historico
+    from agente_btp.servidor import criar_app
+    btp = BTPLote(60)
+    btp.latencia = 0.05
+    a = _agente_com_btp(tmp_path, monkeypatch, btp)
+    a.enviar("executar", btp.wos, "planilha (60 WOs)")
+    esperar(lambda: a.estado().get("situacao") == "em_andamento" and historico.listar())
+    h = historico.listar()[0]
+    assert h["situacao"] == "Em andamento" and h["run_id"] == a.estado()["run_id"]
+    esperar(lambda: not a.estado()["ocupado"] and a.estado()["fase"] == "concluido", 60)
+    assert [x["situacao"] for x in historico.listar()] == ["Concluída"]     # o mesmo registro, atualizado
+    app = criar_app(a).test_client()
+    linhas = app.get(f"/api/execucoes/{h['run_id']}/registro").get_json()["linhas"]
+    assert any("Análise concluída" in l for l in linhas)
+    r = app.post("/api/fonte/mensagem", json={"mensagem": "ambas"})
+    assert r.get_json()["ok"] and a.estado()["fonte"]["mensagem_origem"] == "ambas"
+    assert app.post("/api/fonte/mensagem", json={"mensagem": "x"}).status_code == 400

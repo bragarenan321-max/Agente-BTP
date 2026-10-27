@@ -184,3 +184,39 @@ sessão/interrupção superados agora ficam "resolvidos" e não ditam a próxima
   abrir/fechar repetido, **0 requisições de escrita durante a ajuda**), dica contextual, 390/768 px sem rolagem horizontal.
 - `rodar_aba.py` (6 cenários), `rodar_sessao.py` (queda e retomada, 500 WOs), `rodar_extensao.py`: passaram.
 - Não testável aqui: o BTP real e a extensão no Chrome corporativo do usuário.
+
+## 9. Rodada 5 — layout fluido, refinamento visual, diagnóstico no Histórico, tema e logo
+
+### Diagnóstico do layout (medido no Chromium antes de mudar)
+Causa: `max-width: 1320px` no conteúdo e no cabeçalho + coluna de preparação fixa (330–400 px) + indicadores
+em 6 colunas fixas. Uso da largura: 1920 px = 66%; zoom 67% (2150 px CSS) = 59%; zoom 50% (2880 px) = 44%.
+
+### O que mudou
+- **Largura total, sem largura máxima:** cabeçalho de 60 px de ponta a ponta; margens fluidas (`clamp`); área de
+  trabalho em grade com proporções em `fr` — preparação ~35% | monitoramento ~65% (dominante) | apoio abaixo;
+  a partir de 2000 px CSS (monitores largos ou zoom 67%/50%) vira 3 colunas. Medido depois: **96–97% da largura em
+  todas as janelas** (1280×720 a 2880 px), sem rolagem horizontal; celular/tablet empilham em ordem operacional.
+- **Título da área de trabalho** "Monitor de alertas" + resumo real do agente (conexão, tabela do BTP e se está
+  confirmada, conferência, análise atual).
+- **Indicadores** maiores (valor fluido 28–40 px), numa linha quando cabe, 3 ou 2 por linha quando não (container query).
+- **Estado vazio de verdade:** sem análise, o painel mostra orientação curta; se existe análise anterior, os
+  indicadores mostram os **números reais da última análise**, rotulados como tal (nunca inventados).
+- **Execuções recentes** (dados do histórico real) com acesso ao relatório e ao detalhe.
+- **Diagnóstico agora no Histórico (pedido do usuário):** cada análise mostra o diagnóstico (o que deu errado, próxima
+  ação, evidência), o registro de execução e o .json; a análise em andamento já aparece no Histórico e atualiza ao vivo.
+  A tela principal fica só com a operação (chips de problemas + "Ver diagnóstico desta análise").
+- **Raio-X da fonte** foi para Configurações › Fonte de dados (junto de "Refazer a fonte de dados").
+- **Mensagem na planilha: "As duas"** — na conferência da amostra e em Configurações: `item — Alerta: alerta`
+  (a mensagem composta também é conferida nas auditorias; teste novo).
+- **Tema claro / escuro / automático** em Configurações › Aparência (vale para o navegador, aplicado sem piscar);
+  todas as cores viraram tokens; declarar `color-scheme` evita que o "modo escuro forçado" do Chrome inverta a tela.
+- **Logo própria** (quadro de captura + sinal de conferência, vermelho #E3261E): cabeçalho, ícone da aba (favicon),
+  ícones da extensão (16/32/48/128 px) e `docs/logo-agente-btp.svg`.
+
+### Testes executados
+- `pytest testes`: **152 passando** (novos: mensagem "as duas", análise no Histórico desde o início, registro por análise).
+- `rodar_tela.py`: **71 verificações** (layout, estados vazio/execução/pausa/interrompida/concluída, ajuda guiada
+  inclusive com painel oculto, diagnóstico no Histórico, tema escuro persistente, "As duas", Raio-X em Configurações,
+  logo, 390/768 px).
+- Layout em 1280×720, 1440×900, 1920×1080, 1800/2150/2880 px (zoom 80/67/50%), 1024, 820 e 390 px: sem overflow.
+- `rodar_aba.py`, `rodar_sessao.py`, `rodar_extensao.py` (com os ícones novos): passaram.

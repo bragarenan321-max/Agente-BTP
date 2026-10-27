@@ -4,11 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agente BTP</title>
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%2032%2032%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%23E3261E%22/%3E%3Cpath%20d%3D%22M9%2013V9h4M19%209h4v4M23%2019v4h-4M13%2023H9v-4%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.4%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3Cpath%20d%3D%22M12%2016.4l3%203%205.4-6%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.6%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
+<script>try { document.documentElement.dataset.tema = localStorage.getItem("agenteBtpTema") || "auto"; }
+        catch (e) { document.documentElement.dataset.tema = "auto"; }</script>
 <style>
   /* ============================================================ tokens de design */
   :root {
-    --marca: #DA291C;            /* vermelho Claro: ação principal, foco e identidade */
-    --marca-esc: #B3001B;
+    --marca: #E3261E;            /* vermelho da marca: ação principal, foco e identidade */
+    --marca-esc: #C01F18;
     --marca-suave: #FDECEA;
     --marinho: #1C2A4A;          /* cabeçalho e títulos */
     --marinho-2: #2A3B61;
@@ -24,16 +28,39 @@
     --atencao: #B26B00; --atencao-suave: #FFF4DE;
     --erro: #C21F14;   --erro-suave: #FDE9E7;
     --info: #2F5DA8;   --info-suave: #E9F0FB;
+    --titulo: #1C2A4A;  --cab: #1C2A4A;  --linha: #F0F2F5;  --neutro: #EEF0F4;  --hover: #F7F8FA;  --selecao: #F1F4FA;
+    --barra-fundo: #E9ECF1;  --barra: #1C2A4A;  --campo: #FFFFFF;  --codigo: #3B4250;  --desab: #C5CAD3;  --borda-perigo: #F1B8B3;
+    color-scheme: light;
     --fonte: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
     --mono: Consolas, "Cascadia Mono", "SF Mono", monospace;
-    --t-xs: 12px; --t-sm: 13px; --t-md: 14px; --t-lg: 16px; --t-xl: 20px; --t-num: 26px;
+    --t-xs: 12px; --t-sm: 13px; --t-md: 15px; --t-lg: 17px; --t-xl: 20px;
+    --t-pagina: clamp(22px, 0.9rem + 0.7vw, 30px);           /* título da área de trabalho */
+    --t-num: clamp(28px, 1.2rem + 1vw, 40px);               /* valores dos indicadores */
+    --margem: clamp(16px, 2.2vw, 48px);                     /* margem lateral fluida (sem largura máxima) */
+    --topo: 60px;
     --e1: 4px; --e2: 8px; --e3: 12px; --e4: 16px; --e5: 24px; --e6: 32px;
     --raio: 8px; --raio-g: 12px;
     --sombra: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08);
     --sombra-alta: 0 12px 32px rgba(16, 24, 40, .18);
     --foco: 0 0 0 3px rgba(218, 41, 28, .28);
-    --largura: 1320px;
   }
+  /* Tema: data-tema="claro" | "escuro" | "auto" (segue o sistema). Escolha em Configurações › Aparência. */
+  :root[data-tema="escuro"] { color-scheme: dark;
+    --fundo: #0E131B; --superficie: #161C26; --superficie-2: #1B2230; --texto: #E7EAF0; --texto-2: #A9B1BF; --texto-3: #7D8696;
+    --borda: #283041; --borda-forte: #3A4356; --titulo: #E3E9F5; --cab: #0B111C; --linha: #212836; --neutro: #252D3B;
+    --hover: #1E2532; --selecao: #222C3D; --barra-fundo: #263042; --barra: #8FB0E8; --campo: #111720; --codigo: #C9D1DE;
+    --desab: #3A4354; --borda-perigo: #6B2A26; --marca-suave: #3A1513;
+    --ok: #4CC38A; --ok-suave: #132A20; --atencao: #E8B04B; --atencao-suave: #2E2412; --erro: #F2685E; --erro-suave: #351816;
+    --info: #85ACF2; --info-suave: #17233A;
+    --sombra: 0 1px 2px rgba(0, 0, 0, .45); --sombra-alta: 0 12px 32px rgba(0, 0, 0, .6); }
+  @media (prefers-color-scheme: dark) { :root[data-tema="auto"] { color-scheme: dark;
+    --fundo: #0E131B; --superficie: #161C26; --superficie-2: #1B2230; --texto: #E7EAF0; --texto-2: #A9B1BF; --texto-3: #7D8696;
+    --borda: #283041; --borda-forte: #3A4356; --titulo: #E3E9F5; --cab: #0B111C; --linha: #212836; --neutro: #252D3B;
+    --hover: #1E2532; --selecao: #222C3D; --barra-fundo: #263042; --barra: #8FB0E8; --campo: #111720; --codigo: #C9D1DE;
+    --desab: #3A4354; --borda-perigo: #6B2A26; --marca-suave: #3A1513;
+    --ok: #4CC38A; --ok-suave: #132A20; --atencao: #E8B04B; --atencao-suave: #2E2412; --erro: #F2685E; --erro-suave: #351816;
+    --info: #85ACF2; --info-suave: #17233A;
+    --sombra: 0 1px 2px rgba(0, 0, 0, .45); --sombra-alta: 0 12px 32px rgba(0, 0, 0, .6); } }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
@@ -51,25 +78,25 @@
   .btn-primario:hover { background: var(--marca-esc); }
   .btn-sec { background: var(--superficie); color: var(--texto); border-color: var(--borda-forte); }
   .btn-sec:hover { background: var(--superficie-2); border-color: var(--texto-3); }
-  .btn-perigo { background: var(--superficie); color: var(--erro); border-color: #F1B8B3; }
+  .btn-perigo { background: var(--superficie); color: var(--erro); border-color: var(--borda-perigo); }
   .btn-perigo:hover { background: var(--erro-suave); }
   .btn-texto { background: none; border: none; color: var(--info); padding: 4px 6px; font-weight: 600; }
   .btn-texto:hover { text-decoration: underline; }
   .btn-largo { width: 100%; padding: 11px 16px; font-size: var(--t-lg); }
   .btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
-  .btn-primario:disabled { background: #C5CAD3; color: #fff; opacity: 1; }
+  .btn-primario:disabled { background: var(--desab); color: #fff; opacity: 1; }
   .btn svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
 
   /* ============================================================ cabeçalho */
-  .topo { background: var(--marinho); color: #fff; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 0 rgba(0,0,0,.2); }
-  .topo-in { max-width: var(--largura); margin: 0 auto; padding: 0 var(--e5); height: 56px; display: flex; align-items: center; gap: var(--e5); }
+  .topo { background: var(--cab); color: #fff; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 0 rgba(0,0,0,.2); }
+  .topo-in { width: 100%; padding: 0 var(--margem); height: var(--topo); display: flex; align-items: center; gap: clamp(16px, 2vw, 40px); }
   .marca { display: flex; align-items: center; gap: 10px; flex: none; }
-  .marca-selo { width: 30px; height: 30px; border-radius: 7px; background: var(--marca); display: grid; place-items: center;
-                font: 800 11px var(--fonte); letter-spacing: .3px; }
-  .marca b { display: block; font-size: var(--t-lg); line-height: 1.1; }
-  .marca small { display: block; font-size: 11px; color: #AAB4C8; }
+  .marca-selo { width: 34px; height: 34px; flex: none; display: block; }
+  .marca-selo svg { width: 100%; height: 100%; display: block; }
+  .marca b { display: block; font-size: 18px; line-height: 1.1; letter-spacing: -.1px; }
+  .marca small { display: block; font-size: 12px; color: #AAB4C8; }
   .abas { display: flex; gap: var(--e1); height: 100%; }
-  .abas button { background: none; border: none; color: #C3CBDB; font: 600 var(--t-md) var(--fonte); padding: 0 var(--e3); cursor: pointer;
+  .abas button { background: none; border: none; color: #C3CBDB; font: 600 var(--t-md) var(--fonte); padding: 0 var(--e4); cursor: pointer;
                  border-bottom: 3px solid transparent; border-top: 3px solid transparent; }
   .abas button:hover { color: #fff; }
   .abas button.ativa { color: #fff; border-bottom-color: var(--marca); }
@@ -81,20 +108,38 @@
   .btn-topo { background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.14); border-radius: var(--raio);
               font: 600 var(--t-sm) var(--fonte); padding: 6px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
   .btn-topo:hover { background: rgba(255,255,255,.16); }
-  .btn-topo.ativa { background: #fff; color: var(--marinho); }
+  .btn-topo.ativa { background: #fff; color: #1C2A4A; }
   .btn-topo svg { width: 16px; height: 16px; fill: currentColor; }
 
   /* ============================================================ página */
-  .pagina { max-width: var(--largura); margin: 0 auto; padding: var(--e5); display: grid; gap: var(--e4); }
+  .pagina { width: 100%; min-height: calc(100dvh - var(--topo)); padding: var(--e5) var(--margem) var(--e6);
+            display: grid; gap: var(--e4); align-content: start; }
   .cartao { background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-g); box-shadow: var(--sombra); padding: var(--e5); }
   .cartao-cab { display: flex; align-items: center; gap: var(--e2); margin-bottom: var(--e4); }
-  .cartao-cab h2, h2 { margin: 0; font-size: var(--t-lg); font-weight: 700; color: var(--marinho); }
+  .cartao-cab h2, h2 { margin: 0; font-size: var(--t-lg); font-weight: 700; color: var(--titulo); }
   .cartao-cab .dir { margin-left: auto; display: flex; gap: var(--e2); align-items: center; }
   .meta { font-size: var(--t-sm); color: var(--texto-2); margin: 0; }
+  p.meta, .aviso .corpo { max-width: 110ch; }
   .linha { display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; }
-  .grade { display: grid; grid-template-columns: minmax(330px, 400px) minmax(0, 1fr); gap: var(--e4); align-items: start; }
-  .coluna { display: grid; gap: var(--e4); min-width: 0; }
-  @media (max-width: 980px) { .grade { grid-template-columns: 1fr; } }
+  /* Área de trabalho: preparação (~35%) | monitoramento (~65%, dominante) | apoio (recentes + diagnóstico).
+     Proporções em fr (nunca larguras fixas): a tela inteira é usada em qualquer largura ou zoom. */
+  .area { display: grid; gap: var(--e4); align-items: start;
+          grid-template-columns: minmax(0, 1fr); grid-template-areas: "prep" "monitor" "apoio"; }
+  .area-prep { grid-area: prep; min-width: 0; }
+  .area-monitor { grid-area: monitor; display: grid; gap: var(--e4); min-width: 0; }
+  .area-apoio { grid-area: apoio; display: grid; gap: var(--e4); min-width: 0; align-items: start;
+                grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); }
+  @media (min-width: 1100px) {
+    .area { grid-template-columns: minmax(0, 35fr) minmax(0, 65fr); grid-template-areas: "prep monitor" "prep apoio"; }
+    .area-prep { grid-row: 1 / span 2; }
+  }
+  @media (min-width: 1100px) and (min-height: 700px) { .area-prep { position: sticky; top: calc(var(--topo) + var(--e4)); } }
+  /* Muito espaço (monitor largo ou zoom 67%/50%): o apoio vira uma 3ª coluna em vez de sobrar tela vazia. */
+  @media (min-width: 2000px) {
+    .area { grid-template-columns: minmax(0, 27fr) minmax(0, 48fr) minmax(0, 25fr); grid-template-areas: "prep monitor apoio"; }
+    .area-prep { grid-row: auto; }
+    .area-apoio { grid-template-columns: minmax(0, 1fr); }
+  }
   @media (max-width: 900px) {
     .btn-topo .rot { display: none; }
     #conexao { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
@@ -104,6 +149,37 @@
     .abas { order: 3; width: 100%; height: 40px; }
     .conexao { padding: 7px; } #conexao { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
 
+  /* cabeçalho da área de trabalho */
+  .pagina-cab { display: flex; align-items: flex-end; gap: var(--e4); flex-wrap: wrap; }
+  .pagina-cab h1 { margin: 0; font-size: var(--t-pagina); line-height: 1.15; color: var(--titulo); letter-spacing: -.3px; }
+  .resumo { display: flex; gap: var(--e2) var(--e5); flex-wrap: wrap; margin-top: 6px; font-size: var(--t-sm); color: var(--texto-2); }
+  .resumo span { display: inline-flex; align-items: center; gap: 6px; }
+  .resumo b { color: var(--texto); font-weight: 600; }
+  .resumo .alerta-txt { color: var(--atencao); }
+
+  /* estado vazio do monitoramento */
+  .vazio-estado { display: flex; gap: var(--e4); align-items: flex-start; padding: var(--e4); margin-top: var(--e4);
+                  border: 1px dashed var(--borda-forte); border-radius: var(--raio); background: var(--superficie-2); }
+  .vazio-estado .icone { width: 40px; height: 40px; border-radius: 10px; background: var(--info-suave); color: var(--info);
+                         display: grid; place-items: center; flex: none; }
+  .vazio-estado .icone svg { width: 22px; height: 22px; fill: currentColor; }
+  .vazio-estado h3 { margin: 0 0 2px; font-size: var(--t-lg); color: var(--titulo); }
+  .vazio-estado p { margin: 0; color: var(--texto-2); max-width: 70ch; }
+  .ultima { margin-top: var(--e3); display: flex; flex-wrap: wrap; gap: var(--e2); align-items: center; font-size: var(--t-sm); }
+
+  /* execuções recentes */
+  .recentes { list-style: none; margin: 0; padding: 0; }
+  .recentes li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px var(--e3); align-items: center;
+                 padding: 10px 0; border-top: 1px solid var(--linha); }
+  .recentes li:first-child { border-top: 0; padding-top: 0; }
+  .recentes .n { font: 700 var(--t-sm) var(--fonte); color: var(--titulo); background: var(--neutro); border-radius: 6px; padding: 3px 8px; }
+  .recentes .info { min-width: 0; }
+  .recentes .info b { display: block; font-size: var(--t-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .recentes .info small { color: var(--texto-2); font-size: var(--t-sm); }
+  .recentes .res { grid-column: 2 / 4; }
+  .recentes button.abrir { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; font: inherit; color: inherit; min-width: 0; }
+  .recentes button.abrir:hover b { color: var(--info); text-decoration: underline; }
+
   /* avisos (nunca escondem alertas críticos) */
   .aviso { display: flex; gap: var(--e3); align-items: flex-start; padding: var(--e3) var(--e4); border-radius: var(--raio);
            border: 1px solid var(--borda); background: var(--superficie); font-size: var(--t-md); }
@@ -111,17 +187,17 @@
   .aviso.critico::before { background: var(--erro); }
   .aviso.info::before { background: var(--info); }
   .aviso .corpo { flex: 1; min-width: 0; }
-  .aviso b.tit { display: block; color: var(--marinho); }
+  .aviso b.tit { display: block; color: var(--titulo); }
 
   /* ============================================================ preparação */
-  textarea { width: 100%; min-height: 168px; max-height: 420px; resize: vertical; border: 1px solid var(--borda-forte); border-radius: var(--raio);
+  textarea { width: 100%; height: clamp(180px, calc(100dvh - 500px), 640px); min-height: 160px; resize: vertical; border: 1px solid var(--borda-forte); border-radius: var(--raio);
              padding: 10px 12px; font: var(--t-md)/1.55 var(--mono); background: var(--superficie-2); color: var(--texto); }
-  textarea:focus { outline: none; border-color: var(--marca); box-shadow: var(--foco); background: #fff; }
+  textarea:focus { outline: none; border-color: var(--marca); box-shadow: var(--foco); background: var(--campo); }
   .contagem { display: grid; gap: 2px; margin: 6px 0 var(--e4); font-size: var(--t-sm); color: var(--texto-2); }
   .contagem b { color: var(--texto); font-variant-numeric: tabular-nums; }
   .importar { border: 1px dashed var(--borda-forte); border-radius: var(--raio); padding: var(--e3); display: flex; align-items: center;
               gap: var(--e3); flex-wrap: wrap; margin-bottom: var(--e4); }
-  .importar.com-arquivo { border-style: solid; border-color: #B9D3C3; background: var(--ok-suave); }
+  .importar.com-arquivo { border-style: solid; border-color: color-mix(in srgb, var(--ok) 35%, transparent); background: var(--ok-suave); }
   .importar .arq { flex: 1; min-width: 150px; font-size: var(--t-sm); color: var(--texto-2); overflow-wrap: anywhere; }
   .importar .arq b { color: var(--texto); }
   .importar .arq.erro { color: var(--erro); }
@@ -131,7 +207,7 @@
   /* ajuda contextual */
   .ajuda-ctx { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--borda-forte); background: var(--superficie);
                color: var(--texto-2); font: 700 11px var(--fonte); cursor: pointer; padding: 0; line-height: 16px; flex: none; }
-  .ajuda-ctx:hover, .ajuda-ctx[aria-expanded="true"] { border-color: var(--marinho); color: var(--marinho); }
+  .ajuda-ctx:hover, .ajuda-ctx[aria-expanded="true"] { border-color: var(--titulo); color: var(--titulo); }
   .dica { position: fixed; z-index: 80; max-width: 300px; background: var(--marinho); color: #fff; font-size: var(--t-sm); line-height: 1.45;
           padding: 10px 12px; border-radius: var(--raio); box-shadow: var(--sombra-alta); }
   .dica b { display: block; margin-bottom: 2px; }
@@ -142,14 +218,14 @@
   .selo { display: inline-flex; align-items: center; gap: 6px; font: 700 var(--t-xs) var(--fonte); letter-spacing: .3px; text-transform: uppercase;
           padding: 4px 10px; border-radius: 999px; background: var(--superficie-2); color: var(--texto-2); border: 1px solid var(--borda); }
   .selo::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-  .selo.rodando { background: var(--info-suave); color: var(--info); border-color: #C9D8F2; }
+  .selo.rodando { background: var(--info-suave); color: var(--info); border-color: color-mix(in srgb, currentColor 30%, transparent); }
   .selo.rodando::before { animation: pulso 1.4s ease-in-out infinite; }
-  .selo.pausa { background: var(--atencao-suave); color: var(--atencao); border-color: #F1D9A8; }
-  .selo.ok { background: var(--ok-suave); color: var(--ok); border-color: #BFE3CE; }
-  .selo.erro { background: var(--erro-suave); color: var(--erro); border-color: #F3C2BD; }
+  .selo.pausa { background: var(--atencao-suave); color: var(--atencao); border-color: color-mix(in srgb, currentColor 30%, transparent); }
+  .selo.ok { background: var(--ok-suave); color: var(--ok); border-color: color-mix(in srgb, currentColor 30%, transparent); }
+  .selo.erro { background: var(--erro-suave); color: var(--erro); border-color: color-mix(in srgb, currentColor 30%, transparent); }
   @keyframes pulso { 50% { opacity: .3; } }
   .exec-cab .acoes { margin-left: auto; display: flex; gap: var(--e2); }
-  .barra { height: 10px; background: #E9ECF1; border-radius: 999px; overflow: hidden; }
+  .barra { height: 12px; background: var(--barra-fundo); border-radius: 999px; overflow: hidden; }
   .barra > div { height: 100%; width: 0; background: var(--marinho); border-radius: 999px; transition: width .4s; }
   .barra.ok > div { background: var(--ok); }
   .barra.indef > div { width: 30% !important; animation: vai 1.3s ease-in-out infinite; }
@@ -159,15 +235,18 @@
   .etapa { font-size: var(--t-sm); color: var(--texto-2); margin: var(--e1) 0 0; min-height: 20px; font-family: var(--mono); overflow-wrap: anywhere; }
   .vazio-exec { font-size: var(--t-md); color: var(--texto-2); margin: 0; }
 
-  .painel { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--e2); margin-top: var(--e4); }
-  @media (max-width: 1180px) { .painel { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  @media (max-width: 460px) { .painel { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  .indicador { border: 1px solid var(--borda); border-radius: var(--raio); padding: 10px 12px; background: var(--superficie-2); min-width: 0;
-               display: flex; flex-direction: column; justify-content: space-between; gap: 4px; }
-  .indicador .rot { display: flex; align-items: flex-start; gap: 6px; font-size: var(--t-xs); color: var(--texto-2); font-weight: 600; line-height: 1.3; }
-  .indicador .rot svg { width: 14px; height: 14px; flex: none; fill: currentColor; margin-top: 1px; }
+  /* Uma linha quando cabe (6 × ~140 px); senão 3 ou 2 por linha, sempre por igual. */
+  .painel { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--e3); margin-top: var(--e5); }
+  @container monitor (max-width: 900px) { .painel { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @container monitor (max-width: 440px) { .painel { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  #cartaoProgresso { container: monitor / inline-size; }
+  .indicador { border: 1px solid var(--borda); border-radius: var(--raio); padding: 14px 16px; background: var(--superficie-2); min-width: 0;
+               display: flex; flex-direction: column; justify-content: space-between; gap: 6px; min-height: 104px; }
+  .indicador .rot { display: flex; align-items: flex-start; gap: 7px; font-size: var(--t-sm); color: var(--texto-2); font-weight: 600; line-height: 1.3; }
+  .indicador .rot svg { width: 16px; height: 16px; flex: none; fill: currentColor; margin-top: 1px; }
   .indicador .rot .ajuda-ctx { margin-left: auto; }
-  .indicador b { display: block; font-size: var(--t-num); line-height: 1.15; margin-top: 2px; font-variant-numeric: tabular-nums; color: var(--marinho); }
+  .indicador b { display: block; font-size: var(--t-num); line-height: 1.1; font-weight: 700; letter-spacing: -.5px;
+                 font-variant-numeric: tabular-nums; color: var(--titulo); }
   .indicador.ok { border-top: 3px solid var(--ok); } .indicador.ok svg, .indicador.ok b { color: var(--ok); }
   .indicador.amb { border-top: 3px solid var(--atencao); } .indicador.amb svg, .indicador.amb b { color: var(--atencao); }
   .indicador.err { border-top: 3px solid var(--erro); } .indicador.err svg, .indicador.err b { color: var(--erro); }
@@ -176,10 +255,13 @@
 
   .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: var(--e3); }
   .chips:empty { display: none; }
-  .chip { border-radius: 999px; padding: 3px 10px; font-size: var(--t-xs); background: #EEF0F4; color: var(--texto-2); font-weight: 600; }
+  .chip { border-radius: 999px; padding: 3px 10px; font-size: var(--t-xs); background: var(--neutro); color: var(--texto-2); font-weight: 600; }
   .chip b { margin-left: 4px; color: var(--texto); }
   .chip.ok { background: var(--ok-suave); color: var(--ok); } .chip.amb { background: var(--atencao-suave); color: var(--atencao); }
   .chip.err { background: var(--erro-suave); color: var(--erro); }
+  .ultimo-evento { margin-top: var(--e3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .ultimo-evento:empty { display: none; }
+  .hist-tec { margin-top: var(--e4); border: 1px solid var(--borda); border-radius: var(--raio); overflow: hidden; }
   .resultado-acoes { display: flex; gap: var(--e2); flex-wrap: wrap; margin-top: var(--e4); }
   .resultado-acoes:not(:has(> :not(.oculto))) { display: none; }
 
@@ -188,7 +270,7 @@
   table { width: 100%; border-collapse: collapse; font-size: var(--t-md); }
   th { text-align: left; font-size: var(--t-xs); color: var(--texto-2); font-weight: 700; padding: 8px; border-bottom: 1px solid var(--borda);
        background: var(--superficie-2); position: sticky; top: 0; text-transform: uppercase; letter-spacing: .3px; }
-  td { padding: 9px 8px; border-bottom: 1px solid #F0F2F5; vertical-align: top; }
+  td { padding: 9px 8px; border-bottom: 1px solid var(--linha); vertical-align: top; }
   .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .mono { font-family: var(--mono); }
   .rolagem { max-height: 420px; overflow: auto; border: 1px solid var(--borda); border-radius: var(--raio); margin-top: var(--e3); }
@@ -200,7 +282,7 @@
   .secao { border-bottom: 1px solid var(--borda); }
   .secao:last-child { border-bottom: 0; }
   .secao > summary { list-style: none; cursor: pointer; padding: var(--e3) var(--e5); display: flex; align-items: center; gap: var(--e2);
-                     font-weight: 600; color: var(--marinho); }
+                     font-weight: 600; color: var(--titulo); }
   .secao > summary::-webkit-details-marker { display: none; }
   .secao > summary::before { content: "›"; display: inline-block; width: 14px; color: var(--texto-3); font-size: 18px; line-height: 1; transition: transform .15s; }
   .secao[open] > summary::before { transform: rotate(90deg); }
@@ -208,28 +290,29 @@
   .secao > summary .sub { font-weight: 400; color: var(--texto-3); font-size: var(--t-sm); }
   .secao .conteudo { padding: 0 var(--e5) var(--e4) calc(var(--e5) + 22px); }
   #log { background: var(--superficie-2); border: 1px solid var(--borda); border-radius: var(--raio); padding: 10px; max-height: 280px; overflow: auto;
-         font: 12px/1.5 var(--mono); white-space: pre-wrap; color: #3B4250; margin: 0; }
+         font: 12px/1.5 var(--mono); white-space: pre-wrap; color: var(--codigo); margin: 0; }
   .categoria { border: 1px solid var(--borda); border-radius: var(--raio); padding: 10px 12px; margin-top: 10px; background: var(--superficie-2); }
   .categoria h3 { margin: 0 0 4px; font-size: var(--t-md); }
-  .categoria .ev { font: 12px var(--mono); color: #555; white-space: pre-wrap; word-break: break-all; margin: 6px 0 0; }
+  .categoria .ev { font: 12px var(--mono); color: var(--texto-2); white-space: pre-wrap; word-break: break-all; margin: 6px 0 0; }
   .rotulo-cat { font-size: 11px; font-weight: 700; letter-spacing: .4px; border-radius: 4px; padding: 1px 6px; margin-right: 6px; }
   .rotulo-cat.FONTE { background: var(--erro-suave); color: var(--erro); } .rotulo-cat.APP { background: var(--info-suave); color: var(--info); }
   .rotulo-cat.ENTRADA { background: var(--atencao-suave); color: var(--atencao); }
   input[type=text], input[type=number], select { font: var(--t-md) var(--fonte); padding: 7px 9px; border: 1px solid var(--borda-forte); border-radius: 6px;
-       background: #fff; color: var(--texto); }
+       background: var(--campo); color: var(--texto); }
   input:focus, select:focus { outline: none; border-color: var(--marca); box-shadow: var(--foco); }
 
   /* ============================================================ histórico */
-  tr.clicavel { cursor: pointer; } tr.clicavel:hover td { background: #F7F8FA; }
-  tr.selecionada td { background: #F1F4FA; }
-  .tag { display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: var(--t-xs); font-weight: 600; white-space: nowrap; background: #EEF0F4; color: var(--texto-2); }
+  tr.clicavel { cursor: pointer; } tr.clicavel:hover td { background: var(--hover); }
+  tr.selecionada td { background: var(--selecao); }
+  .tag { display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: var(--t-xs); font-weight: 600; white-space: nowrap; background: var(--neutro); color: var(--texto-2); }
   .tag.ok { background: var(--ok-suave); color: var(--ok); } .tag.amb { background: var(--atencao-suave); color: var(--atencao); }
   .tag.err { background: var(--erro-suave); color: var(--erro); }
   .res { display: flex; gap: 4px; flex-wrap: wrap; }
 
   /* ============================================================ configurações */
-  .grupo h3 { margin: 0; font-size: var(--t-lg); color: var(--marinho); }
-  .campo { display: grid; grid-template-columns: 1fr 240px; gap: 2px var(--e4); padding: var(--e3) 0; border-top: 1px solid #F0F2F5; }
+  .cfg-grupos { display: grid; gap: var(--e4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); align-items: start; }
+  .grupo h3 { margin: 0; font-size: var(--t-lg); color: var(--titulo); }
+  .campo { display: grid; grid-template-columns: 1fr 240px; gap: 2px var(--e4); padding: var(--e3) 0; border-top: 1px solid var(--linha); }
   .campo:first-of-type { border-top: 0; }
   .campo label { font-weight: 600; }
   .campo .ajuda { grid-column: 1; font-size: var(--t-sm); color: var(--texto-2); }
@@ -256,7 +339,7 @@
                animation: entra .2s ease; }
   @keyframes entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   .tut-balao .passo { font-size: var(--t-xs); font-weight: 700; color: var(--marca); letter-spacing: .3px; text-transform: uppercase; }
-  .tut-balao h3 { margin: 4px 0 6px; font-size: var(--t-lg); color: var(--marinho); }
+  .tut-balao h3 { margin: 4px 0 6px; font-size: var(--t-lg); color: var(--titulo); }
   .tut-balao p { margin: 0; font-size: var(--t-md); color: var(--texto-2); line-height: 1.55; }
   .tut-pontos { display: flex; gap: 5px; margin: var(--e3) 0; }
   .tut-pontos span { height: 4px; flex: 1; border-radius: 4px; background: var(--borda); }
@@ -270,7 +353,7 @@
 <body>
 <header class="topo">
   <div class="topo-in">
-    <div class="marca"><span class="marca-selo" aria-hidden="true">BTP</span>
+    <div class="marca"><span class="marca-selo"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#E3261E"/><path d="M9 13V9h4M19 9h4v4M23 19v4h-4M13 23H9v-4" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 16.4l3 3 5.4-6" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       <div><b>Agente BTP</b><small>Extração e auditoria de alertas</small></div></div>
     <nav class="abas" aria-label="Seções">
       <button class="ativa" id="abaAnalise" aria-current="page">Nova análise</button>
@@ -290,6 +373,12 @@
 
 <!-- ================================================================ NOVA ANÁLISE -->
 <main id="vistaAnalise" class="pagina">
+  <div class="pagina-cab">
+    <div>
+      <h1>Monitor de alertas</h1>
+      <div class="resumo" id="resumoAgente" aria-live="polite"></div>
+    </div>
+  </div>
   <div class="aviso critico oculto" id="desatualizado" role="alert"><div class="corpo"><b class="tit">O Agente BTP aberto é de uma versão anterior.</b>
     Feche a janela preta do Agente BTP e abra o <b>Abrir Agente BTP.bat</b> de novo.</div></div>
   <div class="aviso oculto" id="aviso" role="status"></div>
@@ -338,9 +427,9 @@
     </div>
   </section>
 
-  <div class="grade">
+  <div class="area">
     <!-- ======================== preparação -->
-    <section class="cartao" id="secPreparo" aria-labelledby="tPreparo">
+    <section class="cartao area-prep" id="secPreparo" aria-labelledby="tPreparo">
       <div class="cartao-cab"><h2 id="tPreparo">Nova análise</h2>
         <button class="ajuda-ctx" data-ajuda="wo" aria-label="O que é uma WO e qual o formato">?</button></div>
       <label for="texto" class="sr-only">WOs, uma por linha</label>
@@ -359,8 +448,8 @@
       <p class="meta conferencia"><span>Cada dado é conferido <b id="nAuditorias">2</b>× (até <b id="nMaximo">5</b>× se houver divergência)</span><button class="ajuda-ctx" data-ajuda="conferencia" aria-label="Como funciona a conferência">?</button></p>
     </section>
 
-    <!-- ======================== execução e resultado -->
-    <div class="coluna">
+    <!-- ======================== monitoramento (região dominante) -->
+    <div class="area-monitor">
       <section class="cartao alerta-cartao oculto" id="cartaoConfirma" aria-labelledby="tConfirma">
         <div class="cartao-cab"><h2 id="tConfirma">Confira a amostra antes de continuar</h2></div>
         <p class="meta" id="cfTexto"></p>
@@ -374,7 +463,8 @@
         <fieldset id="cfEscolha" class="oculto" style="margin-top:12px;border:0;padding:0">
           <legend style="font-weight:600">Qual mensagem vai para a planilha?</legend>
           <label><input type="radio" name="cfMsg" value="item" checked> Mensagem do item (janela Mensagens)</label><br>
-          <label><input type="radio" name="cfMsg" value="alerta"> Mensagem do alerta (coluna Mensagem do Monitor)</label>
+          <label><input type="radio" name="cfMsg" value="alerta"> Mensagem do alerta (coluna Mensagem do Monitor)</label><br>
+          <label><input type="radio" name="cfMsg" value="ambas"> As duas (item — Alerta: alerta)</label>
         </fieldset>
         <div class="linha" style="margin-top:16px">
           <button class="btn btn-primario" id="cfSim">Sim, são esses os dados</button>
@@ -398,6 +488,15 @@
           <div class="numeros"><span id="progTxt">Informe as WOs e clique em Executar análise.</span><span id="etaTxt"></span></div>
           <p class="etapa" id="etapa"></p>
         </div>
+        <div class="vazio-estado oculto" id="estadoVazio">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg></span>
+          <div>
+            <h3 id="vazioTitulo">Nenhuma análise em andamento</h3>
+            <p id="vazioTexto">Cole as WOs ou importe uma planilha em <b>Nova análise</b> e clique em <b>Executar análise</b>.</p>
+            <div class="ultima oculto" id="vazioUltima"></div>
+          </div>
+        </div>
+        <p class="meta oculto" id="painelLegenda" style="margin-top:var(--e5)"></p>
         <div class="painel" id="painel">
           <div class="indicador neutro"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v3h-2V6H9.4l4.6 6-4.6 6H17v-1h2v3H5v-1.4L10.6 12 5 5.4z"/></svg>Processadas<button class="ajuda-ctx" data-ajuda="processadas" aria-label="O que conta como processada">?</button></span><b id="iProcessadas">—</b></div>
           <div class="indicador neutro"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm1-13h-2v6l5 3 1-1.7-4-2.3z"/></svg>Pendentes<button class="ajuda-ctx" data-ajuda="pendentes" aria-label="O que conta como pendente">?</button></span><b id="iPendentes">—</b></div>
@@ -410,44 +509,29 @@
           · <a href="/api/diagnostico">Baixar diagnóstico da preparação</a></p>
         <div class="chips" id="chips" aria-label="Situação das WOs no Monitor"></div>
         <div class="chips" id="errosCat" aria-label="Problemas por origem"></div>
+        <p class="meta ultimo-evento" id="ultimoEvento"></p>
         <div class="resultado-acoes" id="acoesResultado">
           <a id="baixar" class="btn btn-primario oculto" href="#">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-4 5.5-5.5-1.4-1.4L13 12.2V2h-2v10.2L7.9 9.1 6.5 10.5 12 16z"/></svg>
             Baixar relatório auditado (.xlsx)</a>
           <a id="baixarParcial" class="btn btn-sec oculto" href="#">Baixar planilha parcial (.xlsx)</a>
+          <button class="btn btn-sec oculto" id="bVerDiag">Ver diagnóstico desta análise</button>
           <button class="btn btn-primario oculto" id="bRaioxPronto">Já abri a janela Mensagens</button>
           <a id="baixarRaiox" class="btn btn-sec oculto" href="#">Baixar Raio-X (.json)</a>
         </div>
       </section>
 
-      <!-- ======================== nível 3: diagnóstico técnico (recolhível) -->
-      <section class="cartao tecnico" id="secDiagnostico" aria-labelledby="tDiag">
-        <div class="cartao-cab"><h2 id="tDiag">Diagnóstico da execução</h2>
-          <div class="dir"><a class="btn btn-sec oculto" id="diagBaixar" href="#">Diagnóstico (.json)</a></div></div>
-        <details class="secao oculto" id="caixaDiag">
-          <summary>O que deu errado <span class="sub" id="diagResumo"></span></summary>
-          <div class="conteudo"><p class="meta" id="diagAcao"></p><div id="diagConteudo"></div></div>
-        </details>
-        <details class="secao" id="caixaLog">
-          <summary>Registro de execução <span class="sub">eventos desta análise</span></summary>
-          <div class="conteudo"><pre id="log" tabindex="0" aria-label="Registro de execução"></pre></div>
-        </details>
-        <details class="secao" id="caixaRaiox">
-          <summary>Raio-X da fonte <span class="sub">quando os dados não batem com o BTP</span></summary>
-          <div class="conteudo">
-            <p class="meta" style="margin-bottom:10px">Use uma WO cuja janela <b>Mensagens</b> você conhece. O agente consulta tudo o que o
-              serviço do Monitor tem para ela e observa a tela do BTP enquanto você abre a janela Mensagens. O arquivo gerado mostra
-              de onde vem cada dado.</p>
-            <div class="linha">
-              <label class="sr-only" for="rxWo">WO</label>
-              <input type="text" id="rxWo" class="mono" placeholder="WO (ex.: 06201|740923282)" style="width:230px">
-              <label class="sr-only" for="rxCons">Consolidado</label>
-              <input type="text" id="rxCons" class="mono" placeholder="Consolidado (opcional)" style="width:260px">
-              <button class="btn btn-sec" id="bRaiox">Gerar Raio-X</button>
-            </div>
-          </div>
-        </details>
+    </div>
+
+    <!-- ======================== apoio: execuções recentes + diagnóstico técnico (recolhível) -->
+    <div class="area-apoio">
+      <section class="cartao" id="secRecentes" aria-labelledby="tRecentes">
+        <div class="cartao-cab"><h2 id="tRecentes">Execuções recentes</h2>
+          <div class="dir"><button class="btn-texto" id="bVerHistorico">Ver histórico</button></div></div>
+        <ul class="recentes" id="listaRecentes"><li class="meta">Carregando…</li></ul>
       </section>
+
+
     </div>
   </div>
 
@@ -479,6 +563,19 @@
     </div>
     <p class="meta" id="detResumo"></p>
     <div class="chips" id="detChips"></div>
+    <div class="hist-tec oculto" id="detTecnico">
+      <details class="secao" id="caixaDiag" open>
+        <summary>Diagnóstico <span class="sub" id="diagResumo"></span></summary>
+        <div class="conteudo">
+          <p class="meta" id="diagAcao"></p><div id="diagConteudo"></div>
+          <p style="margin:12px 0 0"><a class="btn btn-sec" id="diagBaixar" href="#">Baixar diagnóstico (.json)</a></p>
+        </div>
+      </details>
+      <details class="secao" id="caixaLog">
+        <summary>Registro de execução <span class="sub">eventos desta análise</span></summary>
+        <div class="conteudo"><pre id="log" tabindex="0" aria-label="Registro de execução"></pre></div>
+      </details>
+    </div>
     <div class="linha" style="margin-top:14px">
       <label class="sr-only" for="detFiltro">Filtrar por situação</label>
       <select id="detFiltro"><option value="">Todas as situações</option></select>
@@ -500,12 +597,44 @@
     <p class="meta">Parâmetros de extração e auditoria. Ficam salvos neste computador (sem senhas ou dados de acesso) e valem a partir
       da próxima análise.</p>
   </section>
-  <div id="cfgGrupos" style="display:grid;gap:16px"></div>
+  <div class="cfg-grupos">
+    <section class="cartao grupo" aria-labelledby="tAparencia">
+      <h3 id="tAparencia">Aparência</h3><p class="meta" style="margin:2px 0 8px">Vale só para este navegador; muda na hora.</p>
+      <div class="campo"><label for="cfgTema">Tema</label>
+        <div class="entrada"><select id="cfgTema"><option value="auto">Automático (segue o sistema)</option>
+          <option value="claro">Claro</option><option value="escuro">Escuro</option></select></div>
+        <div class="ajuda">Escuro reduz o brilho em jornadas longas.</div></div>
+    </section>
+    <section class="cartao grupo" aria-labelledby="tFonte">
+      <h3 id="tFonte">Fonte de dados</h3><p class="meta" style="margin:2px 0 8px" id="fonteDescricao">Ainda não configurada: é feita na primeira análise.</p>
+      <div class="campo"><label for="cfgMensagem">Mensagem na planilha</label>
+        <div class="entrada"><select id="cfgMensagem"><option value="item">Mensagem do item</option>
+          <option value="alerta">Mensagem do alerta</option><option value="ambas">As duas</option></select></div>
+        <div class="ajuda">Item = janela Mensagens; alerta = coluna Mensagem do Monitor; as duas = "item — Alerta: alerta". Vale a partir da próxima análise.</div></div>
+      <div class="linha" style="margin-top:8px">
+        <button class="btn btn-perigo" id="cfgRefazer" title="Apaga a fonte de dados gravada; a próxima análise pede a conferência de novo">Refazer a fonte de dados</button>
+      </div>
+      <details class="secao" id="caixaRaiox" style="margin-top:12px;border:1px solid var(--borda);border-radius:var(--raio)">
+        <summary>Raio-X da fonte <span class="sub">quando os dados não batem com o BTP</span></summary>
+        <div class="conteudo">
+          <p class="meta" style="margin-bottom:10px">Use uma WO cuja janela <b>Mensagens</b> você conhece. O agente consulta tudo o que o
+            serviço do Monitor tem para ela e observa a tela do BTP enquanto você abre a janela Mensagens.</p>
+          <div class="linha">
+            <label class="sr-only" for="rxWo">WO</label>
+            <input type="text" id="rxWo" class="mono" placeholder="WO (ex.: 06201|740923282)" style="width:230px">
+            <label class="sr-only" for="rxCons">Consolidado</label>
+            <input type="text" id="rxCons" class="mono" placeholder="Consolidado (opcional)" style="width:230px">
+            <button class="btn btn-sec" id="bRaiox">Gerar Raio-X</button>
+          </div>
+        </div>
+      </details>
+    </section>
+  </div>
+  <div id="cfgGrupos" class="cfg-grupos"></div>
   <section class="cartao">
     <div class="linha">
       <button class="btn btn-primario" id="cfgSalvar">Salvar configurações</button>
       <button class="btn btn-sec" id="cfgPadrao">Restaurar padrões</button>
-      <button class="btn btn-perigo" id="cfgRefazer" title="Apaga a fonte de dados gravada; a próxima análise pede a conferência de novo">Refazer a fonte de dados</button>
     </div>
   </section>
 </main>
@@ -656,14 +785,16 @@ const ROTULO_MOTIVO = { sessao_expirada: "sessão expirada", aba_desconectada: "
   erro_servico: "erro do serviço", consulta_rejeitada: "consulta rejeitada", excecao_app: "erro do programa" };
 const rotuloMotivo = m => m.startsWith("campo_ausente:") ? "campo ausente: " + m.split(":")[1] : (ROTULO_MOTIVO[m] || m);
 const SESSAO = ["sessao_expirada", "http_401", "http_403", "aba_desconectada"];
-let runAtual = null, diagEm = 0;
+let runAtual = null, runHistorico = null, diagEm = 0;
 async function carregarDiagnostico(forcar) {
-  if (!runAtual || !$("caixaDiag").open || (!forcar && Date.now() - diagEm < 5000)) return;
+  if (!runHistorico || !$("caixaDiag").open || (!forcar && Date.now() - diagEm < 5000)) return;
   diagEm = Date.now();
   let d;
-  try { d = await fetch(`/api/diagnostico?run_id=${encodeURIComponent(runAtual)}&baixar=0`).then(r => r.json()); }
+  try { d = await fetch(`/api/diagnostico?run_id=${encodeURIComponent(runHistorico)}&baixar=0`).then(r => r.json()); }
   catch (_) { return; }
   $("diagAcao").innerHTML = "<b>Próxima ação:</b> " + esc(d.proxima_acao);
+  const abertos = d.problemas.filter(p => !p.resolvido && p.categoria !== "ENTRADA").length;
+  $("diagResumo").textContent = abertos ? `${abertos} problema(s) em aberto` : "nenhum problema em aberto";
   const problemas = d.problemas.filter(p => p.categoria !== "ENTRADA" || p.wos_afetadas);
   $("diagConteudo").innerHTML = problemas.length ? problemas.map(p => {
     const ev = p.primeira_ocorrencia || {};
@@ -681,6 +812,19 @@ async function carregarDiagnostico(forcar) {
   }).join("") : `<p class="meta" style="margin-top:8px">Nenhum problema registrado nesta análise.</p>`;
 }
 $("caixaDiag").addEventListener("toggle", () => carregarDiagnostico(true));
+let registroEm = 0;
+async function carregarRegistro(forcar) {
+  if (!runHistorico || !$("caixaLog").open || (!forcar && Date.now() - registroEm < 3000)) return;
+  registroEm = Date.now();
+  let r;
+  try { r = await fetch(`/api/execucoes/${encodeURIComponent(runHistorico)}/registro`).then(x => x.json()); } catch (_) { return; }
+  const log = $("log"), fim = log.scrollTop + log.clientHeight >= log.scrollHeight - 5, texto = (r.linhas || []).join("\n");
+  if (log.textContent !== texto) { log.textContent = texto; if (fim) log.scrollTop = log.scrollHeight; }
+}
+$("caixaLog").addEventListener("toggle", () => carregarRegistro(true));
+// Análise em andamento aberta no Histórico: diagnóstico e registro acompanham ao vivo.
+setInterval(() => { if (abaAtual === "historico" && detalheAtual && detalheAtual.situacao === "Em andamento") {
+  carregarDiagnostico(false); carregarRegistro(false); } }, 3000);
 
 const GRUPOS = [
   { rotulo: "Com itens", classe: "ok", status: ["Com itens faltantes", "Processada"] },
@@ -723,7 +867,7 @@ async function responderFonte(resposta) {
 $("bRaiox").onclick = async () => {
   const r = await fetch("/api/raiox", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ wo: $("rxWo").value, consolidado: $("rxCons").value }) }).then(r => r.json());
-  if (!r.ok) avisar(r.erro, true); else avisar("Raio-X iniciado.");
+  if (!r.ok) avisar(r.erro, true); else { avisar("Raio-X iniciado: acompanhe no painel de monitoramento."); abrirAba("analise"); }
 };
 $("bRaioxPronto").onclick = () => fetch("/api/raiox/pronto", { method: "POST" });
 $("cfSim").onclick = () => responderFonte("sim");
@@ -752,8 +896,7 @@ function estadoExecucao(e) {
     if (ind.incompletas || ind.falhas) return ["Concluída com ressalvas", "pausa", `Análise${n} concluída`];
     return ["Concluída", "ok", `Análise${n} concluída`];
   }
-  return conectado ? ["Pronta para iniciar", "", "Nenhuma análise em andamento"]
-                   : ["Aguardando o BTP", "", "Nenhuma análise em andamento"];
+  return conectado ? ["Pronta para iniciar", "", "Monitoramento"] : ["Aguardando o BTP", "", "Monitoramento"];
 }
 
 async function atualizar() {
@@ -825,10 +968,14 @@ async function atualizar() {
     : (ex && sit.startsWith("pausado") ? "pausada — o tempo restante volta a ser calculado ao retomar" : "");
   $("etapa").textContent = ((e.fase === "processando" && !sit.startsWith("pausado")) || e.fase === "raiox") && e.etapa
     ? "Agora: " + e.etapa : "";
-  const ind = e.indicadores || {}, mostrarNumeros = ativo && !["preparando", "falhou", "confirmando", "raiox", "raiox_ok"].includes(e.fase);
+  const mostrarNumeros = ativo && !["preparando", "falhou", "confirmando", "raiox", "raiox_ok"].includes(e.fase);
+  const daUltima = !ativo && ultimaAnalise && ultimaAnalise.indicadores;
+  const ind = daUltima ? ultimaAnalise.indicadores : e.indicadores || {};
   [["iProcessadas", "processadas"], ["iPendentes", "pendentes"], ["iValidadas", "validadas"],
    ["iDivergentes", "divergentes"], ["iIncompletas", "incompletas"], ["iFalhas", "falhas"]]
-    .forEach(([el, k]) => { $(el).textContent = mostrarNumeros ? fmt(ind[k] ?? 0) : "—"; });
+    .forEach(([el, k]) => { $(el).textContent = mostrarNumeros || daUltima ? fmt(ind[k] ?? 0) : "—"; });
+  $("painelLegenda").classList.toggle("oculto", !daUltima);
+  if (daUltima) $("painelLegenda").innerHTML = `Resultado da <b>última análise — nº ${ultimaAnalise.numero || "—"}</b>, ${dataBR(ultimaAnalise.inicio)} · ${esc(ultimaAnalise.situacao)}`;
   $("bRaioxPronto").classList.toggle("oculto", e.fase !== "raiox");
   $("baixarRaiox").classList.toggle("oculto", !(e.fase === "raiox_ok" && e.ultimo_raiox));
   if (e.ultimo_raiox) $("baixarRaiox").href = "/api/download/" + encodeURIComponent(e.ultimo_raiox);
@@ -840,23 +987,59 @@ async function atualizar() {
   const cats = ex ? ex.erros_por_categoria || {} : {};
   $("errosCat").innerHTML = Object.entries(cats).map(([cat, m]) =>
     `<span class="chip ${cat === "ENTRADA" ? "amb" : "err"}">${CATEGORIA[cat] || cat}: ${Object.entries(m).map(([k, n]) => `${esc(rotuloMotivo(k))} ${fmt(n)}`).join(", ")}</span>`).join("");
-  $("caixaDiag").classList.toggle("oculto", !ex);
-  $("diagBaixar").classList.toggle("oculto", !runAtual);
-  if (runAtual) $("diagBaixar").href = `/api/diagnostico?run_id=${encodeURIComponent(runAtual)}`;
-  const nProblemas = Object.values(cats).reduce((s, m) => s + Object.values(m).reduce((a, b) => a + b, 0), 0);
-  $("diagResumo").textContent = ex ? (nProblemas ? `${fmt(nProblemas)} WO(s) com problema` : "nenhum problema registrado") : "";
-  carregarDiagnostico(false);
+  $("bVerDiag").classList.toggle("oculto", !runAtual);
   const pronto = e.fase === "concluido" && e.ultimo_arquivo;
   $("baixar").classList.toggle("oculto", !pronto);
   if (pronto) $("baixar").href = "/api/download/" + encodeURIComponent(e.ultimo_arquivo);
   $("baixarParcial").classList.toggle("oculto", !(ex && e.fase === "processando"));
   if (ex) $("baixarParcial").href = `/api/execucoes/${encodeURIComponent(ex.run_id)}/planilha`;
 
-  const log = $("log"), fim = log.scrollTop + log.clientHeight >= log.scrollHeight - 5;
-  const texto = e.mensagens.join("\n");
-  if (log.textContent !== texto) { log.textContent = texto; if (fim) log.scrollTop = log.scrollHeight; }
+  // Resumo do agente (dados reais: conexão, fonte configurada, política de conferência, análise atual).
+  const partes = [`<span><span class="ponto ${$("pt").className.replace("ponto", "").trim()}"></span><b>${esc(ROT[e.conexao] || "Aguardando o BTP")}</b></span>`];
+  partes.push(e.fonte ? `<span>Fonte: <b>${esc(e.fonte.descricao)}</b>${e.fonte.confirmada ? "" : ' <span class="alerta-txt">· a confirmar</span>'}</span>`
+                      : `<span>Fonte: <b>identificada na primeira análise</b></span>`);
+  partes.push(`<span>Conferência: <b>${$("nAuditorias").textContent}×</b> por WO (até ${$("nMaximo").textContent}×)</span>`);
+  if (ex && ativo) partes.push(`<span>Análise atual: <b>nº ${esc(ex.numero ?? e.ultimo_numero ?? "—")}</b> · ${fmt(ex.total)} WOs</span>`);
+  $("resumoAgente").innerHTML = partes.join("");
+  const vazio = !ativo && !window.tutorialAberto;
+  $("estadoVazio").classList.toggle("oculto", ativo);
+  $("painel").classList.toggle("oculto", vazio && !daUltima);
+  $("blocoProgresso").classList.toggle("oculto", vazio);
+  if (e.fase !== faseAnterior) { if (e.fase === "concluido" || faseAnterior === null) carregarRecentes(); faseAnterior = e.fase; }
+
+  // Só o último evento aqui; o registro completo de cada análise fica no Histórico.
+  const ultimo = (e.mensagens || []).slice(-1)[0] || "";
+  $("ultimoEvento").textContent = ultimo ? "Último evento: " + ultimo.replace(/^\d\d:\d\d:\d\d\s+/, "") : "";
+  $("ultimoEvento").title = ultimo;
+  if (abaAtual === "config") desenharFonte(e.fonte);
 }
+let faseAnterior = null, ultimaAnalise = null;
 setInterval(atualizar, 1000); atualizar();
+
+// ---------------------------------------------------------------- execuções recentes (dados do histórico real)
+const SIT_TAG = { "Concluída": "ok", "Interrompida": "amb", "Em andamento": "amb" };
+async function carregarRecentes() {
+  let lista;
+  try { lista = await fetch("/api/historico").then(r => r.json()); } catch (_) { return; }
+  const ultimas = lista.slice(0, 6);
+  $("listaRecentes").innerHTML = ultimas.length ? ultimas.map(a => `
+    <li><span class="n">nº ${a.numero || "—"}</span>
+      <button class="abrir" data-id="${esc(a.id)}" title="Ver o detalhe desta análise"><span class="info">
+        <b>${esc(a.origem)}</b><small>${dataBR(a.inicio)} · ${fmt(a.total)} WOs · ${duracao(a.duracao_seg)}</small></span></button>
+      <span class="tag ${SIT_TAG[a.situacao] || "err"}">${esc(a.situacao)}</span>
+      <span class="res">${resumoHistorico(a)}${a.arquivo ? ` <a class="btn-texto" href="/api/download/${encodeURIComponent(a.arquivo)}">Excel</a>` : ""}</span></li>`).join("")
+    : `<li class="meta">Nenhuma análise ainda. As análises concluídas ou interrompidas aparecem aqui, com acesso ao relatório.</li>`;
+  document.querySelectorAll("#listaRecentes button.abrir").forEach(b => b.onclick = () => { abrirAba("historico"); abrirDetalhe(b.dataset.id); });
+  const u = ultimas[0];
+  ultimaAnalise = u || null;
+  $("vazioUltima").classList.toggle("oculto", !u);
+  if (u) $("vazioUltima").innerHTML = `<span>Última análise: <b>nº ${u.numero || "—"}</b> · ${dataBR(u.inicio)} · ${fmt(u.total)} WOs</span>
+    <span class="tag ${SIT_TAG[u.situacao] || "err"}">${esc(u.situacao)}</span> ${resumoHistorico(u)}
+    ${u.arquivo ? `<a class="btn btn-sec" href="/api/download/${encodeURIComponent(u.arquivo)}">Baixar relatório</a>` : ""}`;
+}
+$("bVerHistorico").onclick = () => abrirAba("historico");
+$("bVerDiag").onclick = async () => { if (!runAtual) return; abrirAba("historico"); await abrirDetalhe(runAtual); };
+setInterval(carregarRecentes, 30000);
 
 // ---------------------------------------------------------------- navegação
 let abaAtual = "analise";
@@ -869,7 +1052,7 @@ function abrirAba(nome) {
     $(vista).classList.toggle("oculto", nome !== n);
   });
   if (nome === "historico") carregarHistorico();
-  if (nome === "config") carregarConfig();
+  if (nome === "config") { carregarConfig(); fonteDesenhada = ""; desenharFonte(ultimoEstado && ultimoEstado.fonte); }
 }
 $("abaAnalise").onclick = () => abrirAba("analise");
 $("abaHistorico").onclick = () => abrirAba("historico");
@@ -969,12 +1152,38 @@ $("cfgRefazer").onclick = async () => {
   $("cfgStatus").textContent = r.ok ? "Fonte apagada: a próxima análise pede a conferência." : r.erro;
 };
 $("cfgPadrao").onclick = () => confirm("Restaurar todos os valores padrão?") && salvarConfig("/api/configuracoes/padrao");
+// Aparência: só deste navegador (preferência visual), aplicada na hora.
+function lerTema() { try { return localStorage.getItem("agenteBtpTema") || "auto"; } catch (_) { return "auto"; } }
+$("cfgTema").value = lerTema();
+$("cfgTema").onchange = () => {
+  const t = $("cfgTema").value;
+  document.documentElement.dataset.tema = t;
+  try { localStorage.setItem("agenteBtpTema", t); } catch (_) {}
+  avisar(`Tema: ${$("cfgTema").selectedOptions[0].textContent}.`);
+};
+let fonteDesenhada = "";
+function desenharFonte(f) {
+  const chave = JSON.stringify(f || null);
+  if (chave === fonteDesenhada) return;
+  fonteDesenhada = chave;
+  $("fonteDescricao").innerHTML = f ? `Tabela do BTP: <b>${esc(f.descricao)}</b> · ${f.confirmada ? "confirmada por você" : "ainda a confirmar"}`
+                                    : "Ainda não configurada: é feita na primeira análise.";
+  $("cfgMensagem").value = f ? f.mensagem_origem : "item";
+  $("cfgMensagem").disabled = !f || !f.tem_mensagem_alerta;
+  [...$("cfgMensagem").options].forEach(o => { o.disabled = o.value !== "item" && !(f && f.tem_mensagem_alerta); });
+}
+$("cfgMensagem").onchange = async () => {
+  const r = await fetch("/api/fonte/mensagem", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mensagem: $("cfgMensagem").value }) }).then(x => x.json());
+  if (!r.ok) { avisar(r.erro, true); fonteDesenhada = ""; desenharFonte(ultimoEstado && ultimoEstado.fonte); }
+  else avisar("Mensagem na planilha atualizada (vale a partir da próxima análise).");
+};
 fetch("/api/configuracoes").then(r => r.json()).then(r => mostrarConferencia(r.valores));
 
 // ---------------------------------------------------------------- histórico
 const dataBR = iso => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 const duracao = s => s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${Math.floor(s / 3600)} h ${Math.round(s % 3600 / 60)} min`;
-const classeSit = s => s === "Concluída" ? "ok" : s === "Interrompida" ? "amb" : "err";
+const classeSit = s => s === "Concluída" ? "ok" : s === "Interrompida" || s === "Em andamento" ? "amb" : "err";
 const classeStatus = s => ["Com itens faltantes", "Processada"].includes(s) ? "ok"
   : ["Sem itens", "Sem registros"].includes(s) ? ""
   : ["Não consta no Monitor", "Formato inválido", "Não encontrada no monitor", "WO inválida"].includes(s) ? "amb" : "err";
@@ -1024,6 +1233,13 @@ async function abrirDetalhe(id) {
   $("detFiltro").innerHTML = `<option value="">Todas as situações</option>` +
     Object.keys(a.contagem || {}).map(s => `<option>${esc(s)}</option>`).join("");
   desenharDetalhe();
+  runHistorico = a.run_id || null;
+  $("detTecnico").classList.toggle("oculto", !runHistorico);
+  if (runHistorico) {
+    $("diagBaixar").href = `/api/diagnostico?run_id=${encodeURIComponent(runHistorico)}`;
+    $("diagConteudo").innerHTML = ""; $("diagAcao").textContent = "Carregando…"; $("log").textContent = "";
+    carregarDiagnostico(true); carregarRegistro(true);
+  }
   $("detalheHist").scrollIntoView({ block: "start" });
 }
 
@@ -1046,7 +1262,7 @@ async function apagar(id) {
   if (!confirm("Apagar esta análise do histórico? A planilha Excel dela também será apagada.")) return;
   await fetch("/api/historico/" + encodeURIComponent(id), { method: "DELETE" });
   if (id === selecionada) { selecionada = null; $("detalheHist").classList.add("oculto"); }
-  carregarHistorico();
+  carregarHistorico(); carregarRecentes();
 }
 $("detApagar").onclick = () => selecionada && apagar(selecionada);
 $("bLimpar").onclick = async () => {
@@ -1118,11 +1334,10 @@ const PASSOS_TUTORIAL = [
     texto: "Inicia a extração no BTP. Precisa da aba do BTP conectada (indicador no topo). Se o botão estiver bloqueado, o motivo aparece logo abaixo dele. Na primeira vez, o agente mostra uma amostra para você conferir a fonte dos dados." },
   { alvo: "#cartaoProgresso .exec-cab, #blocoProgresso", titulo: "Progresso da execução",
     texto: "O selo mostra o estado real: Executando, Pausada, Interrompida ou Concluída. A barra e o contador mostram quantas WOs já terminaram; o ritmo e o tempo restante aparecem quando há medição suficiente. Pausar e Parar ficam aqui." },
-  { alvo: "#painel", titulo: "Indicadores",
+  { alvo: "#painel", titulo: "Indicadores", preparar: () => { $("painel").classList.remove("oculto"); return null; },
     texto: "Processadas = validadas + divergência + incompletas + falhas. Pendentes ainda vão ser consultadas. Cada cartão tem um \"?\" com a regra exata de contagem." },
-  { alvo: "#secDiagnostico", titulo: "Diagnóstico e exportações",
-    texto: "Os detalhes técnicos ficam recolhidos aqui: o que deu errado (com a próxima ação), o registro de execução e o Raio-X da fonte. O relatório .xlsx e o diagnóstico .json são baixados pelos botões do painel de execução e deste cartão.",
-    preparar: () => { const d = $("caixaLog"), antes = d.open; d.open = true; return () => { d.open = antes; }; } },
+  { alvo: "#secRecentes", titulo: "Resultados e diagnóstico",
+    texto: "Aqui ficam as últimas análises, com o relatório .xlsx. Clique numa delas para abrir no Histórico: lá estão o diagnóstico da análise (o que deu errado e o que fazer), o registro de execução e o diagnóstico .json. A análise em andamento também aparece lá, ao vivo." },
 ];
 
 const Tutorial = (() => {
@@ -1182,6 +1397,7 @@ const Tutorial = (() => {
     raiz.classList.remove("oculto");
     $("vistaAnalise").setAttribute("inert", ""); document.querySelector(".topo").setAttribute("inert", "");
     $("bAjuda").classList.add("ativa");
+    window.tutorialAberto = true; atualizar();
     laco();
     mostrar(0);
   }
@@ -1192,6 +1408,7 @@ const Tutorial = (() => {
     raiz.classList.add("oculto");
     $("vistaAnalise").removeAttribute("inert"); document.querySelector(".topo").removeAttribute("inert");
     $("bAjuda").classList.remove("ativa");
+    window.tutorialAberto = false; atualizar();
     if (abaAntes && abaAntes !== "analise") abrirAba(abaAntes);
     $("anuncio").textContent = "Ajuda encerrada.";
     (focoAntes && focoAntes.isConnected ? focoAntes : $("bAjuda")).focus();

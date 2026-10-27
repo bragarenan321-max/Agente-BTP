@@ -70,7 +70,20 @@ with sync_playwright() as p:
     confere(pg.text_content("#seloEstado") == "Pronta para iniciar", "selo 'Pronta para iniciar' com a aba conectada")
     confere(pg.is_disabled("#bExecutar") and "Informe" in pg.inner_text("#motivoBloqueio"),
             "Executar bloqueado sem WOs, com o motivo escrito")
+    confere(pg.locator(".marca-selo svg").count() == 1, "logo própria no cabeçalho")
+    confere(not pg.is_visible("#painel") and pg.is_visible("#estadoVazio"), "ocioso sem histórico: estado vazio, sem cartões vazios")
     pg.screenshot(path=str(PRINTS / "tela_inicial.png"), full_page=True)
+    print("== ajuda com a tela ociosa (indicadores ocultos)")
+    pg.click("#bAjuda")
+    for _ in range(4):
+        pg.keyboard.press("ArrowRight")
+    pg.wait_for_timeout(400)
+    confere(pg.text_content("#tutTitulo") == "Indicadores" and pg.is_visible("#painel")
+            and sobrepoe(pg.locator("#tutFoco").bounding_box(), pg.locator("#painel").bounding_box()),
+            "passo 'Indicadores' mostra o painel oculto e o destaca")
+    pg.keyboard.press("Escape")
+    pg.wait_for_timeout(1300)
+    confere(not pg.is_visible("#painel"), "ao sair da ajuda, o painel volta a ficar oculto")
 
     print("== entrada")
     pg.fill("#texto", "\n".join(btp.wos[:250]) + "\nlixo\n")
@@ -93,6 +106,10 @@ with sync_playwright() as p:
     confere(esperar(lambda: pg.text_content("#seloEstado") == "Executando", 20), "selo 'Executando'")
     confere(esperar(lambda: "WO/s" in pg.inner_text("#etaTxt"), 20), "ritmo (WO/s) medido e exibido")
     pg.screenshot(path=str(PRINTS / "tela_executando.png"), full_page=True)
+    from agente_btp import historico as hist
+    confere(esperar(lambda: bool(hist.listar()) and hist.listar()[0]["situacao"] == "Em andamento", 10),
+            "a análise já aparece no Histórico como 'Em andamento'")
+    confere(pg.locator("#cartaoConfirma input[value=ambas]").count() == 1, "conferência da amostra oferece 'As duas'")
 
     print("== ajuda durante a execução (não pode alterar nada)")
     escritas = []
@@ -104,8 +121,7 @@ with sync_playwright() as p:
     for _ in range(4):
         pg.keyboard.press("Tab")
     confere(pg.evaluate("!!document.activeElement.closest('#tutBalao')"), "Tab não sai do balão (foco preso)")
-    passos = [("#texto",), ("#zonaImportar",), ("#bExecutar",), ("#blocoProgresso",), ("#painel",), ("#secDiagnostico",)]
-    log_aberto_antes = pg.evaluate("$('caixaLog').open")
+    passos = [("#texto",), ("#zonaImportar",), ("#bExecutar",), ("#blocoProgresso",), ("#painel",), ("#secRecentes",)]
     for i, (alvo,) in enumerate(passos):
         if i:
             pg.keyboard.press("ArrowRight")
@@ -128,11 +144,7 @@ with sync_playwright() as p:
                     "destaque acompanha o elemento após rolar a página")
             pg.screenshot(path=str(PRINTS / "ajuda_passo4.png"))
             pg.set_viewport_size({"width": 1440, "height": 900})
-    confere(pg.evaluate("$('caixaLog').open") is True, "passo 6 abre o 'Registro de execução' recolhido")
     confere(pg.inner_text("#tutProximo") == "Concluir", "último passo mostra 'Concluir'")
-    pg.keyboard.press("ArrowLeft")
-    pg.wait_for_timeout(300)
-    confere(pg.evaluate("$('caixaLog').open") == log_aberto_antes, "ao sair do passo 6, a seção volta ao estado anterior")
     pg.keyboard.press("Escape")
     pg.wait_for_timeout(300)
     confere(not pg.is_visible("#tutorial") and not pg.is_visible("#tutFoco"), "Esc encerra e limpa o escurecimento")
@@ -176,11 +188,18 @@ with sync_playwright() as p:
     confere(pg.is_visible("#baixar"), "botão 'Baixar relatório auditado' visível")
     href = pg.get_attribute("#baixar", "href")
     confere(urllib.request.urlopen(URL.rstrip("/") + href).status == 200, "download do .xlsx funciona")
+    confere(not pg.locator("#vistaAnalise #caixaDiag").count(), "diagnóstico não fica mais na tela principal")
+    pg.screenshot(path=str(PRINTS / "tela_concluida.png"), full_page=True)
+    pg.click("#bVerDiag")
+    confere(esperar(lambda: pg.is_visible("#vistaHistorico") and pg.is_visible("#detTecnico"), 10),
+            "'Ver diagnóstico desta análise' abre o detalhe no Histórico")
+    confere(esperar(lambda: "Próxima ação" in pg.inner_text("#diagAcao"), 10), "diagnóstico da análise no Histórico")
+    pg.click("#caixaLog summary")
+    confere(esperar(lambda: "Análise concluída" in pg.text_content("#log"), 10), "registro de execução da análise no Histórico")
     diag = pg.get_attribute("#diagBaixar", "href")
     confere(urllib.request.urlopen(URL.rstrip("/") + diag).status == 200, "download do diagnóstico .json funciona")
-    pg.click("#caixaDiag summary")
-    confere(esperar(lambda: "Próxima ação" in pg.inner_text("#diagAcao"), 10), "'O que deu errado' carrega sob demanda")
-    pg.screenshot(path=str(PRINTS / "tela_concluida.png"), full_page=True)
+    pg.screenshot(path=str(PRINTS / "historico_diagnostico.png"), full_page=True)
+    pg.click("#abaAnalise")
 
     print("== histórico e configurações")
     pg.click("#abaHistorico")
@@ -193,6 +212,22 @@ with sync_playwright() as p:
     confere(esperar(lambda: pg.locator("#cfg_auditorias_por_wo").count() == 1, 10), "configurações carregam")
     pg.click("#cfgSalvar")
     confere(esperar(lambda: "salvas" in pg.inner_text("#cfgStatus"), 10), "configurações salvam")
+    confere(pg.locator("#cfgMensagem option[value=ambas]").count() == 1 and pg.locator("#vistaConfig #bRaiox").count() == 1,
+            "Configurações: mensagem 'As duas' e Raio-X da fonte")
+    pg.select_option("#cfgMensagem", "ambas")
+    confere(esperar(lambda: agente.estado()["fonte"]["mensagem_origem"] == "ambas", 10), "mensagem 'As duas' gravada na fonte")
+    pg.select_option("#cfgTema", "escuro")
+    fundo = pg.evaluate("getComputedStyle(document.body).backgroundColor")
+    confere(pg.evaluate("document.documentElement.dataset.tema") == "escuro" and fundo == "rgb(14, 19, 27)", f"tema escuro aplicado ({fundo})")
+    pg.screenshot(path=str(PRINTS / "config_escuro.png"), full_page=True)
+    pg.reload(); pg.wait_for_timeout(800)
+    confere(pg.evaluate("document.documentElement.dataset.tema") == "escuro", "tema lembrado depois de recarregar")
+    pg.click("#abaAnalise"); pg.wait_for_timeout(800)
+    pg.screenshot(path=str(PRINTS / "tela_escura.png"), full_page=True)
+    pg.click("#abaHistorico"); pg.wait_for_timeout(500); pg.click("#tabHist tr.clicavel"); pg.wait_for_timeout(800)
+    pg.screenshot(path=str(PRINTS / "historico_escuro.png"), full_page=True)
+    pg.click("#abaConfig"); pg.wait_for_timeout(300)
+    pg.select_option("#cfgTema", "claro")
     pg.click("#bAjuda")
     confere(pg.is_visible("#vistaAnalise") and pg.is_visible("#tutBalao"), "ajuda aberta em outra aba leva à tela de análise")
     pg.keyboard.press("Escape")

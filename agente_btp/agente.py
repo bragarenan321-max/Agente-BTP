@@ -100,6 +100,7 @@ class Agente:
             copia["contagem"] = dict(self._estado["contagem"])
             copia["indicadores"] = dict(self._estado["indicadores"])
         copia["pronto"] = cfg.ARQUIVO_CONFIG.exists()
+        copia["fonte"] = self._fonte_resumo() if copia["pronto"] else None
         copia["observadas"] = self.ponte.observadas
         copia.update(self.estado_conexao())
         copia["decorrido_seg"] = round(time.monotonic() - copia.pop("inicio"), 1) if copia["inicio"] else 0
@@ -135,6 +136,30 @@ class Agente:
             # Feita com fonte descartada: os resultados não valem; a opção é REFAZER a mesma lista.
             "fonte_descartada": not config_atual(self.loja.obter(retomar["run_id"])["config"])}
         return copia
+
+    def _fonte_resumo(self) -> dict | None:
+        """Qual tabela do BTP está configurada e se o usuário já a confirmou (resumo da tela)."""
+        try:
+            api = cfg.carregar()
+        except (FileNotFoundError, ValueError):
+            return None
+        return {"descricao": _descrever_fonte(api), "confirmada": api.confirmada,
+                "mensagem_origem": api.mensagem_origem, "tem_mensagem_alerta": bool(api.campo_mensagem_alerta)}
+
+    def definir_mensagem(self, origem: str) -> tuple[bool, str]:
+        """Troca qual mensagem vai para a planilha (item, alerta ou ambas) sem refazer a fonte."""
+        if origem not in ("item", "alerta", "ambas"):
+            return False, "Opção inválida."
+        if not cfg.ARQUIVO_CONFIG.exists():
+            return False, "A fonte de dados ainda não foi configurada (é feita na primeira análise)."
+        dados = json.loads(cfg.ARQUIVO_CONFIG.read_text(encoding="utf-8"))
+        if origem != "item" and not dados.get("campo_mensagem_alerta"):
+            return False, "Esta fonte não tem a mensagem do alerta."
+        dados["mensagem_origem"] = origem
+        cfg.salvar(dados)
+        self._msg(f"Mensagem na planilha: {dict(item='do item', alerta='do alerta', ambas='as duas')[origem]} "
+                  "(vale a partir da próxima análise).")
+        return True, ""
 
     def estado_conexao(self) -> dict:
         """Estado HONESTO da conexão: só "conectado" com batimento recente da aba E sessão do BTP
@@ -269,7 +294,8 @@ class Agente:
                 return False
             if resposta.get("resposta") == "sim":
                 dados = json.loads(cfg.ARQUIVO_CONFIG.read_text(encoding="utf-8"))
-                dados.update(confirmada=True, mensagem_origem=resposta.get("mensagem") or "item")
+                dados.update(confirmada=True, mensagem_origem=resposta.get("mensagem")
+                             if resposta.get("mensagem") in ("item", "alerta", "ambas") else "item")
                 cfg.salvar(dados)
                 self._msg("Fonte de dados confirmada pelo usuário.")
                 self._definir(fase="preparando")
@@ -775,6 +801,9 @@ class Agente:
                                if wo_valida(w)), None)
         self._definir(fase="processando", inicio=time.monotonic(), run_id=run_id, ultimo_numero=numero,
                       situacao="em_andamento", aviso="", ultimo_arquivo=None)
+        # Já aparece no Histórico (com diagnóstico e registro ao vivo) enquanto roda; o fim atualiza o mesmo registro.
+        self._registrar_historico(inicio_relogio, ex["descricao"], self.loja.wos_da_execucao(run_id), [], None,
+                                  "Em andamento", numero, run_id=run_id, total=ex["total"])
         self.loja.evento(run_id, "marco", f"Análise nº {numero}: {ex['total']} WO(s) · {prefs.auditorias_por_wo} "
                          f"conferência(s) por WO (até {prefs.auditorias_por_wo + prefs.consultas_extras_divergencia} "
                          f"em divergência) · {prefs.concorrencia} em paralelo · lote de {prefs.tamanho_lote}.")

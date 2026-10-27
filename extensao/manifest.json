@@ -24,5 +24,11 @@
       "run_at": "document_idle",
       "all_frames": false
     }
-  ]
+  ],
+  "icons": {
+    "16": "icones/icone16.png",
+    "32": "icones/icone32.png",
+    "48": "icones/icone48.png",
+    "128": "icones/icone128.png"
+  }
 }

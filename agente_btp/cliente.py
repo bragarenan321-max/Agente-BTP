@@ -603,6 +603,10 @@ class ClienteBTP:
         valores["mensagem_item"] = valores["mensagem"]
         if self.config.mensagem_origem == "alerta" and valores["mensagem_alerta"]:
             valores["mensagem"] = valores["mensagem_alerta"]
+        elif (self.config.mensagem_origem == "ambas" and valores["mensagem"] and valores["mensagem_alerta"]
+              and valores["mensagem_alerta"] != valores["mensagem"]):
+            # As duas, sempre na mesma ordem: a do item (janela Mensagens) e a do alerta (lista do Monitor).
+            valores["mensagem"] = f'{valores["mensagem"]} — Alerta: {valores["mensagem_alerta"]}'
         elif not valores["mensagem"] and valores["mensagem_alerta"]:
             valores["mensagem"] = valores["mensagem_alerta"]   # o item não tem texto próprio
         fonte = {c: campos[c] for c in ("wo", "material", "fornecedor", "quantidade_faltante", "mensagem")
