@@ -31,7 +31,8 @@ from .diagnostico import categoria
 ESTADOS = ("pendente", "em_andamento", "validada", "divergente", "incompleta", "falha")
 FINAIS = ("validada", "divergente", "incompleta", "falha")
 # Situação da análise inteira.
-SITUACOES = ("em_andamento", "pausado_sessao", "pausado_usuario", "interrompida", "concluida")
+SITUACOES = ("em_andamento", "pausado_sessao", "pausado_usuario", "interrompida", "concluida",
+             "substituida")   # substituida = refeita numa análise nova (não é mais oferecida para retomar)
 
 _ESQUEMA = """
 CREATE TABLE IF NOT EXISTS execucoes (
@@ -269,7 +270,8 @@ class Loja:
     def retomavel(self, aceitar=lambda ex: True) -> dict | None:
         """O que oferecer para retomar: a análise mais recente NÃO TERMINADA (pendentes/em andamento);
         se não houver, a última análise, se ela tiver falhas que valha a pena refazer."""
-        recentes = [ex for ex in self.listar(10) if aceitar(dict(ex, config=self._config(ex["run_id"])))]
+        recentes = [ex for ex in self.listar(10) if ex["situacao"] != "substituida"
+                    and aceitar(dict(ex, config=self._config(ex["run_id"])))]
         for ex in recentes:
             if ex["contadores"]["pendente"] + ex["contadores"]["em_andamento"] > 0:
                 ex["restantes"] = len(self.a_processar(ex["run_id"]))
@@ -280,6 +282,10 @@ class Loja:
             if ex["restantes"]:
                 return ex
         return None
+
+    def wos_da_execucao(self, run_id: str) -> list[str]:
+        """A lista de WOs da análise, na ordem da entrada (para refazê-la sem reimportar)."""
+        return [l["wo"] for l in self._q("SELECT wo FROM wos WHERE run_id=? ORDER BY ordem", (run_id,))]
 
     def _config(self, run_id: str) -> dict:
         linhas = self._q("SELECT config FROM execucoes WHERE run_id=?", (run_id,))

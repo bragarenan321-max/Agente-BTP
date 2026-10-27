@@ -159,6 +159,15 @@ def criar_app(agente: Agente) -> Flask:
     @app.post("/api/executar")
     def executar():
         dados = request.get_json(silent=True) if request.is_json else None
+        if dados and dados.get("modo") == "refazer":
+            run_id = str(dados.get("run_id", ""))
+            ex = agente.loja.obter(run_id)
+            if not ex:
+                return jsonify(ok=False, erro="Análise não encontrada."), 404
+            if agente.estado()["ocupado"]:
+                return jsonify(ok=False, erro="O agente já está executando uma análise."), 409
+            agente.enviar("refazer", run_id)
+            return jsonify(ok=True, total=ex["total"])
         if dados and dados.get("modo") == "retomar":
             run_id = str(dados.get("run_id", ""))
             ex = agente.loja.obter(run_id)

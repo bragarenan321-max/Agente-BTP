@@ -641,14 +641,71 @@ def test_toda_wo_nao_validada_tem_motivo_no_diagnostico():
     assert motivo_da_wo(sem_pista) == "auditoria_incompleta"
 
 
-def test_analise_feita_com_fonte_descartada_nao_e_oferecida_para_retomar(tmp_path):
+def _agente_com_btp(tmp_path, monkeypatch, btp):
+    from dataclasses import asdict
+    from agente_btp import agente as agente_mod, config as cfg, historico
+    monkeypatch.setattr(cfg, "ARQUIVO_CONFIG", tmp_path / "api.json")
+    monkeypatch.setattr(historico, "ARQUIVO", tmp_path / "hist.json")
+    monkeypatch.setattr(historico, "CONTADOR", tmp_path / "contador.txt")
+    monkeypatch.setattr(agente_mod, "PASTA_SAIDAS", tmp_path / "saidas")
+    cfg.salvar(dict(asdict(config()), confirmada=True, origem="receita_btp"))
+    a = agente_mod.Agente()
+    a.ponte.get = btp
+    a.ponte.agente_id, a.ponte._aba_autenticada = "aba", True
+    a.ponte._visto_em = time.monotonic() + 3600
+    return a
+
+
+def test_analise_com_fonte_descartada_e_oferecida_para_refazer_a_mesma_lista(tmp_path, monkeypatch):
+    from agente_btp.servidor import criar_app
+    btp = BTPLote(40)
+    a = _agente_com_btp(tmp_path, monkeypatch, btp)
+    a.loja.criar("velha", 1, "planilha X (40 WOs)", btp.wos, {}, {"versao": 5, "url_lista": "/x"})
+    ret = a.estado()["retomavel"]
+    assert ret["run_id"] == "velha" and ret["fonte_descartada"] is True    # não some: vira "refazer"
+    app = criar_app(a).test_client()
+    r = app.post("/api/executar", json={"run_id": "velha", "modo": "retomar"})
+    assert r.status_code == 409 and "descartada" in r.get_json()["erro"]   # retomar com fonte errada, nunca
+    assert app.post("/api/executar", json={"run_id": "velha", "modo": "refazer"}).get_json()["ok"]
+    esperar(lambda: not a.estado()["ocupado"] and a.estado()["fase"] == "concluido", 60)
+    nova = a.estado()["run_id"]
+    assert nova != "velha" and a.loja.wos_da_execucao(nova) == btp.wos      # mesma lista, mesma ordem
+    assert a.loja.contadores(nova)["pendente"] == 0
+    assert a.loja.obter("velha")["situacao"] == "substituida"
+    assert a.estado()["retomavel"] is None                                  # a velha não volta a aparecer
+
+
+def test_programa_fechado_no_meio_retoma_de_onde_parou(tmp_path, monkeypatch):
+    """Janela preta fechada / PC desligado com WOs em andamento: ao abrir de novo, a análise é
+    oferecida para retomar e termina sem refazer o que já estava gravado."""
     from agente_btp import agente as agente_mod
     from agente_btp.servidor import criar_app
-    a = agente_mod.Agente()
-    a.loja.criar("velha", 1, "x", ["06027|230970238"], {}, {"versao": 5, "url_lista": "/x"})
-    assert a.estado()["retomavel"] is None
-    r = criar_app(a).test_client().post("/api/executar", json={"run_id": "velha", "modo": "retomar"})
-    assert r.status_code == 409 and "descartada" in r.get_json()["erro"]
+    btp = BTPLote(80)
+    a = _agente_com_btp(tmp_path, monkeypatch, btp)
+    btp.cair_quando = lambda url: btp.consultas == 120
+    a.enviar("executar", btp.wos, "planilha (80 WOs)")
+    esperar(lambda: a.estado().get("situacao") == "pausado_sessao")
+    run_id = a.estado()["run_id"]
+    feitas = {w: a.loja.linha_wo(run_id, w) for w, e in a.loja.estados(run_id).items() if e == "validada"}
+    assert feitas
+    a.loja.iniciar(run_id, [w for w, e in a.loja.estados(run_id).items() if e == "pendente"][:5])   # em andamento
+    a.loja.fechar()                                         # "o programa morreu" (sem encerrar a análise)
+    btp.sessao_ok = True
+    b = agente_mod.Agente()                                 # programa aberto de novo, mesma base
+    b.ponte.get = btp
+    b.ponte.agente_id, b.ponte._aba_autenticada = "aba", True
+    b.ponte._visto_em = time.monotonic() + 3600
+    ret = b.estado()["retomavel"]
+    assert ret["run_id"] == run_id and not ret["fonte_descartada"] and ret["restantes"] == 80 - len(feitas)
+    r = criar_app(b).test_client().post("/api/executar", json={"run_id": run_id, "modo": "retomar"})
+    assert r.get_json()["ok"]
+    esperar(lambda: not b.estado()["ocupado"] and b.estado()["fase"] == "concluido", 60)
+    c = b.loja.contadores(run_id)
+    assert c["pendente"] == c["em_andamento"] == c["falha"] == 0
+    for w, antes in feitas.items():
+        assert b.loja.linha_wo(run_id, w)["hash_auditorias"] == antes["hash_auditorias"]
+        assert b.loja.linha_wo(run_id, w)["tentativas"] == 1                  # não foi refeita
+
 
 
 def test_releitura_por_chave_em_lote_marca_item_que_sumiu_como_ausente():

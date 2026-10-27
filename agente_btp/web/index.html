@@ -366,7 +366,7 @@ let retomavel = null;
 $("bRetomarAnalise").onclick = async () => {
   if (!retomavel) return;
   const r = await fetch("/api/executar", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ run_id: retomavel.run_id, modo: "retomar" }) }).then(r => r.json());
+    body: JSON.stringify({ run_id: retomavel.run_id, modo: retomavel.fonte_descartada ? "refazer" : "retomar" }) }).then(r => r.json());
   if (!r.ok) alert(r.erro);
 };
 const CATEGORIA = { FONTE: "BTP / sessão", APP: "Agente", ENTRADA: "Entrada" };
@@ -464,10 +464,20 @@ async function atualizar() {
 
   retomavel = e.retomavel;
   $("cartaoRetomar").classList.toggle("oculto", !retomavel);
+  if (retomavel && retomavel.fonte_descartada) {
+    $("retTitulo").textContent = `Análise nº ${retomavel.numero}: refazer com a fonte certa`;
+    $("retTexto").textContent = `Esta análise usou uma tabela do BTP que não é a da janela Mensagens; os resultados ` +
+      `dela não valem. Refaça a mesma lista (${retomavel.total} WOs) com a fonte certa — não precisa importar de novo.`;
+    $("bRetomarAnalise").textContent = `Refazer as ${retomavel.total} WOs`;
+  } else if (retomavel) {
+    $("bRetomarAnalise").textContent = "Retomar";
+  }
   if (retomavel) {
-    $("retTitulo").textContent = `Retomar análise nº ${retomavel.numero}`;
-    $("retTexto").textContent = `${retomavel.validadas} de ${retomavel.total} já validadas, ${retomavel.restantes} restantes. ` +
-      "Só as WOs pendentes ou com falha são consultadas de novo.";
+    if (!retomavel.fonte_descartada) {
+      $("retTitulo").textContent = `Retomar análise nº ${retomavel.numero}`;
+      $("retTexto").textContent = `${retomavel.validadas} de ${retomavel.total} já validadas, ${retomavel.restantes} restantes. ` +
+        "Só as WOs pendentes ou com falha são consultadas de novo.";
+    }
     $("retPlanilha").href = `/api/execucoes/${encodeURIComponent(retomavel.run_id)}/planilha`;
     $("retDiag").href = `/api/diagnostico?run_id=${encodeURIComponent(retomavel.run_id)}`;
     $("bRetomarAnalise").disabled = !conectado;

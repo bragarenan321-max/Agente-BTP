@@ -125,13 +125,15 @@ class Agente:
             if copia["fase"] != "concluido":
                 copia["contagem"] = por_situacao          # chips ao vivo, da mesma base
             copia["mensagens"] = copia["mensagens"][-30:] + self.loja.log(run_id, 200)
-        retomar = None if self._estado["ocupado"] else self.loja.retomavel(aceitar=lambda ex: config_atual(ex["config"]))
+        retomar = None if self._estado["ocupado"] else self.loja.retomavel()
         copia["retomavel"] = None if not retomar else {
             "run_id": retomar["run_id"], "numero": retomar["numero"], "total": retomar["total"],
             "validadas": retomar["contadores"]["validada"],
             "feitas": sum(retomar["contadores"][k] for k in ("validada", "divergente", "incompleta", "falha")),
             "restantes": retomar["restantes"],
-            "situacao": retomar["situacao"], "descricao": retomar["descricao"]}
+            "situacao": retomar["situacao"], "descricao": retomar["descricao"],
+            # Feita com fonte descartada: os resultados não valem; a opção é REFAZER a mesma lista.
+            "fonte_descartada": not config_atual(self.loja.obter(retomar["run_id"])["config"])}
         return copia
 
     def estado_conexao(self) -> dict:
@@ -191,7 +193,7 @@ class Agente:
         return True, "", {}
 
     def enviar(self, comando: str, *args) -> None:
-        if comando in ("executar", "retomar"):
+        if comando in ("executar", "retomar", "refazer"):
             # Ocupado JÁ no pedido (não só quando a fila o pega): um 2º clique não inicia outra análise.
             self._definir(ocupado=True, fase="preparando", aviso="")
         self._fila.put((comando, args))
@@ -722,6 +724,17 @@ class Agente:
             self.loja.evento(run_id, "marco", f"{len(wos) - len(unicas)} WO(s) repetida(s) na entrada: cada uma "
                              "é consultada uma vez.")
         self._rodar(run_id, inicio_relogio)
+
+    def _cmd_refazer(self, run_id: str) -> None:
+        """Refaz a MESMA lista de WOs numa análise nova (ex.: a anterior usou uma fonte descartada).
+        A anterior fica como "substituída" e deixa de ser oferecida para retomar."""
+        ex = self.loja.obter(run_id)
+        if not ex:
+            self._definir(fase="ocioso", aviso="Análise não encontrada.")
+            return
+        self.loja.definir_situacao(run_id, "substituida", f"refeita a partir da lista da análise nº {ex['numero']}")
+        self._cmd_executar(self.loja.wos_da_execucao(run_id),
+                           f"{ex['descricao']} — refeita da análise nº {ex['numero']}")
 
     def _cmd_retomar(self, run_id: str) -> None:
         """Continua uma análise: só as WOs pendentes, em andamento ou com falha; as validadas,
