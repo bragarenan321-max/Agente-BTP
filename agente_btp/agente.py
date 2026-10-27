@@ -651,17 +651,25 @@ class Agente:
                               "descricao": diag_mod.descricao(motivo), "ocorrencias": len(afetadas),
                               "wos_afetadas": len(afetadas), "exemplos_wo": afetadas[:10],
                               "primeira_ocorrencia": {}, "proxima_acao": diag_mod.proxima_acao(motivo)})
-        problemas.sort(key=lambda p: (p["categoria"] == "ENTRADA", -p["wos_afetadas"], -p["ocorrencias"]))
+        restantes = len(self.loja.a_processar(run_id))
+        if not restantes and ex["situacao"] == "concluida":
+            # Interrupção/queda de sessão que a retomada já superou: fica no relatório como RESOLVIDA
+            # (e não dita a próxima ação — antes sugeria "Retomar" numa análise já concluída).
+            for p in problemas:
+                if p["motivo"] in ("interrompida_usuario", "limite_execucao", "sessao_expirada", "http_401",
+                                   "http_403", "aba_desconectada", "aba_sem_resposta"):
+                    p["resolvido"] = True
+        problemas.sort(key=lambda p: (p.get("resolvido", False), p["categoria"] == "ENTRADA",
+                                      -p["wos_afetadas"], -p["ocorrencias"]))
         linha_do_tempo = [{"quando": datetime.fromtimestamp(e["quando"]).isoformat(timespec="seconds"),
                            "evento": e["texto"], "motivo": e["motivo"]}
                           for e in self.loja.eventos(run_id, tipos=("marco",), limite=500)]
         sondas = self.loja.eventos(run_id, tipos=("sonda",), limite=50)
-        restantes = len(self.loja.a_processar(run_id))
         if ex["situacao"] == "pausado_sessao":
             acao = diag_mod.proxima_acao(ex["motivo"] or "sessao_expirada")
         elif restantes:
             acao = f"Use 'Retomar' na tela: {restantes} WO(s) ainda a fazer (as {c['validada']} validadas não são refeitas)."
-        elif problemas and problemas[0]["categoria"] != "ENTRADA":
+        elif problemas and problemas[0]["categoria"] != "ENTRADA" and not problemas[0].get("resolvido"):
             acao = problemas[0]["proxima_acao"]
         else:
             acao = "Nada a fazer: análise concluída."

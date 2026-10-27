@@ -204,6 +204,22 @@ def criar_app(agente: Agente) -> Flask:
         agente.enviar("executar", wos, " + ".join(partes))
         return jsonify(ok=True, total=len(wos))
 
+    @app.post("/api/entrada/planilha")
+    def contar_planilha():
+        """Só LÊ a planilha escolhida e diz quantas WOs foram reconhecidas (nada é executado)."""
+        arquivo = request.files.get("arquivo")
+        if not arquivo or not arquivo.filename:
+            return jsonify(ok=False, erro="Nenhuma planilha enviada."), 400
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = Path(pasta) / "entrada.xlsx"
+            arquivo.save(caminho)
+            try:
+                wos = ler_wos_planilha(caminho)
+            except Exception as exc:  # noqa: BLE001 — planilha ilegível vira mensagem para o usuário
+                return jsonify(ok=False, erro=f"Planilha inválida: {exc}"), 400
+        validas = sum(1 for w in wos if wo_valida(w))
+        return jsonify(ok=True, total=len(wos), validas=validas, invalidas=len(wos) - validas)
+
     @app.post("/api/pausar")
     def pausar():
         return jsonify(ok=agente.pausar())

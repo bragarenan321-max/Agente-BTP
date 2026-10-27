@@ -721,3 +721,19 @@ def test_releitura_por_chave_em_lote_marca_item_que_sumiu_como_ausente():
     assert all(v is not None for w in wos[1:] for v in relidas[w].itens.values())
     individual = cli.reler(wos[1], bases[wos[1]], 2)
     assert {k: o.valores for k, o in individual.itens.items()} == {k: o.valores for k, o in relidas[wos[1]].itens.items()}
+
+
+def test_interrupcao_superada_pela_retomada_fica_resolvida_e_nao_dita_a_proxima_acao(tmp_path, monkeypatch):
+    """Antes: análise retomada e concluída ainda dizia 'Use Retomar' por causa da parada antiga."""
+    btp = BTPLote(30)
+    a = _agente_com_btp(tmp_path, monkeypatch, btp)
+    amb = Ambiente(btp, Preferencias(concorrencia=1, tamanho_lote=1), run_id="r9", loja=a.loja)
+    t = amb.rodar(em_segundo_plano=True)
+    esperar(lambda: a.loja.contadores("r9")["validada"] >= 3)
+    amb.motor.parar()
+    t.join(20)
+    assert "Retomar" in a.diagnostico_execucao("r9")["proxima_acao"]
+    assert amb.rodar() == "concluida"
+    d = a.diagnostico_execucao("r9")
+    parada = next(p for p in d["problemas"] if p["motivo"] == "interrompida_usuario")
+    assert parada["resolvido"] is True and "Retomar" not in d["proxima_acao"]

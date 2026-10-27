@@ -5,290 +5,484 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agente BTP</title>
 <style>
+  /* ============================================================ tokens de design */
   :root {
-    --vermelho:#DA291C; --vermelho-esc:#B3001B; --fundo:#F3F3F3; --cartao:#FFFFFF; --texto:#1F1F1F;
-    --suave:#6B6B6B; --borda:#E2E2E2; --verde:#1E9E5A; --ambar:#E39B12; --cinza:#9A9A9A;
+    --marca: #DA291C;            /* vermelho Claro: ação principal, foco e identidade */
+    --marca-esc: #B3001B;
+    --marca-suave: #FDECEA;
+    --marinho: #1C2A4A;          /* cabeçalho e títulos */
+    --marinho-2: #2A3B61;
+    --fundo: #F4F5F7;
+    --superficie: #FFFFFF;
+    --superficie-2: #F9FAFB;
+    --texto: #1A1D23;
+    --texto-2: #5B6270;
+    --texto-3: #8A909C;
+    --borda: #E3E6EB;
+    --borda-forte: #CDD2DA;
+    --ok: #1E8E52;     --ok-suave: #E7F5EE;
+    --atencao: #B26B00; --atencao-suave: #FFF4DE;
+    --erro: #C21F14;   --erro-suave: #FDE9E7;
+    --info: #2F5DA8;   --info-suave: #E9F0FB;
+    --fonte: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    --mono: Consolas, "Cascadia Mono", "SF Mono", monospace;
+    --t-xs: 12px; --t-sm: 13px; --t-md: 14px; --t-lg: 16px; --t-xl: 20px; --t-num: 26px;
+    --e1: 4px; --e2: 8px; --e3: 12px; --e4: 16px; --e5: 24px; --e6: 32px;
+    --raio: 8px; --raio-g: 12px;
+    --sombra: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08);
+    --sombra-alta: 0 12px 32px rgba(16, 24, 40, .18);
+    --foco: 0 0 0 3px rgba(218, 41, 28, .28);
+    --largura: 1320px;
   }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--fundo); color:var(--texto); font:15px/1.5 "Segoe UI", Arial, sans-serif; }
-  header { background:var(--vermelho); color:#fff; }
-  .topo { max-width:900px; margin:0 auto; padding:14px 16px; display:flex; align-items:center; gap:12px; }
-  .marca { font-size:22px; font-weight:700; letter-spacing:.2px; }
-  .marca small { display:block; font-size:12px; font-weight:400; opacity:.85; letter-spacing:0; }
-  .pilula { margin-left:auto; background:rgba(255,255,255,.16); border-radius:999px; padding:6px 12px;
-            font-size:13px; display:flex; align-items:center; gap:8px; white-space:nowrap; }
-  .ponto { width:9px; height:9px; border-radius:50%; background:var(--cinza); }
-  .ponto.ok { background:#5BE38F; } .ponto.esp { background:#FFD166; }
-  main { max-width:900px; margin:20px auto; padding:0 16px; display:grid; gap:16px; }
-  .cartao { background:var(--cartao); border:1px solid var(--borda); border-radius:10px; padding:18px 20px; }
-  h2 { margin:0 0 4px; font-size:17px; }
-  .suave { color:var(--suave); font-size:13px; margin:0 0 12px; }
-  .alerta { border-left:4px solid var(--vermelho); }
-  .notificacao { display:flex; gap:8px; align-items:flex-start; font-size:13px; color:#444; background:#fff;
-                 border:1px solid var(--borda); border-radius:8px; padding:8px 12px; }
-  .notificacao::before { content:""; flex:none; width:8px; height:8px; margin-top:6px; border-radius:50%; background:var(--ambar); }
-  .notificacao.critica::before { background:var(--vermelho); }
-  textarea { width:100%; min-height:150px; border:1px solid var(--borda); border-radius:8px; padding:10px;
-             font:14px Consolas, monospace; resize:vertical; background:#FAFAFA; }
-  textarea:focus { outline:2px solid #F3B0AA; border-color:var(--vermelho); }
-  .linha { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  button, .botao { font:600 15px "Segoe UI", Arial, sans-serif; border-radius:8px; padding:11px 22px; cursor:pointer;
-                   border:0; background:var(--vermelho); color:#fff; text-decoration:none; display:inline-block; }
-  button:hover, .botao:hover { background:var(--vermelho-esc); }
-  button.sec { background:#fff; color:var(--vermelho); border:1px solid var(--vermelho); padding:10px 18px; }
-  button.sec:hover { background:#FFF1F0; }
-  button.link { background:none; color:var(--vermelho); padding:0; font-weight:600; font-size:14px; }
-  button:disabled { opacity:.4; cursor:not-allowed; }
-  .arquivo { font-size:14px; color:var(--suave); }
-  .arquivo label { color:var(--vermelho); font-weight:600; cursor:pointer; }
-  .contador { margin-left:auto; font-size:13px; color:var(--suave); }
-  .barra { height:14px; background:#EEE; border-radius:999px; overflow:hidden; margin:12px 0 8px; }
-  .barra > div { height:100%; width:0; background:var(--vermelho); border-radius:999px; transition:width .4s; }
-  .barra.indef > div { width:35% !important; animation:vai 1.2s ease-in-out infinite; }
-  @keyframes vai { 0% { margin-left:-35%; } 100% { margin-left:100%; } }
-  .numeros { display:flex; justify-content:space-between; font-size:13px; color:var(--suave); }
-  .chips { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
-  .chip { border-radius:999px; padding:4px 12px; font-size:13px; background:#F2F2F2; }
-  .chip b { margin-left:4px; }
-  .chip.ok { background:#E6F6EE; color:#13683C; } .chip.amb { background:#FFF3DC; color:#8A5A00; }
-  .chip.err { background:#FDE8E7; color:#A1150C; }
-  .favorito { display:inline-block; background:var(--vermelho); color:#fff; padding:6px 12px; border-radius:6px;
-              text-decoration:none; font-weight:600; font-size:13px; cursor:grab; }
-  ol { margin:6px 0 10px; padding-left:20px; font-size:14px; }
-  details summary { cursor:pointer; color:var(--suave); font-size:13px; }
-  #log { margin-top:10px; background:#FAFAFA; border:1px solid var(--borda); border-radius:8px; padding:10px;
-         max-height:220px; overflow:auto; font:12px Consolas, monospace; white-space:pre-wrap; color:#444; }
-  .oculto { display:none !important; }
-  nav { max-width:900px; margin:0 auto; padding:0 16px; display:flex; gap:22px; }
-  nav button { background:none; color:rgba(255,255,255,.8); border-radius:0; padding:8px 2px 10px;
-               border-bottom:3px solid transparent; font-size:14px; }
-  nav button:hover { background:none; color:#fff; }
-  nav button.ativa { color:#fff; border-bottom-color:#fff; }
-  table { width:100%; border-collapse:collapse; font-size:14px; }
-  th { text-align:left; font-size:12px; color:var(--suave); font-weight:600; padding:8px 6px; border-bottom:1px solid var(--borda); }
-  td { padding:9px 6px; border-bottom:1px solid #F0F0F0; vertical-align:top; }
-  tr.clicavel { cursor:pointer; } tr.clicavel:hover td { background:#FFF6F5; }
-  tr.selecionada td { background:#FFEFED; }
-  .num { text-align:right; white-space:nowrap; }
-  .tag { border-radius:999px; padding:2px 10px; font-size:12px; white-space:nowrap; background:#F2F2F2; }
-  .tag.ok { background:#E6F6EE; color:#13683C; } .tag.amb { background:#FFF3DC; color:#8A5A00; }
-  .tag.err { background:#FDE8E7; color:#A1150C; }
-  .rolagem { max-height:420px; overflow:auto; margin-top:10px; }
-  select { font:14px "Segoe UI", Arial, sans-serif; padding:6px 8px; border:1px solid var(--borda); border-radius:6px; }
-  .vazio { color:var(--suave); text-align:center; padding:30px 0; }
-  nav .engrenagem { margin-left:auto; display:flex; align-items:center; gap:6px; }
-  nav .engrenagem svg { width:17px; height:17px; fill:currentColor; }
-  .painel { display:grid; grid-template-columns:repeat(6, 1fr); gap:8px; margin-top:14px; }
-  .indicador { border:1px solid var(--borda); border-radius:8px; padding:8px 10px; background:#FCFCFC; }
-  .indicador b { display:block; font-size:22px; line-height:1.2; }
-  .indicador span { font-size:12px; color:var(--suave); }
-  .indicador.ok b { color:var(--verde); } .indicador.amb b { color:#B87800; } .indicador.err b { color:var(--vermelho); }
-  @media (max-width:700px) { .painel { grid-template-columns:repeat(3, 1fr); } }
-  .etapa { font-size:13px; color:var(--suave); margin:6px 0 0; min-height:19px; }
-  .grupo h3 { margin:0 0 2px; font-size:15px; }
-  .campo { display:grid; grid-template-columns:1fr 230px; gap:4px 16px; padding:12px 0; border-top:1px solid #F0F0F0; }
-  .campo:first-of-type { border-top:0; }
-  .campo label { font-weight:600; font-size:14px; }
-  .campo .ajuda { grid-column:1; font-size:12px; color:var(--suave); }
-  .campo .entrada { grid-row:1 / span 2; grid-column:2; display:flex; align-items:center; gap:6px; justify-content:flex-end; }
-  .campo input[type=number] { width:90px; font:14px "Segoe UI", Arial, sans-serif; padding:6px 8px;
-                               border:1px solid var(--borda); border-radius:6px; text-align:right; }
-  .campo input[type=checkbox] { width:18px; height:18px; accent-color:var(--vermelho); }
-  .campo select { width:210px; }
-  .campo .un { font-size:12px; color:var(--suave); min-width:20px; }
-  .padrao { font-size:11px; color:var(--cinza); }
-  .categoria { border:1px solid var(--borda); border-radius:8px; padding:10px 12px; margin-top:10px; background:#FCFCFC; }
-  .categoria h3 { margin:0 0 4px; font-size:14px; }
-  .categoria .ev { font:12px Consolas, monospace; color:#555; white-space:pre-wrap; word-break:break-all; margin:6px 0 0; }
-  .rotulo-cat { font-size:11px; font-weight:700; letter-spacing:.4px; border-radius:4px; padding:1px 6px; margin-right:6px; }
-  .rotulo-cat.FONTE { background:#FDE8E7; color:#A1150C; } .rotulo-cat.APP { background:#E8EEFD; color:#1C3FA1; }
-  .rotulo-cat.ENTRADA { background:#FFF3DC; color:#8A5A00; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font: var(--t-md)/1.5 var(--fonte); }
+  .oculto { display: none !important; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
+  :focus-visible { outline: none; box-shadow: var(--foco); border-radius: 6px; }
+  a { color: var(--info); }
+
+  /* ============================================================ botões */
+  .btn { font: 600 var(--t-md) var(--fonte); border-radius: var(--raio); padding: 9px 16px; cursor: pointer; border: 1px solid transparent;
+         display: inline-flex; align-items: center; justify-content: center; gap: var(--e2); text-decoration: none; line-height: 1.2;
+         transition: background .15s, border-color .15s, color .15s; white-space: nowrap; }
+  .btn-primario { background: var(--marca); color: #fff; }
+  .btn-primario:hover { background: var(--marca-esc); }
+  .btn-sec { background: var(--superficie); color: var(--texto); border-color: var(--borda-forte); }
+  .btn-sec:hover { background: var(--superficie-2); border-color: var(--texto-3); }
+  .btn-perigo { background: var(--superficie); color: var(--erro); border-color: #F1B8B3; }
+  .btn-perigo:hover { background: var(--erro-suave); }
+  .btn-texto { background: none; border: none; color: var(--info); padding: 4px 6px; font-weight: 600; }
+  .btn-texto:hover { text-decoration: underline; }
+  .btn-largo { width: 100%; padding: 11px 16px; font-size: var(--t-lg); }
+  .btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+  .btn-primario:disabled { background: #C5CAD3; color: #fff; opacity: 1; }
+  .btn svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
+
+  /* ============================================================ cabeçalho */
+  .topo { background: var(--marinho); color: #fff; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 0 rgba(0,0,0,.2); }
+  .topo-in { max-width: var(--largura); margin: 0 auto; padding: 0 var(--e5); height: 56px; display: flex; align-items: center; gap: var(--e5); }
+  .marca { display: flex; align-items: center; gap: 10px; flex: none; }
+  .marca-selo { width: 30px; height: 30px; border-radius: 7px; background: var(--marca); display: grid; place-items: center;
+                font: 800 11px var(--fonte); letter-spacing: .3px; }
+  .marca b { display: block; font-size: var(--t-lg); line-height: 1.1; }
+  .marca small { display: block; font-size: 11px; color: #AAB4C8; }
+  .abas { display: flex; gap: var(--e1); height: 100%; }
+  .abas button { background: none; border: none; color: #C3CBDB; font: 600 var(--t-md) var(--fonte); padding: 0 var(--e3); cursor: pointer;
+                 border-bottom: 3px solid transparent; border-top: 3px solid transparent; }
+  .abas button:hover { color: #fff; }
+  .abas button.ativa { color: #fff; border-bottom-color: var(--marca); }
+  .topo-dir { margin-left: auto; display: flex; align-items: center; gap: var(--e2); }
+  .conexao { display: flex; align-items: center; gap: var(--e2); font-size: var(--t-sm); color: #DDE3EE; padding: 5px 10px;
+             border-radius: 999px; background: rgba(255,255,255,.08); white-space: nowrap; }
+  .ponto { width: 8px; height: 8px; border-radius: 50%; background: #8A93A6; flex: none; }
+  .ponto.ok { background: #4ADE80; } .ponto.esp { background: #FBBF24; }
+  .btn-topo { background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.14); border-radius: var(--raio);
+              font: 600 var(--t-sm) var(--fonte); padding: 6px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-topo:hover { background: rgba(255,255,255,.16); }
+  .btn-topo.ativa { background: #fff; color: var(--marinho); }
+  .btn-topo svg { width: 16px; height: 16px; fill: currentColor; }
+
+  /* ============================================================ página */
+  .pagina { max-width: var(--largura); margin: 0 auto; padding: var(--e5); display: grid; gap: var(--e4); }
+  .cartao { background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-g); box-shadow: var(--sombra); padding: var(--e5); }
+  .cartao-cab { display: flex; align-items: center; gap: var(--e2); margin-bottom: var(--e4); }
+  .cartao-cab h2, h2 { margin: 0; font-size: var(--t-lg); font-weight: 700; color: var(--marinho); }
+  .cartao-cab .dir { margin-left: auto; display: flex; gap: var(--e2); align-items: center; }
+  .meta { font-size: var(--t-sm); color: var(--texto-2); margin: 0; }
+  .linha { display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; }
+  .grade { display: grid; grid-template-columns: minmax(330px, 400px) minmax(0, 1fr); gap: var(--e4); align-items: start; }
+  .coluna { display: grid; gap: var(--e4); min-width: 0; }
+  @media (max-width: 980px) { .grade { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) {
+    .btn-topo .rot { display: none; }
+    #conexao { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+  @media (max-width: 640px) { .pagina { padding: var(--e3); } .cartao { padding: var(--e4); }
+    .topo-in { padding: 8px var(--e3) 0; gap: 4px var(--e3); height: auto; flex-wrap: wrap; }
+    .marca small { display: none; }
+    .abas { order: 3; width: 100%; height: 40px; }
+    .conexao { padding: 7px; } #conexao { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+
+  /* avisos (nunca escondem alertas críticos) */
+  .aviso { display: flex; gap: var(--e3); align-items: flex-start; padding: var(--e3) var(--e4); border-radius: var(--raio);
+           border: 1px solid var(--borda); background: var(--superficie); font-size: var(--t-md); }
+  .aviso::before { content: ""; flex: none; width: 4px; align-self: stretch; border-radius: 4px; background: var(--atencao); }
+  .aviso.critico::before { background: var(--erro); }
+  .aviso.info::before { background: var(--info); }
+  .aviso .corpo { flex: 1; min-width: 0; }
+  .aviso b.tit { display: block; color: var(--marinho); }
+
+  /* ============================================================ preparação */
+  textarea { width: 100%; min-height: 168px; max-height: 420px; resize: vertical; border: 1px solid var(--borda-forte); border-radius: var(--raio);
+             padding: 10px 12px; font: var(--t-md)/1.55 var(--mono); background: var(--superficie-2); color: var(--texto); }
+  textarea:focus { outline: none; border-color: var(--marca); box-shadow: var(--foco); background: #fff; }
+  .contagem { display: grid; gap: 2px; margin: 6px 0 var(--e4); font-size: var(--t-sm); color: var(--texto-2); }
+  .contagem b { color: var(--texto); font-variant-numeric: tabular-nums; }
+  .importar { border: 1px dashed var(--borda-forte); border-radius: var(--raio); padding: var(--e3); display: flex; align-items: center;
+              gap: var(--e3); flex-wrap: wrap; margin-bottom: var(--e4); }
+  .importar.com-arquivo { border-style: solid; border-color: #B9D3C3; background: var(--ok-suave); }
+  .importar .arq { flex: 1; min-width: 150px; font-size: var(--t-sm); color: var(--texto-2); overflow-wrap: anywhere; }
+  .importar .arq b { color: var(--texto); }
+  .importar .arq.erro { color: var(--erro); }
+  .conferencia { margin-top: var(--e3); }
+  .conferencia .ajuda-ctx { vertical-align: -3px; margin-left: 4px; }
+
+  /* ajuda contextual */
+  .ajuda-ctx { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--borda-forte); background: var(--superficie);
+               color: var(--texto-2); font: 700 11px var(--fonte); cursor: pointer; padding: 0; line-height: 16px; flex: none; }
+  .ajuda-ctx:hover, .ajuda-ctx[aria-expanded="true"] { border-color: var(--marinho); color: var(--marinho); }
+  .dica { position: fixed; z-index: 80; max-width: 300px; background: var(--marinho); color: #fff; font-size: var(--t-sm); line-height: 1.45;
+          padding: 10px 12px; border-radius: var(--raio); box-shadow: var(--sombra-alta); }
+  .dica b { display: block; margin-bottom: 2px; }
+
+  /* ============================================================ execução */
+  .exec-cab { display: flex; align-items: center; gap: var(--e3); flex-wrap: wrap; margin-bottom: var(--e3); }
+  .exec-cab h2 { font-size: var(--t-xl); }
+  .selo { display: inline-flex; align-items: center; gap: 6px; font: 700 var(--t-xs) var(--fonte); letter-spacing: .3px; text-transform: uppercase;
+          padding: 4px 10px; border-radius: 999px; background: var(--superficie-2); color: var(--texto-2); border: 1px solid var(--borda); }
+  .selo::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .selo.rodando { background: var(--info-suave); color: var(--info); border-color: #C9D8F2; }
+  .selo.rodando::before { animation: pulso 1.4s ease-in-out infinite; }
+  .selo.pausa { background: var(--atencao-suave); color: var(--atencao); border-color: #F1D9A8; }
+  .selo.ok { background: var(--ok-suave); color: var(--ok); border-color: #BFE3CE; }
+  .selo.erro { background: var(--erro-suave); color: var(--erro); border-color: #F3C2BD; }
+  @keyframes pulso { 50% { opacity: .3; } }
+  .exec-cab .acoes { margin-left: auto; display: flex; gap: var(--e2); }
+  .barra { height: 10px; background: #E9ECF1; border-radius: 999px; overflow: hidden; }
+  .barra > div { height: 100%; width: 0; background: var(--marinho); border-radius: 999px; transition: width .4s; }
+  .barra.ok > div { background: var(--ok); }
+  .barra.indef > div { width: 30% !important; animation: vai 1.3s ease-in-out infinite; }
+  @keyframes vai { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+  .numeros { display: flex; justify-content: space-between; gap: var(--e3); flex-wrap: wrap; margin-top: var(--e2); font-size: var(--t-sm); color: var(--texto-2); }
+  .numeros b { color: var(--texto); font-variant-numeric: tabular-nums; }
+  .etapa { font-size: var(--t-sm); color: var(--texto-2); margin: var(--e1) 0 0; min-height: 20px; font-family: var(--mono); overflow-wrap: anywhere; }
+  .vazio-exec { font-size: var(--t-md); color: var(--texto-2); margin: 0; }
+
+  .painel { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--e2); margin-top: var(--e4); }
+  @media (max-width: 1180px) { .painel { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 460px) { .painel { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .indicador { border: 1px solid var(--borda); border-radius: var(--raio); padding: 10px 12px; background: var(--superficie-2); min-width: 0;
+               display: flex; flex-direction: column; justify-content: space-between; gap: 4px; }
+  .indicador .rot { display: flex; align-items: flex-start; gap: 6px; font-size: var(--t-xs); color: var(--texto-2); font-weight: 600; line-height: 1.3; }
+  .indicador .rot svg { width: 14px; height: 14px; flex: none; fill: currentColor; margin-top: 1px; }
+  .indicador .rot .ajuda-ctx { margin-left: auto; }
+  .indicador b { display: block; font-size: var(--t-num); line-height: 1.15; margin-top: 2px; font-variant-numeric: tabular-nums; color: var(--marinho); }
+  .indicador.ok { border-top: 3px solid var(--ok); } .indicador.ok svg, .indicador.ok b { color: var(--ok); }
+  .indicador.amb { border-top: 3px solid var(--atencao); } .indicador.amb svg, .indicador.amb b { color: var(--atencao); }
+  .indicador.err { border-top: 3px solid var(--erro); } .indicador.err svg, .indicador.err b { color: var(--erro); }
+  .tag.resolvido { background: var(--ok-suave); color: var(--ok); margin-left: 6px; }
+  .indicador.neutro { border-top: 3px solid var(--borda-forte); }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: var(--e3); }
+  .chips:empty { display: none; }
+  .chip { border-radius: 999px; padding: 3px 10px; font-size: var(--t-xs); background: #EEF0F4; color: var(--texto-2); font-weight: 600; }
+  .chip b { margin-left: 4px; color: var(--texto); }
+  .chip.ok { background: var(--ok-suave); color: var(--ok); } .chip.amb { background: var(--atencao-suave); color: var(--atencao); }
+  .chip.err { background: var(--erro-suave); color: var(--erro); }
+  .resultado-acoes { display: flex; gap: var(--e2); flex-wrap: wrap; margin-top: var(--e4); }
+  .resultado-acoes:not(:has(> :not(.oculto))) { display: none; }
+
+  /* conferência da amostra */
+  .alerta-cartao { border-left: 4px solid var(--marca); }
+  table { width: 100%; border-collapse: collapse; font-size: var(--t-md); }
+  th { text-align: left; font-size: var(--t-xs); color: var(--texto-2); font-weight: 700; padding: 8px; border-bottom: 1px solid var(--borda);
+       background: var(--superficie-2); position: sticky; top: 0; text-transform: uppercase; letter-spacing: .3px; }
+  td { padding: 9px 8px; border-bottom: 1px solid #F0F2F5; vertical-align: top; }
+  .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mono { font-family: var(--mono); }
+  .rolagem { max-height: 420px; overflow: auto; border: 1px solid var(--borda); border-radius: var(--raio); margin-top: var(--e3); }
+  .vazio { color: var(--texto-2); text-align: center; padding: var(--e6) 0; }
+
+  /* ============================================================ diagnóstico técnico */
+  .tecnico { padding: 0; overflow: hidden; }
+  .tecnico > .cartao-cab { padding: var(--e4) var(--e5); margin: 0; border-bottom: 1px solid var(--borda); }
+  .secao { border-bottom: 1px solid var(--borda); }
+  .secao:last-child { border-bottom: 0; }
+  .secao > summary { list-style: none; cursor: pointer; padding: var(--e3) var(--e5); display: flex; align-items: center; gap: var(--e2);
+                     font-weight: 600; color: var(--marinho); }
+  .secao > summary::-webkit-details-marker { display: none; }
+  .secao > summary::before { content: "›"; display: inline-block; width: 14px; color: var(--texto-3); font-size: 18px; line-height: 1; transition: transform .15s; }
+  .secao[open] > summary::before { transform: rotate(90deg); }
+  .secao > summary:hover { background: var(--superficie-2); }
+  .secao > summary .sub { font-weight: 400; color: var(--texto-3); font-size: var(--t-sm); }
+  .secao .conteudo { padding: 0 var(--e5) var(--e4) calc(var(--e5) + 22px); }
+  #log { background: var(--superficie-2); border: 1px solid var(--borda); border-radius: var(--raio); padding: 10px; max-height: 280px; overflow: auto;
+         font: 12px/1.5 var(--mono); white-space: pre-wrap; color: #3B4250; margin: 0; }
+  .categoria { border: 1px solid var(--borda); border-radius: var(--raio); padding: 10px 12px; margin-top: 10px; background: var(--superficie-2); }
+  .categoria h3 { margin: 0 0 4px; font-size: var(--t-md); }
+  .categoria .ev { font: 12px var(--mono); color: #555; white-space: pre-wrap; word-break: break-all; margin: 6px 0 0; }
+  .rotulo-cat { font-size: 11px; font-weight: 700; letter-spacing: .4px; border-radius: 4px; padding: 1px 6px; margin-right: 6px; }
+  .rotulo-cat.FONTE { background: var(--erro-suave); color: var(--erro); } .rotulo-cat.APP { background: var(--info-suave); color: var(--info); }
+  .rotulo-cat.ENTRADA { background: var(--atencao-suave); color: var(--atencao); }
+  input[type=text], input[type=number], select { font: var(--t-md) var(--fonte); padding: 7px 9px; border: 1px solid var(--borda-forte); border-radius: 6px;
+       background: #fff; color: var(--texto); }
+  input:focus, select:focus { outline: none; border-color: var(--marca); box-shadow: var(--foco); }
+
+  /* ============================================================ histórico */
+  tr.clicavel { cursor: pointer; } tr.clicavel:hover td { background: #F7F8FA; }
+  tr.selecionada td { background: #F1F4FA; }
+  .tag { display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: var(--t-xs); font-weight: 600; white-space: nowrap; background: #EEF0F4; color: var(--texto-2); }
+  .tag.ok { background: var(--ok-suave); color: var(--ok); } .tag.amb { background: var(--atencao-suave); color: var(--atencao); }
+  .tag.err { background: var(--erro-suave); color: var(--erro); }
+  .res { display: flex; gap: 4px; flex-wrap: wrap; }
+
+  /* ============================================================ configurações */
+  .grupo h3 { margin: 0; font-size: var(--t-lg); color: var(--marinho); }
+  .campo { display: grid; grid-template-columns: 1fr 240px; gap: 2px var(--e4); padding: var(--e3) 0; border-top: 1px solid #F0F2F5; }
+  .campo:first-of-type { border-top: 0; }
+  .campo label { font-weight: 600; }
+  .campo .ajuda { grid-column: 1; font-size: var(--t-sm); color: var(--texto-2); }
+  .campo .entrada { grid-row: 1 / span 2; grid-column: 2; display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+  .campo input[type=number] { width: 96px; text-align: right; }
+  .campo input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--marca); }
+  .campo select { width: 220px; }
+  .campo .un { font-size: var(--t-xs); color: var(--texto-2); min-width: 22px; }
+  .padrao { font-size: 11px; color: var(--texto-3); }
+  @media (max-width: 640px) { .campo { grid-template-columns: 1fr; } .campo .entrada { grid-row: auto; grid-column: 1; justify-content: flex-start; } }
+
+  /* ============================================================ notificação (toast) */
+  .toast { position: fixed; right: var(--e5); bottom: var(--e5); z-index: 90; max-width: 380px; background: var(--marinho); color: #fff;
+           padding: 10px 14px; border-radius: var(--raio); box-shadow: var(--sombra-alta); font-size: var(--t-md); }
+  .toast.erro { background: var(--erro); }
+
+  /* ============================================================ tutorial guiado */
+  .tut-bloqueio { position: fixed; inset: 0; z-index: 100; }
+  .tut-foco { position: fixed; z-index: 101; border-radius: 10px; pointer-events: none;
+              box-shadow: 0 0 0 3px var(--marca), 0 0 0 8px rgba(218, 41, 28, .18), 0 0 0 100vmax rgba(14, 20, 33, .58);
+              transition: top .25s ease, left .25s ease, width .25s ease, height .25s ease; }
+  .tut-balao { position: fixed; z-index: 102; width: min(360px, calc(100vw - 24px)); background: var(--superficie); color: var(--texto);
+               border-radius: var(--raio-g); box-shadow: var(--sombra-alta); padding: var(--e4) var(--e4) var(--e3); border-top: 4px solid var(--marca);
+               animation: entra .2s ease; }
+  @keyframes entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .tut-balao .passo { font-size: var(--t-xs); font-weight: 700; color: var(--marca); letter-spacing: .3px; text-transform: uppercase; }
+  .tut-balao h3 { margin: 4px 0 6px; font-size: var(--t-lg); color: var(--marinho); }
+  .tut-balao p { margin: 0; font-size: var(--t-md); color: var(--texto-2); line-height: 1.55; }
+  .tut-pontos { display: flex; gap: 5px; margin: var(--e3) 0; }
+  .tut-pontos span { height: 4px; flex: 1; border-radius: 4px; background: var(--borda); }
+  .tut-pontos span.feito { background: var(--marca); }
+  .tut-acoes { display: flex; align-items: center; gap: var(--e2); }
+  .tut-acoes .dir { margin-left: auto; display: flex; gap: var(--e2); }
+  .tut-dica { font-size: 11px; color: var(--texto-3); margin-top: var(--e2); }
+  @media (max-width: 640px) { .tut-balao { left: 12px !important; right: 12px; top: auto !important; bottom: 12px; width: auto; } }
 </style>
 </head>
 <body>
-<header>
-  <div class="topo">
-    <div class="marca">Agente BTP<small>Extração e auditoria de alertas · Monitor de Alertas</small></div>
-    <div class="pilula"><span class="ponto" id="pt"></span><span id="conexao">Aguardando o BTP</span></div>
+<header class="topo">
+  <div class="topo-in">
+    <div class="marca"><span class="marca-selo" aria-hidden="true">BTP</span>
+      <div><b>Agente BTP</b><small>Extração e auditoria de alertas</small></div></div>
+    <nav class="abas" aria-label="Seções">
+      <button class="ativa" id="abaAnalise" aria-current="page">Nova análise</button>
+      <button id="abaHistorico">Histórico</button>
+    </nav>
+    <div class="topo-dir">
+      <span class="conexao" id="pilulaConexao" role="status"><span class="ponto" id="pt"></span><span id="conexao">Aguardando o BTP</span></span>
+      <button class="btn-topo" id="bAjuda" aria-haspopup="dialog" title="Tutorial guiado da tela (Ajuda)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 17h-2v-2h2v2zm2.1-7.7-.9.9c-.7.7-1.2 1.3-1.2 2.8h-2v-.5c0-1.1.5-2.1 1.2-2.8l1.2-1.3c.4-.3.6-.8.6-1.4a2 2 0 0 0-4 0H8a4 4 0 0 1 8 0c0 .9-.4 1.7-.9 2.3z"/></svg>
+        <span class="rot">Ajuda</span></button>
+      <button class="btn-topo" id="abaConfig" title="Configurações" aria-label="Configurações">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.4 7.4 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 0-.5.4l-.4 2.7a7.4 7.4 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.7c0 .2.2.4.5.4h4c.3 0 .5-.2.5-.4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
+        <span class="rot">Configurações</span></button>
+    </div>
   </div>
-  <nav>
-    <button class="ativa" id="abaAnalise">Nova análise</button>
-    <button id="abaHistorico">Histórico</button>
-    <button id="abaConfig" class="engrenagem" title="Configurações" aria-label="Configurações">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.4 7.4 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 0-.5.4l-.4 2.7a7.4 7.4 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.7c0 .2.2.4.5.4h4c.3 0 .5-.2.5-.4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
-      Configurações</button>
-  </nav>
 </header>
 
-<main id="vistaAnalise">
+<!-- ================================================================ NOVA ANÁLISE -->
+<main id="vistaAnalise" class="pagina">
+  <div class="aviso critico oculto" id="desatualizado" role="alert"><div class="corpo"><b class="tit">O Agente BTP aberto é de uma versão anterior.</b>
+    Feche a janela preta do Agente BTP e abra o <b>Abrir Agente BTP.bat</b> de novo.</div></div>
+  <div class="aviso oculto" id="aviso" role="status"></div>
+
   <!-- Só aparece enquanto a aba do BTP não estiver conectada -->
-  <section class="cartao alerta" id="cartaoConexao">
-    <h2>Conexão com o BTP</h2>
-    <p class="suave" style="margin-bottom:6px">Com a extensão <b>Agente BTP</b> instalada, basta abrir o BTP:
-      a conexão é automática.</p>
-    <button class="link" id="bComo">Instalar a extensão (uma vez só)</button>
-    <div id="como" class="oculto">
-      <ol>
-        <li>No Chrome, abra o endereço <b>chrome://extensions</b>
-          <button class="link" id="bCopiarExt" style="font-size:13px">(copiar)</button>.</li>
-        <li>Ligue o <b>Modo do desenvolvedor</b> (canto superior direito).</li>
-        <li>Clique em <b>Carregar sem compactação</b> e escolha a pasta <b>extensao</b> do Agente BTP
-          <button class="link" id="bPastaExt" style="font-size:13px">(abrir a pasta)</button>.</li>
-        <li>Recarregue a aba do BTP (F5). Se o Chrome perguntar sobre <b>acesso à rede local</b>, clique em <b>Permitir</b>.</li>
-      </ol>
-      <p class="suave" id="caminhoExt" style="margin:0 0 8px"></p>
-      <details class="suave">
-        <summary>A empresa bloqueia extensões? Use o favorito</summary>
+  <section class="aviso info" id="cartaoConexao" aria-labelledby="tConexao">
+    <div class="corpo">
+      <b class="tit" id="tConexao">Conecte a aba do BTP</b>
+      Com a extensão <b>Agente BTP</b> instalada, basta abrir o BTP já logado: a conexão é automática.
+      <button class="btn-texto" id="bComo" aria-expanded="false" aria-controls="como">Instalar a extensão (uma vez só)</button>
+      <div id="como" class="oculto">
         <ol>
-          <li>Clique em <b>Copiar favorito</b>.</li>
-          <li>No Chrome: <b>Ctrl+Shift+O</b> → menu <b>⋮</b> → <b>Adicionar novo favorito</b>.</li>
-          <li>Nome: <b>Agente BTP</b> · URL: cole (<b>Ctrl+V</b>) · Salvar. Depois, clique nele na aba do BTP.</li>
+          <li>No Chrome, abra <b>chrome://extensions</b> <button class="btn-texto" id="bCopiarExt">(copiar)</button>.</li>
+          <li>Ligue o <b>Modo do desenvolvedor</b> (canto superior direito).</li>
+          <li>Clique em <b>Carregar sem compactação</b> e escolha a pasta <b>extensao</b> do Agente BTP
+            <button class="btn-texto" id="bPastaExt">(abrir a pasta)</button>.</li>
+          <li>Recarregue a aba do BTP (F5). Se o Chrome perguntar sobre <b>acesso à rede local</b>, clique em <b>Permitir</b>.</li>
         </ol>
-        <div class="linha">
-          <button class="sec" id="bCopiarUrl">Copiar favorito</button>
-          <a id="favorito" class="favorito" href="#" onclick="return false">Agente BTP</a>
-          <button class="link" id="bCopiarConsole">copiar alternativa para o Console (F12)</button>
-        </div>
-      </details>
-    </div>
-  </section>
-
-  <div class="notificacao critica oculto" id="desatualizado">O Agente BTP em execução é de uma versão anterior.
-    Feche a janela preta do Agente BTP e abra o <b>Abrir Agente BTP.bat</b> de novo.</div>
-  <div class="notificacao oculto" id="aviso"></div>
-
-  <section class="cartao alerta oculto" id="cartaoRetomar">
-    <h2 id="retTitulo">Retomar análise</h2>
-    <p class="suave" id="retTexto"></p>
-    <div class="linha">
-      <button id="bRetomarAnalise">Retomar</button>
-      <a class="botao" id="retPlanilha" href="#" style="background:#fff;color:var(--vermelho);border:1px solid var(--vermelho);padding:10px 18px">Baixar planilha parcial</a>
-      <a class="link" id="retDiag" href="#" style="color:var(--vermelho);font-weight:600;font-size:14px">Baixar diagnóstico (.json)</a>
-    </div>
-  </section>
-
-  <section class="cartao">
-    <h2>Consulta de WOs</h2>
-    <p class="suave">Informe uma WO por linha (formato 00000|000000000) ou importe uma planilha. Para cada WO o
-      agente extrai do BTP os alertas da janela Mensagens — WO, material SAP, fornecedor SAP, quantidade faltante e
-      mensagem — e confere cada dado <b id="nAuditorias">2</b> vez(es) antes de considerá-lo validado
-      (até <b id="nMaximo">5</b> quando há divergência).</p>
-    <textarea id="texto" placeholder="Cole aqui as WOs, uma por linha"></textarea>
-    <div class="linha" style="margin-top:10px">
-      <span class="arquivo"><label for="arquivo">Importar planilha (.xlsx)</label>
-        <span id="nomeArquivo"></span></span>
-      <input type="file" id="arquivo" accept=".xlsx" class="oculto">
-      <span class="contador" id="contador">0 WOs</span>
-    </div>
-    <div class="linha" style="margin-top:16px">
-      <button id="bExecutar">Executar análise</button>
-      <button id="bPausar" class="sec oculto">Pausar</button>
-      <button id="bContinuar" class="oculto">Retomar</button>
-      <button id="bParar" class="sec oculto">Parar</button>
-    </div>
-  </section>
-
-  <section class="cartao alerta oculto" id="cartaoConfirma">
-    <h2>Confira a amostra antes de continuar</h2>
-    <p class="suave" id="cfTexto"></p>
-    <div class="rolagem" style="max-height:300px">
-      <table>
-        <thead><tr><th>Material SAP</th><th>Fornecedor SAP</th><th class="num">Qtd. faltante</th>
-          <th>Mensagem do item</th><th id="cfThAlerta">Mensagem do alerta</th></tr></thead>
-        <tbody id="cfTabela"></tbody>
-      </table>
-    </div>
-    <div id="cfEscolha" class="oculto" style="margin-top:12px;font-size:14px">
-      <b>Qual mensagem vai para a planilha?</b><br>
-      <label><input type="radio" name="cfMsg" value="item" checked> Mensagem do item (janela Mensagens)</label><br>
-      <label><input type="radio" name="cfMsg" value="alerta"> Mensagem do alerta (coluna Mensagem do Monitor)</label>
-    </div>
-    <div class="linha" style="margin-top:16px">
-      <button id="cfSim">Sim, são esses os dados</button>
-      <button class="sec" id="cfOutra">Não — procurar outra fonte</button>
-      <button class="sec" id="cfMostrar">Não — vou mostrar no BTP</button>
-    </div>
-  </section>
-
-  <section class="cartao oculto" id="cartaoProgresso">
-    <h2 id="tituloProg">Em processamento</h2>
-    <div class="barra" id="barra"><div id="barraFill"></div></div>
-    <div class="numeros"><span id="progTxt"></span><span id="etaTxt"></span></div>
-    <p class="etapa" id="etapa"></p>
-    <div class="painel" id="painel">
-      <div class="indicador"><b id="iProcessadas">0</b><span>Processadas</span></div>
-      <div class="indicador"><b id="iPendentes">0</b><span>Pendentes</span></div>
-      <div class="indicador ok"><b id="iValidadas">0</b><span>Validadas</span></div>
-      <div class="indicador amb"><b id="iDivergentes">0</b><span>Com divergência</span></div>
-      <div class="indicador amb"><b id="iIncompletas">0</b><span>Incompletas</span></div>
-      <div class="indicador err"><b id="iFalhas">0</b><span>Falha de extração</span></div>
-    </div>
-    <p class="suave oculto" id="prepInfo" style="margin:8px 0 0">Consultas da aba observadas: <b id="observadas">0</b>
-      · <a href="/api/diagnostico" style="color:var(--vermelho)">Baixar diagnóstico</a></p>
-    <div class="chips" id="chips"></div>
-    <div class="chips" id="errosCat"></div>
-    <details id="caixaDiag" style="margin-top:12px">
-      <summary>O que deu errado</summary>
-      <p class="suave" id="diagAcao" style="margin:8px 0 0"></p>
-      <div id="diagConteudo"></div>
-      <p style="margin:10px 0 0"><a class="link" id="diagBaixar" href="#" style="color:var(--vermelho);font-weight:600;font-size:14px">Baixar diagnóstico completo (.json)</a></p>
-    </details>
-    <div class="linha" style="margin-top:16px">
-      <a id="baixar" class="botao oculto" href="#">Baixar relatório auditado (.xlsx)</a>
-      <a id="baixarParcial" class="botao oculto" href="#" style="background:#fff;color:var(--vermelho);border:1px solid var(--vermelho);padding:10px 18px">Baixar planilha parcial (.xlsx)</a>
-      <button id="bRaioxPronto" class="oculto">Já abri a janela Mensagens</button>
-      <a id="baixarRaiox" class="botao oculto" href="#">Baixar Raio-X (.json)</a>
-    </div>
-  </section>
-
-  <details id="caixaRaiox">
-    <summary>Raio-X da fonte (quando os dados não batem com o BTP)</summary>
-    <div class="cartao" style="margin-top:10px">
-      <p class="suave">Use uma WO cuja janela <b>Mensagens</b> você conhece. O agente consulta tudo o que o
-        serviço do Monitor tem para ela e observa a tela do BTP enquanto você abre a janela Mensagens.
-        O arquivo gerado mostra exatamente de onde vem cada dado.</p>
-      <div class="linha">
-        <input id="rxWo" placeholder="WO (ex.: 06201|740923282)" style="font:14px Consolas,monospace;padding:8px;border:1px solid var(--borda);border-radius:6px;width:230px">
-        <input id="rxCons" placeholder="Consolidado (opcional)" style="font:14px Consolas,monospace;padding:8px;border:1px solid var(--borda);border-radius:6px;width:260px">
-        <button class="sec" id="bRaiox">Gerar Raio-X</button>
+        <p class="meta" id="caminhoExt"></p>
+        <details>
+          <summary class="meta" style="cursor:pointer">A empresa bloqueia extensões? Use o favorito</summary>
+          <ol>
+            <li>Clique em <b>Copiar favorito</b>.</li>
+            <li>No Chrome: <b>Ctrl+Shift+O</b> → menu <b>⋮</b> → <b>Adicionar novo favorito</b>.</li>
+            <li>Nome: <b>Agente BTP</b> · URL: cole (<b>Ctrl+V</b>) · Salvar. Depois, clique nele na aba do BTP.</li>
+          </ol>
+          <div class="linha">
+            <button class="btn btn-sec" id="bCopiarUrl">Copiar favorito</button>
+            <a id="favorito" class="btn btn-sec" href="#" onclick="return false">Agente BTP</a>
+            <button class="btn-texto" id="bCopiarConsole">copiar alternativa para o Console (F12)</button>
+          </div>
+        </details>
       </div>
     </div>
-  </details>
+  </section>
 
-  <details>
-    <summary>Registro de execução</summary>
-    <div id="log"></div>
-  </details>
+  <section class="aviso critico oculto" id="cartaoRetomar" aria-labelledby="retTitulo">
+    <div class="corpo">
+      <b class="tit" id="retTitulo">Retomar análise</b>
+      <span id="retTexto"></span>
+      <div class="linha" style="margin-top:8px">
+        <button class="btn btn-primario" id="bRetomarAnalise">Retomar</button>
+        <a class="btn btn-sec" id="retPlanilha" href="#">Baixar planilha parcial</a>
+        <a class="btn-texto" id="retDiag" href="#">Baixar diagnóstico (.json)</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="grade">
+    <!-- ======================== preparação -->
+    <section class="cartao" id="secPreparo" aria-labelledby="tPreparo">
+      <div class="cartao-cab"><h2 id="tPreparo">Nova análise</h2>
+        <button class="ajuda-ctx" data-ajuda="wo" aria-label="O que é uma WO e qual o formato">?</button></div>
+      <label for="texto" class="sr-only">WOs, uma por linha</label>
+      <textarea id="texto" placeholder="Insira as WOs, uma por linha…" spellcheck="false" aria-describedby="contador"></textarea>
+      <div class="contagem"><span id="contador" aria-live="polite"><b>0</b> WOs</span><span id="contadorInvalidas"></span></div>
+      <div class="importar" id="zonaImportar">
+        <label for="arquivo" class="btn btn-sec" tabindex="0" id="rotArquivo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-18-5.5 5.5 1.4 1.4L11 5.8V16h2V5.8l3.1 3.1 1.4-1.4L12 2z"/></svg>
+          Importar planilha (.xlsx)</label>
+        <input type="file" id="arquivo" accept=".xlsx" class="sr-only" tabindex="-1">
+        <span class="arq" id="nomeArquivo">Nenhuma planilha escolhida</span>
+        <button class="btn-texto oculto" id="bTirarArquivo" aria-label="Remover a planilha escolhida">Remover</button>
+      </div>
+      <button class="btn btn-primario btn-largo" id="bExecutar">Executar análise</button>
+      <p class="meta" id="motivoBloqueio" style="margin-top:8px;min-height:20px" aria-live="polite"></p>
+      <p class="meta conferencia"><span>Cada dado é conferido <b id="nAuditorias">2</b>× (até <b id="nMaximo">5</b>× se houver divergência)</span><button class="ajuda-ctx" data-ajuda="conferencia" aria-label="Como funciona a conferência">?</button></p>
+    </section>
+
+    <!-- ======================== execução e resultado -->
+    <div class="coluna">
+      <section class="cartao alerta-cartao oculto" id="cartaoConfirma" aria-labelledby="tConfirma">
+        <div class="cartao-cab"><h2 id="tConfirma">Confira a amostra antes de continuar</h2></div>
+        <p class="meta" id="cfTexto"></p>
+        <div class="rolagem" style="max-height:300px">
+          <table>
+            <thead><tr><th>Material SAP</th><th>Fornecedor SAP</th><th class="num">Qtd. faltante</th>
+              <th>Mensagem do item</th><th id="cfThAlerta">Mensagem do alerta</th></tr></thead>
+            <tbody id="cfTabela"></tbody>
+          </table>
+        </div>
+        <fieldset id="cfEscolha" class="oculto" style="margin-top:12px;border:0;padding:0">
+          <legend style="font-weight:600">Qual mensagem vai para a planilha?</legend>
+          <label><input type="radio" name="cfMsg" value="item" checked> Mensagem do item (janela Mensagens)</label><br>
+          <label><input type="radio" name="cfMsg" value="alerta"> Mensagem do alerta (coluna Mensagem do Monitor)</label>
+        </fieldset>
+        <div class="linha" style="margin-top:16px">
+          <button class="btn btn-primario" id="cfSim">Sim, são esses os dados</button>
+          <button class="btn btn-sec" id="cfOutra">Não — procurar outra fonte</button>
+          <button class="btn btn-sec" id="cfMostrar">Não — vou mostrar no BTP</button>
+        </div>
+      </section>
+
+      <section class="cartao" id="cartaoProgresso" aria-labelledby="tituloProg">
+        <div class="exec-cab">
+          <span class="selo" id="seloEstado" role="status">Pronta para iniciar</span>
+          <h2 id="tituloProg">Nenhuma análise em andamento</h2>
+          <div class="acoes">
+            <button class="btn btn-sec oculto" id="bPausar">Pausar</button>
+            <button class="btn btn-primario oculto" id="bContinuar">Retomar</button>
+            <button class="btn btn-perigo oculto" id="bParar">Parar</button>
+          </div>
+        </div>
+        <div id="blocoProgresso">
+          <div class="barra" id="barra" role="progressbar" aria-labelledby="tituloProg" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="barraFill"></div></div>
+          <div class="numeros"><span id="progTxt">Informe as WOs e clique em Executar análise.</span><span id="etaTxt"></span></div>
+          <p class="etapa" id="etapa"></p>
+        </div>
+        <div class="painel" id="painel">
+          <div class="indicador neutro"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v3h-2V6H9.4l4.6 6-4.6 6H17v-1h2v3H5v-1.4L10.6 12 5 5.4z"/></svg>Processadas<button class="ajuda-ctx" data-ajuda="processadas" aria-label="O que conta como processada">?</button></span><b id="iProcessadas">—</b></div>
+          <div class="indicador neutro"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm1-13h-2v6l5 3 1-1.7-4-2.3z"/></svg>Pendentes<button class="ajuda-ctx" data-ajuda="pendentes" aria-label="O que conta como pendente">?</button></span><b id="iPendentes">—</b></div>
+          <div class="indicador ok"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>Validadas<button class="ajuda-ctx" data-ajuda="validadas" aria-label="O que conta como validada">?</button></span><b id="iValidadas">—</b></div>
+          <div class="indicador amb"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.6 3.5 15.9 7H4v2h10.9l-2 4H4v2h7.9l-2.3 4.6 1.8.9L14.1 15H20v-2h-4.9l2-4H20V7h-1.9l1.3-2.6z"/></svg>Divergência<button class="ajuda-ctx" data-ajuda="divergentes" aria-label="O que é divergência">?</button></span><b id="iDivergentes">—</b></div>
+          <div class="indicador amb"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18V4a8 8 0 0 1 0 16z"/></svg>Incompletas<button class="ajuda-ctx" data-ajuda="incompletas" aria-label="O que conta como incompleta">?</button></span><b id="iIncompletas">—</b></div>
+          <div class="indicador err"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>Falha de extração<button class="ajuda-ctx" data-ajuda="falhas" aria-label="O que conta como falha de extração">?</button></span><b id="iFalhas">—</b></div>
+        </div>
+        <p class="meta oculto" id="prepInfo" style="margin-top:10px">Consultas da aba observadas: <b id="observadas">0</b>
+          · <a href="/api/diagnostico">Baixar diagnóstico da preparação</a></p>
+        <div class="chips" id="chips" aria-label="Situação das WOs no Monitor"></div>
+        <div class="chips" id="errosCat" aria-label="Problemas por origem"></div>
+        <div class="resultado-acoes" id="acoesResultado">
+          <a id="baixar" class="btn btn-primario oculto" href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-4 5.5-5.5-1.4-1.4L13 12.2V2h-2v10.2L7.9 9.1 6.5 10.5 12 16z"/></svg>
+            Baixar relatório auditado (.xlsx)</a>
+          <a id="baixarParcial" class="btn btn-sec oculto" href="#">Baixar planilha parcial (.xlsx)</a>
+          <button class="btn btn-primario oculto" id="bRaioxPronto">Já abri a janela Mensagens</button>
+          <a id="baixarRaiox" class="btn btn-sec oculto" href="#">Baixar Raio-X (.json)</a>
+        </div>
+      </section>
+
+      <!-- ======================== nível 3: diagnóstico técnico (recolhível) -->
+      <section class="cartao tecnico" id="secDiagnostico" aria-labelledby="tDiag">
+        <div class="cartao-cab"><h2 id="tDiag">Diagnóstico da execução</h2>
+          <div class="dir"><a class="btn btn-sec oculto" id="diagBaixar" href="#">Diagnóstico (.json)</a></div></div>
+        <details class="secao oculto" id="caixaDiag">
+          <summary>O que deu errado <span class="sub" id="diagResumo"></span></summary>
+          <div class="conteudo"><p class="meta" id="diagAcao"></p><div id="diagConteudo"></div></div>
+        </details>
+        <details class="secao" id="caixaLog">
+          <summary>Registro de execução <span class="sub">eventos desta análise</span></summary>
+          <div class="conteudo"><pre id="log" tabindex="0" aria-label="Registro de execução"></pre></div>
+        </details>
+        <details class="secao" id="caixaRaiox">
+          <summary>Raio-X da fonte <span class="sub">quando os dados não batem com o BTP</span></summary>
+          <div class="conteudo">
+            <p class="meta" style="margin-bottom:10px">Use uma WO cuja janela <b>Mensagens</b> você conhece. O agente consulta tudo o que o
+              serviço do Monitor tem para ela e observa a tela do BTP enquanto você abre a janela Mensagens. O arquivo gerado mostra
+              de onde vem cada dado.</p>
+            <div class="linha">
+              <label class="sr-only" for="rxWo">WO</label>
+              <input type="text" id="rxWo" class="mono" placeholder="WO (ex.: 06201|740923282)" style="width:230px">
+              <label class="sr-only" for="rxCons">Consolidado</label>
+              <input type="text" id="rxCons" class="mono" placeholder="Consolidado (opcional)" style="width:260px">
+              <button class="btn btn-sec" id="bRaiox">Gerar Raio-X</button>
+            </div>
+          </div>
+        </details>
+      </section>
+    </div>
+  </div>
+
+
 </main>
 
-<main id="vistaHistorico" class="oculto">
-  <section class="cartao">
-    <div class="linha">
-      <h2 style="margin:0">Histórico de análises</h2>
-      <button class="link" id="bLimpar" style="margin-left:auto">Limpar histórico</button>
-    </div>
-    <p class="suave" style="margin-top:6px">Selecione uma análise para consultar a situação de cada WO.</p>
+<!-- ================================================================ HISTÓRICO -->
+<main id="vistaHistorico" class="pagina oculto">
+  <section class="cartao" aria-labelledby="tHist">
+    <div class="cartao-cab"><h2 id="tHist">Histórico de análises</h2>
+      <div class="dir"><button class="btn btn-perigo" id="bLimpar">Limpar histórico</button></div></div>
+    <p class="meta">Clique numa análise para ver a situação de cada WO.</p>
     <div class="rolagem" style="max-height:none">
       <table>
-        <thead><tr><th class="num">Nº</th><th>Data</th><th>Origem</th><th class="num">WOs</th><th class="num">Com itens</th>
-          <th class="num">Ocorrências</th><th class="num">Validadas</th><th class="num">Divergências</th>
-          <th class="num">Duração</th><th>Situação</th><th></th></tr></thead>
+        <thead><tr><th class="num">Nº</th><th>Data</th><th>Origem</th><th class="num">WOs</th><th>Resultado</th>
+          <th class="num">Duração</th><th>Situação</th><th>Arquivos</th></tr></thead>
         <tbody id="tabHist"></tbody>
       </table>
     </div>
   </section>
 
-  <section class="cartao oculto" id="detalheHist">
-    <div class="linha">
-      <h2 id="detTitulo" style="margin:0">Detalhamento</h2>
-      <a id="detBaixar" class="botao oculto" href="#" style="margin-left:auto;padding:8px 16px;font-size:14px">Baixar relatório</a>
-      <button class="sec" id="detApagar" style="padding:7px 14px;font-size:14px">Apagar</button>
+  <section class="cartao oculto" id="detalheHist" aria-labelledby="detTitulo">
+    <div class="cartao-cab">
+      <h2 id="detTitulo">Detalhamento</h2>
+      <div class="dir">
+        <a id="detBaixar" class="btn btn-primario oculto" href="#">Baixar relatório</a>
+        <button class="btn btn-perigo" id="detApagar">Apagar</button>
+      </div>
     </div>
-    <p class="suave" id="detResumo" style="margin-top:6px"></p>
+    <p class="meta" id="detResumo"></p>
     <div class="chips" id="detChips"></div>
     <div class="linha" style="margin-top:14px">
+      <label class="sr-only" for="detFiltro">Filtrar por situação</label>
       <select id="detFiltro"><option value="">Todas as situações</option></select>
-      <span class="contador" id="detConta"></span>
+      <span class="meta" id="detConta" style="margin-left:auto"></span>
     </div>
     <div class="rolagem">
       <table>
@@ -299,31 +493,63 @@
   </section>
 </main>
 
-<main id="vistaConfig" class="oculto">
-  <section class="cartao">
-    <div class="linha">
-      <h2 style="margin:0">Configurações</h2>
-      <span class="contador" id="cfgStatus"></span>
-    </div>
-    <p class="suave" style="margin-top:6px">Parâmetros de extração e auditoria. Ficam salvos neste computador
-      (sem senhas ou dados de acesso) e valem a partir da próxima análise.</p>
+<!-- ================================================================ CONFIGURAÇÕES -->
+<main id="vistaConfig" class="pagina oculto">
+  <section class="cartao" aria-labelledby="tCfg">
+    <div class="cartao-cab"><h2 id="tCfg">Configurações</h2><span class="meta" id="cfgStatus" role="status" style="margin-left:auto"></span></div>
+    <p class="meta">Parâmetros de extração e auditoria. Ficam salvos neste computador (sem senhas ou dados de acesso) e valem a partir
+      da próxima análise.</p>
   </section>
-  <div id="cfgGrupos"></div>
+  <div id="cfgGrupos" style="display:grid;gap:16px"></div>
   <section class="cartao">
     <div class="linha">
-      <button id="cfgSalvar">Salvar configurações</button>
-      <button class="sec" id="cfgPadrao">Restaurar padrões</button>
-      <button class="sec" id="cfgRefazer" title="Apaga a fonte de dados gravada; a próxima análise pede a conferência de novo">Refazer a fonte de dados</button>
+      <button class="btn btn-primario" id="cfgSalvar">Salvar configurações</button>
+      <button class="btn btn-sec" id="cfgPadrao">Restaurar padrões</button>
+      <button class="btn btn-perigo" id="cfgRefazer" title="Apaga a fonte de dados gravada; a próxima análise pede a conferência de novo">Refazer a fonte de dados</button>
     </div>
   </section>
 </main>
+
+<div class="dica oculto" id="dica" role="tooltip"></div>
+<div class="toast oculto" id="toast" role="status" aria-live="polite"></div>
+<div class="sr-only" id="anuncio" aria-live="assertive"></div>
+
+<!-- tutorial guiado (componente independente: ver TUTORIAL no fim do script) -->
+<div id="tutorial" class="oculto">
+  <div class="tut-bloqueio"></div>
+  <div class="tut-foco" id="tutFoco"></div>
+  <div class="tut-balao" id="tutBalao" role="dialog" aria-modal="true" aria-labelledby="tutTitulo" aria-describedby="tutTexto">
+    <div class="passo" id="tutPasso"></div>
+    <h3 id="tutTitulo"></h3>
+    <p id="tutTexto"></p>
+    <div class="tut-pontos" id="tutPontos" aria-hidden="true"></div>
+    <div class="tut-acoes">
+      <button class="btn-texto" id="tutSair">Sair da ajuda</button>
+      <div class="dir">
+        <button class="btn btn-sec" id="tutAnterior">Anterior</button>
+        <button class="btn btn-primario" id="tutProximo">Próximo</button>
+      </div>
+    </div>
+    <div class="tut-dica">Teclado: ← → para navegar · Esc para sair</div>
+  </div>
+</div>
 
 <script>
 const $ = id => document.getElementById(id);
 const VERSAO_TELA = "__VERSAO_PROGRAMA__";   // preenchido pelo programa ao servir a tela
 const post = (url, body) => fetch(url, { method: "POST", body }).then(r => r.json());
 const PADRAO_WO = /^\s*\d{5}\s*\|\s*\d{9}\s*$/;
-let favorito = "", consoleCodigo = "", conectado = false, ocupado = false;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = n => (n ?? 0).toLocaleString("pt-BR");
+let favorito = "", consoleCodigo = "", conectado = false, ocupado = false, ultimoEstado = null;
+
+// ---------------------------------------------------------------- notificação curta
+let toastTimer = 0;
+function avisar(texto, erro) {
+  const t = $("toast");
+  t.textContent = texto; t.classList.toggle("erro", !!erro); t.classList.remove("oculto");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("oculto"), erro ? 7000 : 3500);
+}
 
 fetch("/api/favorito").then(r => r.json()).then(f => {
   favorito = f.favorito; consoleCodigo = f.console;
@@ -333,9 +559,12 @@ async function copiar(texto, msg) {
   try { await navigator.clipboard.writeText(texto); }
   catch (_) { const t = document.createElement("textarea"); t.value = texto; document.body.appendChild(t);
               t.select(); document.execCommand("copy"); t.remove(); }
-  alert(msg);
+  avisar(msg);
 }
-$("bComo").onclick = () => $("como").classList.toggle("oculto");
+$("bComo").onclick = () => {
+  const aberto = $("como").classList.toggle("oculto") === false;
+  $("bComo").setAttribute("aria-expanded", aberto);
+};
 $("bCopiarExt").onclick = () => copiar("chrome://extensions", "Copiado. Cole na barra de endereço do Chrome.");
 $("bPastaExt").onclick = async () => {
   const r = await fetch("/api/extensao/abrir", { method: "POST" }).then(r => r.json());
@@ -344,32 +573,88 @@ $("bPastaExt").onclick = async () => {
 $("bCopiarUrl").onclick = () => copiar(favorito, "Favorito copiado. Crie com Ctrl+Shift+O e cole no campo URL.");
 $("bCopiarConsole").onclick = () => copiar(consoleCodigo, "Copiado. Na aba do BTP: F12 → Console → cole → Enter.");
 
+// ---------------------------------------------------------------- entrada de WOs
+let planilha = null;   // { nome, validas, invalidas, erro }
+function linhasTexto() { return $("texto").value.split(/\r?\n/).map(l => l.trim()).filter(Boolean); }
 function contar() {
-  const n = $("texto").value.split(/\r?\n/).filter(l => PADRAO_WO.test(l)).length;
-  const arq = $("arquivo").files[0];
-  $("contador").textContent = arq ? `${n} WOs + planilha` : `${n} WO${n === 1 ? "" : "s"}`;
+  const linhas = linhasTexto();
+  const validas = linhas.filter(l => PADRAO_WO.test(l)).length, outras = linhas.length - validas;
+  let txt = `<b>${fmt(validas)}</b> WO${validas === 1 ? "" : "s"} no campo`;
+  if (planilha && !planilha.erro) txt += ` + <b>${fmt(planilha.validas)}</b> da planilha`;
+  $("contador").innerHTML = txt;
+  $("contadorInvalidas").textContent = outras ? `${fmt(outras)} linha(s) fora do formato` : "";
+  $("contadorInvalidas").style.color = outras ? "var(--atencao)" : "";
+  atualizarBotaoExecutar();
 }
+function temEntrada() { return linhasTexto().length > 0 || !!(planilha && !planilha.erro); }
 $("texto").addEventListener("input", contar);
-$("arquivo").onchange = () => { $("nomeArquivo").textContent = $("arquivo").files[0] ? "· " + $("arquivo").files[0].name : ""; contar(); };
+$("rotArquivo").addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); $("arquivo").click(); } });
+$("arquivo").onchange = async () => {
+  const f = $("arquivo").files[0];
+  if (!f) return limparArquivo();
+  planilha = { nome: f.name, validas: 0, invalidas: 0, lendo: true };
+  desenharArquivo();
+  const fd = new FormData(); fd.append("arquivo", f);
+  try {
+    const r = await post("/api/entrada/planilha", fd);
+    planilha = r.ok ? { nome: f.name, validas: r.validas, invalidas: r.invalidas } : { nome: f.name, erro: r.erro };
+  } catch (_) { planilha = { nome: f.name, erro: "Não foi possível ler a planilha (o programa está aberto?)." }; }
+  desenharArquivo(); contar();
+};
+function desenharArquivo() {
+  const z = $("zonaImportar"), n = $("nomeArquivo");
+  z.classList.toggle("com-arquivo", !!planilha && !planilha.erro && !planilha.lendo);
+  n.classList.toggle("erro", !!(planilha && planilha.erro));
+  $("bTirarArquivo").classList.toggle("oculto", !planilha);
+  n.innerHTML = !planilha ? "Nenhuma planilha escolhida"
+    : planilha.lendo ? `<b>${esc(planilha.nome)}</b> · lendo…`
+    : planilha.erro ? `<b>${esc(planilha.nome)}</b> · ${esc(planilha.erro)}`
+    : `<b>${esc(planilha.nome)}</b> · ${fmt(planilha.validas)} WO(s) reconhecida(s)`
+      + (planilha.invalidas ? ` · ${fmt(planilha.invalidas)} fora do formato` : "");
+}
+function limparArquivo() { $("arquivo").value = ""; planilha = null; desenharArquivo(); contar(); }
+$("bTirarArquivo").onclick = limparArquivo;
 
+function atualizarBotaoExecutar() {
+  const motivo = ocupado ? "Há uma análise em andamento."
+    : !conectado ? "Conecte a aba do BTP para executar."
+    : !temEntrada() ? "Informe ao menos uma WO ou importe uma planilha."
+    : planilha && planilha.lendo ? "Lendo a planilha…" : "";
+  $("bExecutar").disabled = !!motivo;
+  $("motivoBloqueio").textContent = motivo;
+}
 $("bExecutar").onclick = async () => {
   const fd = new FormData();
   fd.append("texto", $("texto").value);
-  if ($("arquivo").files[0]) fd.append("arquivo", $("arquivo").files[0]);
-  const r = await post("/api/executar", fd);
-  if (!r.ok) alert(r.erro);
+  if ($("arquivo").files[0] && planilha && !planilha.erro) fd.append("arquivo", $("arquivo").files[0]);
+  $("bExecutar").disabled = true;
+  const r = await post("/api/executar", fd).catch(() => ({ ok: false, erro: "O programa não respondeu." }));
+  if (!r.ok) { avisar(r.erro, true); atualizarBotaoExecutar(); }
+  else avisar(`Análise iniciada: ${fmt(r.total)} WO(s).`);
 };
-$("bParar").onclick = () => post("/api/parar");
-$("bPausar").onclick = () => post("/api/pausar");
-$("bContinuar").onclick = () => post("/api/retomar");
+$("bParar").onclick = async () => {
+  if (!confirm("Parar a análise? As WOs já feitas ficam gravadas; as demais ficam pendentes e podem ser retomadas.")) return;
+  await post("/api/parar"); avisar("Parada solicitada: as WOs em andamento são concluídas.");
+};
+$("bPausar").onclick = async () => { await post("/api/pausar"); avisar("Pausa solicitada: as WOs em andamento são concluídas."); };
+$("bContinuar").onclick = async () => { await post("/api/retomar"); avisar("Análise retomada."); };
 let retomavel = null;
 $("bRetomarAnalise").onclick = async () => {
   if (!retomavel) return;
   const r = await fetch("/api/executar", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ run_id: retomavel.run_id, modo: retomavel.fonte_descartada ? "refazer" : "retomar" }) }).then(r => r.json());
-  if (!r.ok) alert(r.erro);
+  if (!r.ok) avisar(r.erro, true);
 };
+
+// ---------------------------------------------------------------- diagnóstico ("O que deu errado")
 const CATEGORIA = { FONTE: "BTP / sessão", APP: "Agente", ENTRADA: "Entrada" };
+const ROTULO_MOTIVO = { sessao_expirada: "sessão expirada", aba_desconectada: "aba desconectada", http_401: "não autenticado",
+  http_403: "acesso negado", http_404: "endereço não existe", http_429: "BTP pediu calma", http_5xx: "erro do servidor",
+  falha_rede: "falha de rede", aba_sem_resposta: "aba sem resposta", timeout_wo: "tempo esgotado", timeout_lote: "tempo esgotado (lote)",
+  wo_invalida: "número inválido", wo_inexistente: "fora do Monitor", quantidade_ambigua: "quantidade ambígua",
+  auditoria_incompleta: "conferência incompleta", divergencia_persistente: "divergência", parse_falhou: "resposta ilegível",
+  erro_servico: "erro do serviço", consulta_rejeitada: "consulta rejeitada", excecao_app: "erro do programa" };
+const rotuloMotivo = m => m.startsWith("campo_ausente:") ? "campo ausente: " + m.split(":")[1] : (ROTULO_MOTIVO[m] || m);
 const SESSAO = ["sessao_expirada", "http_401", "http_403", "aba_desconectada"];
 let runAtual = null, diagEm = 0;
 async function carregarDiagnostico(forcar) {
@@ -387,14 +672,13 @@ async function carregarDiagnostico(forcar) {
                   ev.status !== undefined && ev.status !== null && "status: " + ev.status,
                   ev.content_type && "tipo: " + ev.content_type, ev.corpo && "resposta: " + ev.corpo.slice(0, 300),
                   ev.erro && "erro: " + ev.erro, origem && "no código: " + origem].filter(Boolean).join("\n");
-    return `<div class="categoria"><h3><span class="rotulo-cat ${p.categoria}">${CATEGORIA[p.categoria] || p.categoria}</span>${esc(p.descricao)}</h3>
-      <div class="suave" style="margin:0">${SESSAO.includes(p.motivo)
-        ? `${p.wos_afetadas} WO(s) em andamento voltaram para a fila (nenhuma virou falha)`
-        : `${p.wos_afetadas} WO(s) afetada(s)`} · ${p.ocorrencias} ocorrência(s)${p.exemplos_wo.length ? " · ex.: " + esc(p.exemplos_wo.slice(0, 3).join(", ")) : ""}</div>
-      <div style="font-size:13px;margin-top:4px"><b>O que fazer:</b> ${esc(p.proxima_acao)}</div>
+    return `<div class="categoria"><h3><span class="rotulo-cat ${p.categoria}">${CATEGORIA[p.categoria] || p.categoria}</span>${esc(p.descricao)}${p.resolvido ? '<span class="tag resolvido">resolvido</span>' : ""}</h3>
+      <div class="meta">${SESSAO.includes(p.motivo)
+        ? `${fmt(p.wos_afetadas)} WO(s) em andamento voltaram para a fila (nenhuma virou falha)`
+        : `${fmt(p.wos_afetadas)} WO(s) afetada(s)`} · ${fmt(p.ocorrencias)} ocorrência(s)${p.exemplos_wo.length ? " · ex.: " + esc(p.exemplos_wo.slice(0, 3).join(", ")) : ""}</div>
+      ${p.resolvido ? "" : `<div style="font-size:13px;margin-top:4px"><b>O que fazer:</b> ${esc(p.proxima_acao)}</div>`}
       ${evid ? `<pre class="ev">${esc(evid)}</pre>` : ""}</div>`;
-  }).join("") : `<p class="suave" style="margin:8px 0 0">Nenhum problema registrado nesta análise.</p>`;
-  $("diagBaixar").href = `/api/diagnostico?run_id=${encodeURIComponent(runAtual)}`;
+  }).join("") : `<p class="meta" style="margin-top:8px">Nenhum problema registrado nesta análise.</p>`;
 }
 $("caixaDiag").addEventListener("toggle", () => carregarDiagnostico(true));
 
@@ -405,6 +689,8 @@ const GRUPOS = [
   { rotulo: "Formato inválido", classe: "amb", status: ["Formato inválido", "WO inválida"] },
   { rotulo: "Falhas", classe: "err", status: ["Erro", "Falha de comunicação", "Sessão expirada", "Tempo esgotado", "Não processada"] },
 ];
+
+// ---------------------------------------------------------------- conferência da amostra
 let confirmacaoAtual = "";
 function desenharConfirmacao(e) {
   const c = e.fase === "confirmando" ? e.confirmacao : null;
@@ -421,8 +707,8 @@ function desenharConfirmacao(e) {
     : `O agente não encontrou itens nas primeiras WOs da lista (${esc((c.lidas || []).join("; "))}). `
       + `Se essas WOs têm mensagens no BTP, a fonte está errada.`;
   $("cfThAlerta").classList.toggle("oculto", !c.tem_mensagem_alerta);
-  $("cfTabela").innerHTML = c.itens.map(i => `<tr><td style="font-family:Consolas,monospace">${esc(i.material)}</td>
-    <td style="font-family:Consolas,monospace">${esc(i.fornecedor)}</td><td class="num">${esc(i.quantidade)}</td>
+  $("cfTabela").innerHTML = c.itens.map(i => `<tr><td class="mono">${esc(i.material)}</td>
+    <td class="mono">${esc(i.fornecedor)}</td><td class="num">${esc(i.quantidade)}</td>
     <td>${esc(i.mensagem_item)}</td>${c.tem_mensagem_alerta ? `<td>${esc(i.mensagem_alerta)}</td>` : ""}</tr>`).join("")
     || `<tr><td colspan="5" class="vazio">Nenhum item lido.</td></tr>`;
   $("cfEscolha").classList.toggle("oculto", !c.tem_mensagem_alerta);
@@ -437,27 +723,53 @@ async function responderFonte(resposta) {
 $("bRaiox").onclick = async () => {
   const r = await fetch("/api/raiox", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ wo: $("rxWo").value, consolidado: $("rxCons").value }) }).then(r => r.json());
-  if (!r.ok) alert(r.erro);
+  if (!r.ok) avisar(r.erro, true); else avisar("Raio-X iniciado.");
 };
 $("bRaioxPronto").onclick = () => fetch("/api/raiox/pronto", { method: "POST" });
 $("cfSim").onclick = () => responderFonte("sim");
 $("cfOutra").onclick = () => responderFonte("outra");
 $("cfMostrar").onclick = () => responderFonte("mostrar");
-const tempo = s => s < 60 ? `${Math.max(1, Math.round(s))} s` : `${Math.round(s / 60)} min`;
+const tempo = s => s < 60 ? `${Math.max(1, Math.round(s))} s` : s < 3600 ? `${Math.round(s / 60)} min`
+  : `${Math.floor(s / 3600)} h ${Math.round(s % 3600 / 60)} min`;
+
+// ---------------------------------------------------------------- estado da execução (derivado da lógica real)
+function estadoExecucao(e) {
+  const sit = e.situacao || "", ind = e.indicadores || {};
+  if (e.fase === "processando") {
+    if (sit === "pausado_sessao") return ["Pausada", "pausa", "Pausada: a sessão do BTP expirou (nada foi perdido)"];
+    if (sit === "pausado_usuario") return ["Pausada", "pausa", "Análise pausada"];
+    return ["Executando", "rodando", "Extraindo e auditando"];
+  }
+  if (e.fase === "preparando") return ["Preparando", "rodando", "Preparando o acesso aos dados"];
+  if (e.fase === "confirmando") return ["Aguardando você", "pausa", "Confira a amostra para continuar"];
+  if (e.fase === "raiox") return ["Raio-X", "rodando", "Raio-X da fonte em andamento"];
+  if (e.fase === "raiox_ok") return ["Raio-X pronto", "ok", "Raio-X pronto para baixar"];
+  if (e.fase === "falhou") return ["Falha na execução", "erro", "Não foi possível preparar o acesso aos dados"];
+  if (e.fase === "concluido") {
+    const n = e.ultimo_numero ? ` nº ${e.ultimo_numero}` : "";
+    if (sit === "interrompida") return ["Interrompida", "pausa", `Análise${n} interrompida`];
+    if (ind.divergentes) return ["Concluída com divergências", "pausa", `Análise${n} concluída`];
+    if (ind.incompletas || ind.falhas) return ["Concluída com ressalvas", "pausa", `Análise${n} concluída`];
+    return ["Concluída", "ok", `Análise${n} concluída`];
+  }
+  return conectado ? ["Pronta para iniciar", "", "Nenhuma análise em andamento"]
+                   : ["Aguardando o BTP", "", "Nenhuma análise em andamento"];
+}
 
 async function atualizar() {
   let e;
   try { e = await fetch("/api/estado").then(r => r.json()); }
   catch (_) { $("conexao").textContent = "Agente fechado"; $("pt").className = "ponto"; return; }
+  ultimoEstado = e;
 
   // Conexão honesta: "conectado" só com batimento recente da aba E sessão do BTP confirmada.
   conectado = ["conectado", "aba_conectada"].includes(e.conexao); ocupado = e.ocupado;
   // Programa antigo servindo a tela nova (janela preta antiga ainda aberta)?
   $("desatualizado").classList.toggle("oculto", !VERSAO_TELA.startsWith("__") && e.versao === VERSAO_TELA);
-  const ROT = { conectado: "Conectado ao BTP · sessão válida", aba_conectada: "Aba conectada · sessão a verificar",
+  const ROT = { conectado: "BTP conectado · sessão válida", aba_conectada: "Aba conectada · sessão a verificar",
                 sessao_expirada: "Sessão do BTP expirada — faça login na aba", desconectado: "Aguardando o BTP" };
   $("conexao").textContent = ROT[e.conexao] || "Aguardando o BTP";
-  $("conexao").title = e.batimento_seg != null ? `Último contato da aba: há ${e.batimento_seg} s` +
+  $("pilulaConexao").title = e.batimento_seg != null ? `Último contato da aba: há ${e.batimento_seg} s` +
     (e.sessao_verificada_ha_seg != null ? ` · sessão verificada há ${e.sessao_verificada_ha_seg} s` : "") : "";
   $("pt").className = "ponto" + (e.conexao === "conectado" ? " ok" : ["aba_conectada", "sessao_expirada"].includes(e.conexao) ? " esp" : "");
   $("cartaoConexao").classList.toggle("oculto", e.conexao !== "desconectado");
@@ -467,17 +779,15 @@ async function atualizar() {
   if (retomavel && retomavel.fonte_descartada) {
     $("retTitulo").textContent = `Análise nº ${retomavel.numero}: refazer com a fonte certa`;
     $("retTexto").textContent = `Esta análise usou uma tabela do BTP que não é a da janela Mensagens; os resultados ` +
-      `dela não valem. Refaça a mesma lista (${retomavel.total} WOs) com a fonte certa — não precisa importar de novo.`;
-    $("bRetomarAnalise").textContent = `Refazer as ${retomavel.total} WOs`;
+      `dela não valem. Refaça a mesma lista (${fmt(retomavel.total)} WOs) com a fonte certa — não precisa importar de novo.`;
+    $("bRetomarAnalise").textContent = `Refazer as ${fmt(retomavel.total)} WOs`;
   } else if (retomavel) {
+    $("retTitulo").textContent = `Retomar análise nº ${retomavel.numero}`;
+    $("retTexto").textContent = `${fmt(retomavel.validadas)} de ${fmt(retomavel.total)} já validadas, ${fmt(retomavel.restantes)} restantes. ` +
+      "Só as WOs pendentes ou com falha são consultadas de novo.";
     $("bRetomarAnalise").textContent = "Retomar";
   }
   if (retomavel) {
-    if (!retomavel.fonte_descartada) {
-      $("retTitulo").textContent = `Retomar análise nº ${retomavel.numero}`;
-      $("retTexto").textContent = `${retomavel.validadas} de ${retomavel.total} já validadas, ${retomavel.restantes} restantes. ` +
-        "Só as WOs pendentes ou com falha são consultadas de novo.";
-    }
     $("retPlanilha").href = `/api/execucoes/${encodeURIComponent(retomavel.run_id)}/planilha`;
     $("retDiag").href = `/api/diagnostico?run_id=${encodeURIComponent(retomavel.run_id)}`;
     $("bRetomarAnalise").disabled = !conectado;
@@ -486,76 +796,76 @@ async function atualizar() {
   desenharConfirmacao(e);
   $("aviso").textContent = e.aviso || "";
   $("aviso").classList.toggle("oculto", !e.aviso);
+  atualizarBotaoExecutar();
 
-  $("bExecutar").disabled = ocupado || !conectado;
-  $("bExecutar").title = conectado ? "" : "Conecte a aba do BTP primeiro";
-  $("bParar").classList.toggle("oculto", !(ocupado && e.fase !== "ocioso"));
   const sit = e.situacao || "";
+  $("bParar").classList.toggle("oculto", !(ocupado && e.fase !== "ocioso"));
   $("bPausar").classList.toggle("oculto", !(ocupado && e.fase === "processando" && sit === "em_andamento"));
   $("bContinuar").classList.toggle("oculto", !(ocupado && sit === "pausado_usuario"));
 
+  const [rotulo, classe, titulo] = estadoExecucao(e);
+  $("seloEstado").textContent = rotulo; $("seloEstado").className = "selo " + classe;
+  $("tituloProg").textContent = titulo;
   const ativo = e.fase !== "ocioso";
-  $("cartaoProgresso").classList.toggle("oculto", !ativo);
-  if (ativo) {
-    const p = e.progresso, pct = p.total ? Math.round(100 * p.atual / p.total) : 0;
-    $("tituloProg").textContent = e.fase === "falhou" ? "Configuração não concluída"
-      : e.fase === "confirmando" ? "Aguardando sua conferência da amostra"
-      : e.fase === "raiox" ? "Raio-X da fonte em andamento"
-      : e.fase === "raiox_ok" ? "Raio-X pronto"
-      : e.fase === "preparando" ? "Configurando o acesso aos dados (primeira execução)"
-      : e.fase === "concluido" ? (e.ultimo_numero ? `Análise nº ${e.ultimo_numero} ${sit === "interrompida" ? "interrompida" : "concluída"}` : "Análise concluída")
-      : sit === "pausado_sessao" ? "Pausada: a sessão do BTP expirou (nada foi perdido)"
-      : sit === "pausado_usuario" ? "Pausada"
-      : "Extraindo e auditando";
-    $("barra").classList.toggle("indef", ["preparando", "raiox"].includes(e.fase));
-    $("prepInfo").classList.toggle("oculto", !["preparando", "falhou"].includes(e.fase));
-    $("observadas").textContent = e.observadas;
-    $("barraFill").style.width = (e.fase === "concluido" && !e.execucao ? 100 : pct) + "%";
-    $("progTxt").textContent = p.total ? `${p.atual} de ${p.total} WOs · ${pct}%` : "";
-    const ex = e.execucao || null;
-    const rodando = ex && e.fase === "processando" && sit === "em_andamento";
-    $("etaTxt").textContent = rodando
-      ? (ex.taxa_wo_s ? `${ex.taxa_wo_s.toLocaleString("pt-BR")} WO/s` : "medindo o ritmo…")
-        + (ex.eta_seg ? ` · faltam ~${tempo(ex.eta_seg)}` : "")
-      : (ex && sit.startsWith("pausado") ? "pausada — o tempo restante volta a ser calculado ao retomar" : "");
-    runAtual = ex ? ex.run_id : null;
-    const cats = ex ? ex.erros_por_categoria || {} : {};
-    $("errosCat").innerHTML = Object.entries(cats).map(([cat, m]) =>
-      `<span class="chip ${cat === "ENTRADA" ? "amb" : "err"}">${CATEGORIA[cat] || cat}: ${Object.entries(m).map(([k, n]) => `${esc(k)} ${n}`).join(", ")}</span>`).join("");
-    $("caixaDiag").classList.toggle("oculto", !ex);
-    carregarDiagnostico(false);
-    const ind = e.indicadores || {};
-    [["iProcessadas", "processadas"], ["iPendentes", "pendentes"], ["iValidadas", "validadas"],
-     ["iDivergentes", "divergentes"], ["iIncompletas", "incompletas"], ["iFalhas", "falhas"]]
-      .forEach(([el, k]) => { $(el).textContent = ind[k] ?? 0; });
-    $("painel").classList.toggle("oculto", ["preparando", "falhou", "confirmando", "raiox", "raiox_ok"].includes(e.fase));
-    $("bRaioxPronto").classList.toggle("oculto", e.fase !== "raiox");
-    $("baixarRaiox").classList.toggle("oculto", !(e.fase === "raiox_ok" && e.ultimo_raiox));
-    if (e.ultimo_raiox) $("baixarRaiox").href = "/api/download/" + encodeURIComponent(e.ultimo_raiox);
-    $("etapa").textContent = ((e.fase === "processando" && !sit.startsWith("pausado")) || e.fase === "raiox") && e.etapa
-      ? "Agora: " + e.etapa : "";
-    $("chips").innerHTML = GRUPOS.map(g => {
-      const n = g.status.reduce((s, st) => s + (e.contagem[st] || 0), 0);
-      return n ? `<span class="chip ${g.classe}">${g.rotulo}<b>${n}</b></span>` : "";
-    }).join("");
-    const pronto = e.fase === "concluido" && e.ultimo_arquivo;
-    $("baixar").classList.toggle("oculto", !pronto);
-    if (pronto) $("baixar").href = "/api/download/" + encodeURIComponent(e.ultimo_arquivo);
-    $("baixarParcial").classList.toggle("oculto", !(ex && e.fase === "processando"));
-    if (ex) $("baixarParcial").href = `/api/execucoes/${encodeURIComponent(ex.run_id)}/planilha`;
-  }
+  const ex = e.execucao || null;
+  const p = e.progresso || { atual: 0, total: 0 }, pct = p.total ? Math.round(100 * p.atual / p.total) : 0;
+  const cheia = e.fase === "concluido" && !ex;
+  $("barra").classList.toggle("indef", ["preparando", "raiox"].includes(e.fase));
+  $("barra").classList.toggle("ok", e.fase === "concluido" && classe === "ok");
+  $("barraFill").style.width = (cheia ? 100 : ativo ? pct : 0) + "%";
+  $("barra").setAttribute("aria-valuenow", cheia ? 100 : pct);
+  $("prepInfo").classList.toggle("oculto", !["preparando", "falhou"].includes(e.fase));
+  $("observadas").textContent = e.observadas;
+  $("progTxt").innerHTML = !ativo ? (conectado ? "Informe as WOs e clique em Executar análise." : "Conecte a aba do BTP para começar.")
+    : p.total ? `<b>${fmt(p.atual)}</b> de <b>${fmt(p.total)}</b> WOs · <b>${pct}%</b>` : "";
+  const rodando = ex && e.fase === "processando" && sit === "em_andamento";
+  $("etaTxt").textContent = rodando
+    ? (ex.taxa_wo_s ? `${ex.taxa_wo_s.toLocaleString("pt-BR")} WO/s` : "medindo o ritmo…")
+      + (ex.eta_seg ? ` · faltam ~${tempo(ex.eta_seg)}` : "")
+    : (ex && sit.startsWith("pausado") ? "pausada — o tempo restante volta a ser calculado ao retomar" : "");
+  $("etapa").textContent = ((e.fase === "processando" && !sit.startsWith("pausado")) || e.fase === "raiox") && e.etapa
+    ? "Agora: " + e.etapa : "";
+  const ind = e.indicadores || {}, mostrarNumeros = ativo && !["preparando", "falhou", "confirmando", "raiox", "raiox_ok"].includes(e.fase);
+  [["iProcessadas", "processadas"], ["iPendentes", "pendentes"], ["iValidadas", "validadas"],
+   ["iDivergentes", "divergentes"], ["iIncompletas", "incompletas"], ["iFalhas", "falhas"]]
+    .forEach(([el, k]) => { $(el).textContent = mostrarNumeros ? fmt(ind[k] ?? 0) : "—"; });
+  $("bRaioxPronto").classList.toggle("oculto", e.fase !== "raiox");
+  $("baixarRaiox").classList.toggle("oculto", !(e.fase === "raiox_ok" && e.ultimo_raiox));
+  if (e.ultimo_raiox) $("baixarRaiox").href = "/api/download/" + encodeURIComponent(e.ultimo_raiox);
+  $("chips").innerHTML = mostrarNumeros ? GRUPOS.map(g => {
+    const n = g.status.reduce((s, st) => s + ((e.contagem || {})[st] || 0), 0);
+    return n ? `<span class="chip ${g.classe}">${g.rotulo}<b>${fmt(n)}</b></span>` : "";
+  }).join("") : "";
+  runAtual = ex ? ex.run_id : null;
+  const cats = ex ? ex.erros_por_categoria || {} : {};
+  $("errosCat").innerHTML = Object.entries(cats).map(([cat, m]) =>
+    `<span class="chip ${cat === "ENTRADA" ? "amb" : "err"}">${CATEGORIA[cat] || cat}: ${Object.entries(m).map(([k, n]) => `${esc(rotuloMotivo(k))} ${fmt(n)}`).join(", ")}</span>`).join("");
+  $("caixaDiag").classList.toggle("oculto", !ex);
+  $("diagBaixar").classList.toggle("oculto", !runAtual);
+  if (runAtual) $("diagBaixar").href = `/api/diagnostico?run_id=${encodeURIComponent(runAtual)}`;
+  const nProblemas = Object.values(cats).reduce((s, m) => s + Object.values(m).reduce((a, b) => a + b, 0), 0);
+  $("diagResumo").textContent = ex ? (nProblemas ? `${fmt(nProblemas)} WO(s) com problema` : "nenhum problema registrado") : "";
+  carregarDiagnostico(false);
+  const pronto = e.fase === "concluido" && e.ultimo_arquivo;
+  $("baixar").classList.toggle("oculto", !pronto);
+  if (pronto) $("baixar").href = "/api/download/" + encodeURIComponent(e.ultimo_arquivo);
+  $("baixarParcial").classList.toggle("oculto", !(ex && e.fase === "processando"));
+  if (ex) $("baixarParcial").href = `/api/execucoes/${encodeURIComponent(ex.run_id)}/planilha`;
 
   const log = $("log"), fim = log.scrollTop + log.clientHeight >= log.scrollHeight - 5;
-  log.textContent = e.mensagens.join("\n");
-  if (fim) log.scrollTop = log.scrollHeight;
+  const texto = e.mensagens.join("\n");
+  if (log.textContent !== texto) { log.textContent = texto; if (fim) log.scrollTop = log.scrollHeight; }
 }
 setInterval(atualizar, 1000); atualizar();
 
-// ---------------------------------------------------------------- histórico
+// ---------------------------------------------------------------- navegação
+let abaAtual = "analise";
 function abrirAba(nome) {
+  abaAtual = nome;
   [["abaAnalise", "vistaAnalise", "analise"], ["abaHistorico", "vistaHistorico", "historico"],
    ["abaConfig", "vistaConfig", "config"]].forEach(([aba, vista, n]) => {
     $(aba).classList.toggle("ativa", nome === n);
+    if (nome === n) $(aba).setAttribute("aria-current", "page"); else $(aba).removeAttribute("aria-current");
     $(vista).classList.toggle("oculto", nome !== n);
   });
   if (nome === "historico") carregarHistorico();
@@ -614,7 +924,7 @@ const CONFIG = [
 let cfgPadrao = {};
 function desenharConfig(valores) {
   $("cfgGrupos").innerHTML = CONFIG.map(g => `
-    <section class="cartao grupo"><h3>${g.grupo}</h3><p class="suave">${g.descricao}</p>
+    <section class="cartao grupo"><h3>${g.grupo}</h3><p class="meta" style="margin:2px 0 8px">${g.descricao}</p>
     ${g.itens.map(i => {
       const v = valores[i.id];
       const ent = i.tipo === "bool" ? `<input type="checkbox" id="cfg_${i.id}" ${v ? "checked" : ""}>`
@@ -640,14 +950,17 @@ function lerFormulario() {
   }));
   return dados;
 }
+function mostrarConferencia(v) {
+  $("nAuditorias").textContent = v.auditorias_por_wo;
+  $("nMaximo").textContent = v.auditorias_por_wo + (v.divergencia === "reconsultar" ? v.consultas_extras_divergencia : 0);
+}
 async function salvarConfig(url, corpo) {
   const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
                                body: JSON.stringify(corpo || {}) }).then(r => r.json());
   if (!r.ok) { $("cfgStatus").textContent = r.erro; return; }
-  desenharConfig(r.valores);
-  $("nAuditorias").textContent = r.valores.auditorias_por_wo;
-  $("nMaximo").textContent = r.valores.auditorias_por_wo + (r.valores.divergencia === "reconsultar" ? r.valores.consultas_extras_divergencia : 0);
+  desenharConfig(r.valores); mostrarConferencia(r.valores);
   $("cfgStatus").textContent = r.problemas.length ? "Salvo com ajustes: " + r.problemas.join("; ") : "Configurações salvas.";
+  avisar($("cfgStatus").textContent);
 }
 $("cfgSalvar").onclick = () => salvarConfig("/api/configuracoes", lerFormulario());
 $("cfgRefazer").onclick = async () => {
@@ -656,12 +969,9 @@ $("cfgRefazer").onclick = async () => {
   $("cfgStatus").textContent = r.ok ? "Fonte apagada: a próxima análise pede a conferência." : r.erro;
 };
 $("cfgPadrao").onclick = () => confirm("Restaurar todos os valores padrão?") && salvarConfig("/api/configuracoes/padrao");
-fetch("/api/configuracoes").then(r => r.json()).then(r => {
-  $("nAuditorias").textContent = r.valores.auditorias_por_wo;
-  $("nMaximo").textContent = r.valores.auditorias_por_wo + (r.valores.divergencia === "reconsultar" ? r.valores.consultas_extras_divergencia : 0);
-});
+fetch("/api/configuracoes").then(r => r.json()).then(r => mostrarConferencia(r.valores));
 
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// ---------------------------------------------------------------- histórico
 const dataBR = iso => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 const duracao = s => s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${Math.floor(s / 3600)} h ${Math.round(s % 3600 / 60)} min`;
 const classeSit = s => s === "Concluída" ? "ok" : s === "Interrompida" ? "amb" : "err";
@@ -672,20 +982,29 @@ const classeAud = s => s === "Validado" ? "ok" : s === "Divergente" || s === "In
   : s === "Não se aplica" ? "" : "err";
 let selecionada = null, detalheAtual = null;
 
+function resumoHistorico(a) {
+  const i = a.indicadores;
+  if (!i) return "—";
+  const partes = [["ok", "✓", i.validadas, "validadas"], ["amb", "≠", i.divergentes, "com divergência"],
+                  ["amb", "◐", i.incompletas, "incompletas"], ["err", "✕", i.falhas, "com falha"]]
+    .filter(([, , n]) => n).map(([c, g, n, t]) => `<span class="tag ${c}" title="${fmt(n)} ${t}">${g} ${fmt(n)}</span>`);
+  return `<span class="res">${partes.join("") || '<span class="tag">nenhuma WO concluída</span>'}</span>`;
+}
 async function carregarHistorico() {
   const lista = await fetch("/api/historico").then(r => r.json());
   $("tabHist").innerHTML = lista.length ? lista.map(a => `
-    <tr class="clicavel ${a.id === selecionada ? "selecionada" : ""}" data-id="${a.id}">
-      <td class="num">${a.numero || "—"}</td><td>${dataBR(a.inicio)}</td><td>${esc(a.origem)}</td><td class="num">${a.total}</td>
-      <td class="num">${(a.contagem["Com itens faltantes"] || 0) + (a.contagem["Processada"] || 0)}</td><td class="num">${a.linhas_excel}</td>
-      <td class="num">${a.indicadores ? a.indicadores.validadas : "—"}</td>
-      <td class="num">${a.indicadores ? a.indicadores.divergentes : "—"}</td>
+    <tr class="clicavel ${a.id === selecionada ? "selecionada" : ""}" data-id="${esc(a.id)}" tabindex="0">
+      <td class="num">${a.numero || "—"}</td><td style="white-space:nowrap">${dataBR(a.inicio)}</td><td>${esc(a.origem)}</td>
+      <td class="num">${fmt(a.total)}</td><td>${resumoHistorico(a)}</td>
       <td class="num">${duracao(a.duracao_seg)}</td>
       <td><span class="tag ${classeSit(a.situacao)}">${esc(a.situacao)}</span></td>
-      <td style="white-space:nowrap">${a.arquivo ? `<a href="/api/download/${encodeURIComponent(a.arquivo)}" onclick="event.stopPropagation()" style="color:var(--vermelho);font-weight:600">Excel</a>` : ""}
-        <button class="link apagar" data-id="${a.id}" title="Apagar esta análise" style="margin-left:10px;color:var(--suave)">✕</button></td>
-    </tr>`).join("") : `<tr><td colspan="11" class="vazio">Nenhuma análise registrada.</td></tr>`;
-  document.querySelectorAll("#tabHist tr.clicavel").forEach(tr => tr.onclick = () => abrirDetalhe(tr.dataset.id));
+      <td style="white-space:nowrap">${a.arquivo ? `<a class="btn-texto" href="/api/download/${encodeURIComponent(a.arquivo)}" onclick="event.stopPropagation()">Excel</a>` : ""}
+        <button class="btn-texto apagar" data-id="${esc(a.id)}" title="Apagar esta análise" aria-label="Apagar a análise ${a.numero || ""}" style="color:var(--texto-3)">Apagar</button></td>
+    </tr>`).join("") : `<tr><td colspan="8" class="vazio">Nenhuma análise registrada.</td></tr>`;
+  document.querySelectorAll("#tabHist tr.clicavel").forEach(tr => {
+    tr.onclick = () => abrirDetalhe(tr.dataset.id);
+    tr.onkeydown = ev => { if (ev.key === "Enter") abrirDetalhe(tr.dataset.id); };
+  });
   document.querySelectorAll("#tabHist button.apagar").forEach(b => b.onclick = ev => { ev.stopPropagation(); apagar(b.dataset.id); });
 }
 
@@ -694,28 +1013,31 @@ async function abrirDetalhe(id) {
   document.querySelectorAll("#tabHist tr").forEach(tr => tr.classList.toggle("selecionada", tr.dataset.id === id));
   detalheAtual = await fetch("/api/historico/" + encodeURIComponent(id)).then(r => r.json());
   const a = detalheAtual;
+  a.wos = a.wos || [];
   $("detalheHist").classList.remove("oculto");
   $("detTitulo").textContent = a.numero ? `Análise nº ${a.numero} · ${dataBR(a.inicio)}` : `Análise de ${dataBR(a.inicio)}`;
-  $("detResumo").textContent = `${a.origem} · ${a.total} WOs consultadas · ${a.linhas_excel} ocorrência(s) · duração ${duracao(a.duracao_seg)} · ${a.situacao}`;
-  $("detChips").innerHTML = Object.entries(a.contagem).map(([s, n]) =>
-    `<span class="chip ${classeStatus(s)}">${esc(s)}<b>${n}</b></span>`).join("");
+  $("detResumo").textContent = `${a.origem} · ${fmt(a.total)} WOs · ${fmt(a.linhas_excel)} ocorrência(s) · duração ${duracao(a.duracao_seg)} · ${a.situacao}`;
+  $("detChips").innerHTML = Object.entries(a.contagem || {}).map(([s, n]) =>
+    `<span class="chip ${classeStatus(s)}">${esc(s)}<b>${fmt(n)}</b></span>`).join("");
   $("detBaixar").classList.toggle("oculto", !a.arquivo);
   if (a.arquivo) $("detBaixar").href = "/api/download/" + encodeURIComponent(a.arquivo);
   $("detFiltro").innerHTML = `<option value="">Todas as situações</option>` +
-    Object.keys(a.contagem).map(s => `<option>${esc(s)}</option>`).join("");
+    Object.keys(a.contagem || {}).map(s => `<option>${esc(s)}</option>`).join("");
   desenharDetalhe();
-  $("detalheHist").scrollIntoView({ behavior: "smooth", block: "start" });
+  $("detalheHist").scrollIntoView({ block: "start" });
 }
 
 function desenharDetalhe() {
   const f = $("detFiltro").value;
   const wos = detalheAtual.wos.filter(w => !f || w.status === f);
-  $("detConta").textContent = `${wos.length} WO(s)`;
-  $("tabDet").innerHTML = wos.length ? wos.map(w => `
-    <tr><td style="font-family:Consolas,monospace">${esc(w.wo)}</td>
+  $("detConta").textContent = `${fmt(wos.length)} WO(s)`;
+  const mostrar = wos.slice(0, 2000);       // tabela leve mesmo com 13 mil WOs (filtre para ver o resto)
+  $("tabDet").innerHTML = mostrar.length ? mostrar.map(w => `
+    <tr><td class="mono">${esc(w.wo)}</td>
       <td><span class="tag ${classeStatus(w.status)}">${esc(w.status)}</span></td>
       <td>${w.auditoria ? `<span class="tag ${classeAud(w.auditoria)}">${esc(w.auditoria)}${w.auditorias ? " · " + esc(w.auditorias) : ""}</span>` : "—"}</td>
       <td class="num">${w.registros}</td><td>${esc(w.observacao === "OK" ? "" : w.observacao)}</td></tr>`).join("")
+      + (wos.length > mostrar.length ? `<tr><td colspan="5" class="vazio">Mostrando ${fmt(mostrar.length)} de ${fmt(wos.length)} — use o filtro ou baixe o relatório.</td></tr>` : "")
     : `<tr><td colspan="5" class="vazio">Nenhuma WO processada nesta análise.</td></tr>`;
 }
 $("detFiltro").onchange = desenharDetalhe;
@@ -730,9 +1052,168 @@ $("detApagar").onclick = () => selecionada && apagar(selecionada);
 $("bLimpar").onclick = async () => {
   if (!confirm("Apagar TODO o histórico e as planilhas geradas? Isso não pode ser desfeito.")) return;
   const r = await fetch("/api/historico", { method: "DELETE" }).then(r => r.json());
-  if (!r.ok) return alert(r.erro);
+  if (!r.ok) return avisar(r.erro, true);
   selecionada = null; $("detalheHist").classList.add("oculto"); carregarHistorico();
 };
+
+// ================================================================ AJUDA CONTEXTUAL
+// Textos conferidos com o código (loja.estado_da_wo, auditoria.consolidar, entrada.ler_wos_*).
+const AJUDA = {
+  wo: ["WO", "Ordem de serviço no formato 00000|000000000 (5 dígitos | 9 dígitos), uma por linha. Espaços ao redor da barra são aceitos; repetidas contam uma vez; linha em outro formato vira \"Número de WO inválido\" no relatório."],
+  conferencia: ["Conferência", "Depois da extração, cada WO é lida de novo no BTP e comparada campo a campo. Se algum valor mudar entre as leituras, são feitas leituras extras; um valor divergente nunca é aprovado sem evidência. Os números vêm da engrenagem (Configurações)."],
+  processadas: ["Processadas", "WOs já concluídas nesta análise: validadas + com divergência + incompletas + com falha. Cada uma fica gravada assim que termina."],
+  pendentes: ["Pendentes", "WOs ainda não consultadas ou em consulta agora. Se a análise for interrompida (sessão, parada, programa fechado), elas continuam pendentes e são feitas ao Retomar."],
+  validadas: ["Validadas", "Todas as leituras da WO concordaram campo a campo. Inclui WOs sem alerta no Monitor quando isso se confirmou em todas as leituras."],
+  divergentes: ["Com divergência", "Algum valor mudou entre as leituras sem registro de alteração no BTP. O campo fica vazio na planilha, com a observação \"conferir no BTP\"."],
+  incompletas: ["Incompletas", "O BTP não informou algum campo obrigatório, a quantidade é ambígua (mais de um campo de quantidade) ou as conferências não puderam ser concluídas (tempo ou erro). Veja o motivo em \"Diagnóstico da execução\"."],
+  falhas: ["Falha de extração", "A consulta da WO falhou (rede, tempo esgotado, erro do BTP) ou o número da WO é inválido. Falhas de rede e de sessão são refeitas ao Retomar."],
+};
+const Dica = (() => {
+  let atual = null;
+  function mostrar(botao) {
+    const [titulo, texto] = AJUDA[botao.dataset.ajuda] || ["", ""];
+    const d = $("dica");
+    d.innerHTML = `<b>${esc(titulo)}</b>${esc(texto)}`;
+    d.classList.remove("oculto");
+    const r = botao.getBoundingClientRect(), w = d.offsetWidth, h = d.offsetHeight;
+    let top = r.bottom + 8, left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
+    if (top + h > innerHeight - 8) top = r.top - h - 8;
+    d.style.top = `${Math.max(8, top)}px`; d.style.left = `${left}px`;
+    if (atual && atual !== botao) atual.setAttribute("aria-expanded", "false");
+    atual = botao; botao.setAttribute("aria-expanded", "true"); botao.setAttribute("aria-describedby", "dica");
+  }
+  function esconder() {
+    $("dica").classList.add("oculto");
+    if (atual) { atual.setAttribute("aria-expanded", "false"); atual.removeAttribute("aria-describedby"); }
+    atual = null;
+  }
+  document.addEventListener("click", ev => {
+    const b = ev.target.closest(".ajuda-ctx");
+    if (b) { ev.preventDefault(); ev.stopPropagation(); return atual === b ? esconder() : mostrar(b); }
+    if (!ev.target.closest("#dica")) esconder();
+  });
+  // Foco pelo TECLADO abre a dica; com o mouse, quem decide é o clique (senão o clique fecharia a dica que o foco abriu).
+  let ultimoPonteiro = 0;
+  document.addEventListener("pointerdown", () => { ultimoPonteiro = Date.now(); }, true);
+  document.addEventListener("focusin", ev => {
+    const b = ev.target.closest && ev.target.closest(".ajuda-ctx");
+    if (b && Date.now() - ultimoPonteiro > 500) mostrar(b);
+  });
+  document.addEventListener("focusout", ev => { if (ev.target.closest && ev.target.closest(".ajuda-ctx")) setTimeout(() => { if (!document.activeElement.closest(".ajuda-ctx")) esconder(); }, 0); });
+  document.addEventListener("keydown", ev => { if (ev.key === "Escape" && atual) { const b = atual; esconder(); b.focus(); } });
+  addEventListener("scroll", esconder, true); addEventListener("resize", esconder);
+  document.querySelectorAll(".ajuda-ctx").forEach(b => b.setAttribute("aria-expanded", "false"));
+  return { esconder };
+})();
+
+// ================================================================ TUTORIAL GUIADO
+// Para editar o tutorial, mude só este array: alvo (seletor), título, texto e, se preciso,
+// "preparar" (deixa o alvo visível e devolve a função que restaura o estado anterior).
+const PASSOS_TUTORIAL = [
+  { alvo: "#texto", titulo: "Campo de WOs",
+    texto: "Insira as WOs que deseja analisar, uma por linha, no formato 00000|000000000. O contador logo abaixo mostra quantas estão no formato certo e avisa se alguma linha não está." },
+  { alvo: "#zonaImportar", titulo: "Importar planilha",
+    texto: "Em vez de colar, importe um arquivo .xlsx. O agente procura a coluna \"WO\" (ou células no formato de WO) e mostra aqui o nome do arquivo e quantas WOs reconheceu. Você pode usar campo e planilha juntos." },
+  { alvo: "#bExecutar", titulo: "Executar análise",
+    texto: "Inicia a extração no BTP. Precisa da aba do BTP conectada (indicador no topo). Se o botão estiver bloqueado, o motivo aparece logo abaixo dele. Na primeira vez, o agente mostra uma amostra para você conferir a fonte dos dados." },
+  { alvo: "#cartaoProgresso .exec-cab, #blocoProgresso", titulo: "Progresso da execução",
+    texto: "O selo mostra o estado real: Executando, Pausada, Interrompida ou Concluída. A barra e o contador mostram quantas WOs já terminaram; o ritmo e o tempo restante aparecem quando há medição suficiente. Pausar e Parar ficam aqui." },
+  { alvo: "#painel", titulo: "Indicadores",
+    texto: "Processadas = validadas + divergência + incompletas + falhas. Pendentes ainda vão ser consultadas. Cada cartão tem um \"?\" com a regra exata de contagem." },
+  { alvo: "#secDiagnostico", titulo: "Diagnóstico e exportações",
+    texto: "Os detalhes técnicos ficam recolhidos aqui: o que deu errado (com a próxima ação), o registro de execução e o Raio-X da fonte. O relatório .xlsx e o diagnóstico .json são baixados pelos botões do painel de execução e deste cartão.",
+    preparar: () => { const d = $("caixaLog"), antes = d.open; d.open = true; return () => { d.open = antes; }; } },
+];
+
+const Tutorial = (() => {
+  let indice = 0, restaurar = null, focoAntes = null, abaAntes = null, quadro = 0, alvos = [];
+  const raiz = $("tutorial"), foco = $("tutFoco"), balao = $("tutBalao");
+
+  function retangulo() {
+    const rs = alvos.map(a => a.getBoundingClientRect()).filter(r => r.width || r.height);
+    if (!rs.length) return null;
+    const top = Math.min(...rs.map(r => r.top)), left = Math.min(...rs.map(r => r.left));
+    return { top, left, right: Math.max(...rs.map(r => r.right)), bottom: Math.max(...rs.map(r => r.bottom)),
+             width: Math.max(...rs.map(r => r.right)) - left, height: Math.max(...rs.map(r => r.bottom)) - top };
+  }
+  function posicionar() {
+    const r = retangulo();
+    if (!r) return;
+    const m = 6;
+    Object.assign(foco.style, { top: `${r.top - m}px`, left: `${r.left - m}px`, width: `${r.width + 2 * m}px`, height: `${r.height + 2 * m}px` });
+    if (innerWidth <= 640) { balao.style.top = ""; balao.style.left = ""; return; }   // CSS fixa o balão embaixo
+    const bw = balao.offsetWidth, bh = balao.offsetHeight, g = 14, vw = innerWidth, vh = innerHeight;
+    const opcoes = [
+      { top: r.bottom + g, left: r.left, cabe: r.bottom + g + bh <= vh - 8 },
+      { top: r.top - g - bh, left: r.left, cabe: r.top - g - bh >= 8 },
+      { top: r.top, left: r.right + g, cabe: r.right + g + bw <= vw - 8 },
+      { top: r.top, left: r.left - g - bw, cabe: r.left - g - bw >= 8 },
+    ];
+    const o = opcoes.find(x => x.cabe) || { top: vh - bh - 12, left: (vw - bw) / 2 };
+    balao.style.top = `${Math.min(Math.max(8, o.top), vh - bh - 8)}px`;
+    balao.style.left = `${Math.min(Math.max(8, o.left), vw - bw - 8)}px`;
+  }
+  function laco() { posicionar(); quadro = requestAnimationFrame(laco); }   // acompanha rolagem, redimensionamento e mudanças de layout
+
+  function mostrar(i) {
+    if (restaurar) { restaurar(); restaurar = null; }
+    indice = i;
+    const passo = PASSOS_TUTORIAL[i];
+    restaurar = passo.preparar ? passo.preparar() : null;
+    alvos = [...document.querySelectorAll(passo.alvo)].filter(a => a.offsetParent !== null || a.getClientRects().length);
+    $("tutPasso").textContent = `Passo ${i + 1} de ${PASSOS_TUTORIAL.length}`;
+    $("tutTitulo").textContent = passo.titulo;
+    $("tutTexto").textContent = alvos.length ? passo.texto : passo.texto + " (Este elemento não está visível agora.)";
+    $("tutPontos").innerHTML = PASSOS_TUTORIAL.map((_, k) => `<span class="${k <= i ? "feito" : ""}"></span>`).join("");
+    $("tutAnterior").disabled = i === 0;
+    $("tutProximo").textContent = i === PASSOS_TUTORIAL.length - 1 ? "Concluir" : "Próximo";
+    $("anuncio").textContent = `Passo ${i + 1} de ${PASSOS_TUTORIAL.length}: ${passo.titulo}`;
+    balao.style.animation = "none"; void balao.offsetWidth; balao.style.animation = "";
+    const r = retangulo();
+    if (r && (r.top < 70 || r.bottom > innerHeight - 20)) alvos[0].scrollIntoView({ block: "center" });
+    posicionar();
+    $("tutProximo").focus();
+  }
+  function abrir() {
+    if (!raiz.classList.contains("oculto")) return;
+    Dica.esconder();
+    focoAntes = document.activeElement; abaAntes = abaAtual;
+    if (abaAtual !== "analise") abrirAba("analise");
+    raiz.classList.remove("oculto");
+    $("vistaAnalise").setAttribute("inert", ""); document.querySelector(".topo").setAttribute("inert", "");
+    $("bAjuda").classList.add("ativa");
+    laco();
+    mostrar(0);
+  }
+  function fechar() {
+    if (raiz.classList.contains("oculto")) return;
+    cancelAnimationFrame(quadro);
+    if (restaurar) { restaurar(); restaurar = null; }
+    raiz.classList.add("oculto");
+    $("vistaAnalise").removeAttribute("inert"); document.querySelector(".topo").removeAttribute("inert");
+    $("bAjuda").classList.remove("ativa");
+    if (abaAntes && abaAntes !== "analise") abrirAba(abaAntes);
+    $("anuncio").textContent = "Ajuda encerrada.";
+    (focoAntes && focoAntes.isConnected ? focoAntes : $("bAjuda")).focus();
+  }
+  $("tutProximo").onclick = () => indice < PASSOS_TUTORIAL.length - 1 ? mostrar(indice + 1) : fechar();
+  $("tutAnterior").onclick = () => indice > 0 && mostrar(indice - 1);
+  $("tutSair").onclick = fechar;
+  document.addEventListener("keydown", ev => {
+    if (raiz.classList.contains("oculto")) return;
+    if (ev.key === "Escape") { ev.preventDefault(); fechar(); }
+    else if (ev.key === "ArrowRight") { ev.preventDefault(); $("tutProximo").click(); }
+    else if (ev.key === "ArrowLeft") { ev.preventDefault(); $("tutAnterior").click(); }
+    else if (ev.key === "Tab") {                    // foco preso no balão enquanto a ajuda está aberta
+      const f = [...balao.querySelectorAll("button:not(:disabled)")];
+      const i = f.indexOf(document.activeElement);
+      ev.preventDefault();
+      f[(i + (ev.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+    }
+  });
+  $("bAjuda").onclick = abrir;
+  return { abrir, fechar, get aberto() { return !raiz.classList.contains("oculto"); }, get passo() { return indice; } };
+})();
 </script>
 </body>
 </html>

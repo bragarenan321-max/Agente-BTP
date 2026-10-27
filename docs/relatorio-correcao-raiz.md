@@ -144,3 +144,43 @@ Evidência: `diagnostico_analise_1.json` (2.900 WOs feitas, todas "incompletas",
 | **Pausa às 10:19 por "aba desconectada"** | 26,2 s de silêncio > 25 s de tolerância, porque os 4 trabalhadores estavam todos esperando consultas lentas. A aba estava viva. | Consulta em execução dentro do prazo mantém a aba conectada. |
 | Pausa às 10:22 | A aba recarregou ("Failed to fetch" + despedida) e depois veio o Parar: comportamento correto. | — |
 | Sondas sem rótulo no JSON | chave `quando` sobrescrita | renomeada para `momento`. |
+
+## 8. Rodada 4 — retomada em qualquer interrupção + redesign da interface
+
+### Retomada
+Já cobria: Parar, queda de sessão, aba fechada, limite de tempo. Faltavam dois casos, agora cobertos:
+- **Análise feita com fonte descartada** (a nº 1, com RetornoDaBaixa) tinha sumido do banner. Agora aparece como
+  **"Refazer as N WOs com a fonte certa"**: nova análise com a mesma lista, sem reimportar; a antiga vira "substituída".
+- **Programa fechado / PC desligado no meio** (WOs em andamento): teste novo abre um programa novo sobre a mesma base,
+  o banner oferece a retomada e as WOs já gravadas não são refeitas.
+
+### Redesign (arquivo `agente_btp/web/index.html`; rota nova só de leitura `POST /api/entrada/planilha`)
+- **Tokens de design** em `:root` (marca, marinho, neutros, semânticas, tipografia, espaçamento, raio, sombra).
+- **Cabeçalho compacto** azul-marinho: marca, abas com estado ativo, conexão honesta, **Ajuda**, Configurações (ícone).
+- **Nível 1 (operação):** grade com "Nova análise" (campo, contador com linhas fora do formato, importação com nome do
+  arquivo e **WOs reconhecidas lidas na hora**, botão com o motivo de bloqueio escrito) e painel de **Execução sempre
+  visível** (selo de estado derivado da lógica real, barra, WO/s e ETA só com taxa medida, WO atual, Pausar/Retomar/Parar
+  com confirmação no Parar, indicadores com ícone + texto + cor).
+- **Nível 2 (sob demanda):** tutorial guiado de 6 passos e "?" contextuais só em WO, conferência e indicadores, com
+  textos conferidos com o código (`loja.estado_da_wo`, `auditoria`, `entrada`).
+- **Nível 3 (técnico):** "Diagnóstico da execução" recolhível: O que deu errado (rótulos legíveis, problemas superados
+  marcados "resolvido"), Registro de execução, Raio-X da fonte, diagnóstico .json.
+- **Histórico:** coluna "Resultado" (validadas/divergências/incompletas/falhas), situação, arquivos; detalhe limitado a
+  2.000 linhas na tela (13 mil WOs não travam o navegador; o relatório tem tudo).
+- **Tutorial (componente independente, passos num único array `PASSOS_TUTORIAL`):** destaque sem mexer na geometria
+  (camada com recorte), balão com posicionamento inteligente e acompanhamento contínuo (rolagem/redimensionamento),
+  rolagem automática até o alvo, abre a seção recolhida e restaura, leva à aba de análise e volta à aba anterior,
+  teclado (← → Esc, Tab preso no balão), anúncio para leitor de tela, foco devolvido ao botão Ajuda, nenhuma chamada à API.
+
+### Lógica (achado durante o redesign, corrigido à parte)
+Após retomar e concluir, "O que deu errado" ainda sugeria "Use Retomar" por causa da parada antiga. Problemas de
+sessão/interrupção superados agora ficam "resolvidos" e não ditam a próxima ação (teste novo).
+
+### Testes efetivamente executados
+- 150 testes de unidade/integração (`pytest testes`).
+- `testes/e2e/rodar_tela.py` (Chromium, novo): **60 verificações** — entrada, planilha real, execução, pausa, retomada,
+  parada com confirmação, banner de retomada, conclusão, indicadores = base, downloads .xlsx/.json, diagnóstico sob
+  demanda, histórico, configurações, tutorial completo (6 passos, teclado, foco, redimensionar, rolar, seção oculta,
+  abrir/fechar repetido, **0 requisições de escrita durante a ajuda**), dica contextual, 390/768 px sem rolagem horizontal.
+- `rodar_aba.py` (6 cenários), `rodar_sessao.py` (queda e retomada, 500 WOs), `rodar_extensao.py`: passaram.
+- Não testável aqui: o BTP real e a extensão no Chrome corporativo do usuário.
