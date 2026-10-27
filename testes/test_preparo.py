@@ -393,3 +393,36 @@ def test_caminho_da_janela_mensagens_confirmado_no_btp(agente):
         ("000000000022056366", 1, "Estoque indisponível"), ("000000000022060284", 1, "Estoque indisponível")]
     assert all(l.fornecedor == "0000148963" and l.consolidado == CONSOL for l in r.linhas)
     assert not any("22061736" in (l.material or "") for l in r.linhas)          # a linha "Ok" não entra
+
+
+def test_observacao_da_tela_nao_passa_na_frente_do_caminho_confirmado(agente):
+    """Caso real 27/10: a observação gravou RetornoDaBaixa (histórico, 2 quantidades) antes de o
+    dicionário ser lido; todas as WOs ficaram incompletas. Com o caminho confirmado disponível,
+    a observação não grava nada — e, sem o dicionário lido, também espera."""
+    get, _ = servico_real(retorno=True)
+    agente.ponte.get = get
+    agente.ponte.fontes = lambda: [{"recurso": SRV + "$metadata"}]
+    consultas = [{"metodo": "GET", "url": SRV + f"RetornoDaBaixa?$filter=workOrderID eq '{WO}'", "status": 200,
+                  "content_type": "application/json", "corpo_resposta": json.dumps({"value": [
+                      {"workOrderID": WO, "material": "000000000022056366", "fornecedorID": "0000148963",
+                       "quantidade": "1e+0", "quantidadeDoc": "0e+0", "mensagem": "Estoque indisponível"}]})}]
+    agente._ao_observar(consultas)                       # dicionário ainda não lido: espera
+    assert not cfg.ARQUIVO_CONFIG.exists()
+    agente._buscar_candidatos()
+    assert agente._receita_disponivel()
+    agente._ao_observar(consultas)                       # receita disponível: observação não decide
+    assert not cfg.ARQUIVO_CONFIG.exists()
+
+
+def test_fonte_nao_confirmada_e_trocada_pelo_caminho_confirmado_antes_da_amostra(agente):
+    get, _ = servico_real(retorno=True)
+    _conectar(agente, get)
+    agente.ponte.fontes = lambda: [{"recurso": SRV + "$metadata"}]
+    cfg.salvar({"url_lista": SRV + "MateriaisLancadosStatus?$filter=workOrderID eq '{wo}'",
+                "campo_consolidado_lista": "", "url_mensagens": None, "campo_mensagens_expandidas": ".",
+                "campos": {"wo": "workOrderID", "material": "material", "fornecedor": "fornecedor",
+                           "quantidade_faltante": "quantidade", "mensagem": "tipoErro"}, "origem": "observacao"})
+    amostras = _rodar_com_conferencia(agente, [WO], [{"resposta": "sim"}])
+    assert "UltimoRetornoView" in amostras[0]["fonte"] and "status E" in amostras[0]["fonte"]
+    assert gravada()["origem"] == "receita_btp" and gravada()["confirmada"] is True
+    assert sorted(i["material"] for i in amostras[0]["itens"]) == ["000000000022056366", "000000000022060284"]

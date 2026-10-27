@@ -480,6 +480,74 @@ class ClienteBTP:
     def pode_reler_por_chave(self) -> bool:
         return bool(self.config.url_item and self.config.chaves_item)
 
+    def _chaves_do_endereco(self):
+        """Do endereço de releitura (ex.: Conj(a='{linha[a]}',b={linha[b]}) ou Conj({linha[ID]}))
+        tira o conjunto e, por chave, o campo da linha e se o valor vai entre aspas.
+        None = formato que a releitura em lote não sabe montar com segurança."""
+        url = self.config.url_item or ""
+        m = re.fullmatch(r"(.*/)?([\w.]+)\((.*)\)", url)
+        if not m or "?" in url:
+            return None
+        caminho = (m.group(1) or "") + m.group(2)
+        partes = [p.strip() for p in m.group(3).split(",")]
+        chaves = []
+        for p in partes:
+            k = re.fullmatch(r"(?:(\w+)=)?('?)\{linha\[(\w+)\]\}\2", p)
+            if not k:
+                return None
+            nome = k.group(1) or (self.config.chaves_item or [None])[0]
+            if not nome or nome != k.group(3):
+                return None
+            chaves.append((nome, bool(k.group(2))))
+        return caminho, chaves
+
+    def reler_lote(self, pedidos: dict[str, Leitura], rodada: int) -> dict[str, Leitura | None]:
+        """Releitura por chave de VÁRIAS WOs com poucas consultas: filtra o conjunto do endereço de
+        releitura pelas chaves de cada item (`a eq 'x' and b eq 'y'`, unidas por `or`).
+        Mesmo resultado da releitura item a item: item que não volta = ausente (None); item sem
+        chave = não relido (avisado). WO sem NENHUM item relido volta None (o chamador refaz WO a WO,
+        como na releitura individual). Erro do BTP propaga (o chamador refaz WO a WO)."""
+        forma = self._chaves_do_endereco()
+        if forma is None:
+            raise LoteInconsistente("endereço de releitura não repartível")
+        caminho, chaves = forma
+        alvos = []      # (wo, chave do item, ocorrência base, condições)
+        saida: dict[str, Leitura | None] = {}
+        for wo, base in pedidos.items():
+            leitura = Leitura(rodada, "Releitura por chave", itens={})
+            saida[wo] = leitura
+            for chave, o in base.itens.items():
+                if not all(o.bruto.get(k) not in (None, "") for k in self.config.chaves_item):
+                    leitura.avisos.append(f"Item {chave}: chave não disponível para releitura.")
+                    continue
+                conds = [(k, "s" if aspas else "n", str(o.bruto[k])) for k, aspas in chaves]
+                if any(t == "n" and not re.fullmatch(r"-?\d+(\.\d+)?", v) for _, t, v in conds):
+                    raise LoteInconsistente("chave sem aspas que não é número")
+                alvos.append((wo, chave, o, conds))
+        recebidos: list[dict] = []
+        grupo: list[str] = []
+
+        def consultar(exprs):
+            filtro = " or ".join(f"({e})" for e in exprs) if len(exprs) > 1 else exprs[0]
+            recebidos.extend(self._get(quote(f"{caminho}?$filter={filtro}", safe=odata._SEGUROS_MODELO), "lote"))
+        exprs = list(dict.fromkeys(self._expr(c) for *_, c in alvos))
+        tamanho = 0
+        for e in exprs:
+            if grupo and (tamanho + len(e) > 6000 or len(grupo) >= 40):
+                consultar(grupo)
+                grupo, tamanho = [], 0
+            grupo.append(e)
+            tamanho += len(e) + 8
+        if grupo:
+            consultar(grupo)
+        for wo, chave, o, conds in alvos:
+            achados = [r for r in recebidos if self._casa(r, conds)]
+            saida[wo].itens[chave] = self.ocorrencia(wo, o.alerta, achados[0]) if achados else None
+        for wo in pedidos:
+            if not any(v is not None for v in saida[wo].itens.values()):
+                saida[wo] = None
+        return saida
+
     def reler(self, wo: str, base: Leitura, rodada: int) -> Leitura:
         """Auditoria independente: busca CADA item pelo seu endereço próprio (chave), por outro
         caminho que não a consulta da lista. Item que não existe mais fica como ausente (None)."""

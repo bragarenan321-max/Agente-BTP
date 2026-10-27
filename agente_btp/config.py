@@ -24,7 +24,10 @@ URL_LAUNCHPAD = os.environ.get(
 CAMPOS_OBRIGATORIOS = ("material", "fornecedor", "quantidade_faltante", "mensagem")
 # Configurações de versões anteriores aceitavam caminhos que não traziam as mensagens:
 # só vale a configuração gravada por esta versão (ou posterior), já validada com dados reais.
-VERSAO_CONFIG = 5   # 5: descarta a fonte confirmada em 15/10 (tabela de materiais com "Ok", não a janela Mensagens)
+# 5: descarta a fonte confirmada em 15/10 (tabela de materiais com "Ok", não a janela Mensagens)
+# 6: descarta a fonte aprendida pela observação da tela em 27/10 (RetornoDaBaixa: histórico de
+#    retornos com dois campos de quantidade) — o caminho confirmado (UltimoRetornoView) tem prioridade.
+VERSAO_CONFIG = 6
 
 
 @dataclass

@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 from flask import Flask, Response, abort, jsonify, request, send_file
 
 from . import historico, preferencias
-from .agente import Agente, caminho_saida
+from .agente import Agente, caminho_saida, config_atual
 from .ponte import LIMITE_TRABALHADORES_ABA
 from .entrada import ler_wos_planilha, ler_wos_texto, wo_valida
 from .config import URL_LAUNCHPAD
@@ -164,6 +164,9 @@ def criar_app(agente: Agente) -> Flask:
             ex = agente.loja.obter(run_id)
             if not ex:
                 return jsonify(ok=False, erro="Análise não encontrada."), 404
+            if not config_atual(ex["config"]):
+                return jsonify(ok=False, erro=f"A análise nº {ex['numero']} usou uma fonte de dados descartada "
+                                              "(não era a janela Mensagens). Inicie uma nova análise."), 409
             if agente.estado()["ocupado"]:
                 if agente.estado().get("run_id") == run_id:      # já rodando/pausada: só cutuca
                     agente.continuar()

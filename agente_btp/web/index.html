@@ -417,6 +417,7 @@ function desenharConfirmacao(e) {
     ? `No BTP, abra a janela <b>Mensagens</b> da WO <b>${esc(c.wo)}</b> e compare com o que o agente leu `
       + `— ${c.total} item(ns)${c.total > c.itens.length ? `, mostrando ${c.itens.length}` : ""}. `
       + `A análise só começa depois da sua confirmação; ela fica gravada para as próximas vezes.`
+      + (c.fonte ? `<br><span style="font-size:12px">Tabela do BTP usada: <b>${esc(c.fonte)}</b>.</span>` : "")
     : `O agente não encontrou itens nas primeiras WOs da lista (${esc((c.lidas || []).join("; "))}). `
       + `Se essas WOs têm mensagens no BTP, a fonte está errada.`;
   $("cfThAlerta").classList.toggle("oculto", !c.tem_mensagem_alerta);

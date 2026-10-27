@@ -140,3 +140,25 @@ def test_versao_diferente_nao_entra_em_laco():
     p.registrar_agente("a2", "/site")                      # recarregou, mas veio a mesma versão
     r = p.proxima_tarefa("a2", True, "/site", espera=0, versao="velha")
     assert "atualizar" not in r and "substituido" not in r
+
+
+def test_aba_ocupada_com_consulta_lenta_nao_e_dada_como_desconectada(monkeypatch):
+    """Caso real (27/10): consultas lentas deixaram a aba 26 s sem falar com o programa; ela estava
+    trabalhando, não desconectada. Só conta como desconectada depois do prazo da própria consulta."""
+    import threading
+    import time
+    from agente_btp import ponte as ponte_mod
+    monkeypatch.setattr(ponte_mod, "TOLERANCIA_SILENCIO", 0.2)
+    p = ponte_mod.PonteAba()
+    p.registrar_agente("aba", "/site")
+    resposta = {}
+    t = threading.Thread(target=lambda: resposta.update(r=p.get("/srv/Lenta", timeout=2)))
+    t.start()
+    tarefa = p.proxima_tarefa("aba", True, "/site", espera=1)["tarefa"]
+    time.sleep(0.6)                                # aba calada, executando a consulta
+    assert p.conectada
+    p.entregar_resposta({"id": tarefa["id"], "status": 200, "ct": "application/json", "body": "{}"})
+    t.join(5)
+    assert resposta["r"].status == 200
+    time.sleep(0.3)
+    assert not p.conectada                         # sem consulta em curso e calada: desconectada

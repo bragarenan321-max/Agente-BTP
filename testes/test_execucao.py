@@ -626,3 +626,41 @@ def test_resultados_leves_geram_a_mesma_planilha_e_historico(tmp_path):
     for aba in ("Dados", "Análise", "Rastreio"):
         assert list(load_workbook(a)[aba].iter_rows(values_only=True)) == \
             list(load_workbook(b)[aba].iter_rows(values_only=True))
+
+
+def test_toda_wo_nao_validada_tem_motivo_no_diagnostico():
+    """Caso real 27/10: 2.900 'incompletas' sem nenhuma explicação no diagnóstico."""
+    from agente_btp.loja import motivo_da_wo
+    from agente_btp.modelos import Auditoria, LinhaMensagem, ResultadoWO, Status
+    ambigua = ResultadoWO("06027|230970238", Status.PROCESSADA, auditoria=Auditoria.INCOMPLETO, linhas=[
+        LinhaMensagem("c", "06027|230970238", "1", "2", None, "m", auditoria=Auditoria.INCOMPLETO,
+                      notas={"quantidade_faltante": "Ambígua: lido de 'quantidade', mas o registro também tem quantidadeDoc=0."})])
+    assert motivo_da_wo(ambigua) == "quantidade_ambigua"
+    assert diagnostico.categoria("quantidade_ambigua") == "FONTE" and "Refazer" in diagnostico.proxima_acao("quantidade_ambigua")
+    sem_pista = ResultadoWO("06027|230970239", Status.PROCESSADA, auditoria=Auditoria.NAO_CONCLUIDO)
+    assert motivo_da_wo(sem_pista) == "auditoria_incompleta"
+
+
+def test_analise_feita_com_fonte_descartada_nao_e_oferecida_para_retomar(tmp_path):
+    from agente_btp import agente as agente_mod
+    from agente_btp.servidor import criar_app
+    a = agente_mod.Agente()
+    a.loja.criar("velha", 1, "x", ["06027|230970238"], {}, {"versao": 5, "url_lista": "/x"})
+    assert a.estado()["retomavel"] is None
+    r = criar_app(a).test_client().post("/api/executar", json={"run_id": "velha", "modo": "retomar"})
+    assert r.status_code == 409 and "descartada" in r.get_json()["erro"]
+
+
+def test_releitura_por_chave_em_lote_marca_item_que_sumiu_como_ausente():
+    btp = BTPLote(30)
+    cli = ClienteBTP(config(com_chave=True), btp)
+    wos = [w for w in btp.wos if btp.tipos[w] == "normal"][:3]
+    bases = {w: cli.ler_wo(w) for w in wos}
+    alvo = next(iter(bases[wos[0]].itens.values()))
+    btp.retorno = [r for r in btp.retorno if not (r["consolidID"] == alvo.bruto["consolidID"]
+                                                   and r["zeile"] == alvo.bruto["zeile"])]
+    relidas = cli.reler_lote(bases, 2)
+    assert relidas[wos[0]].itens[alvo.chave] is None                  # sumiu = ausente (divergência)
+    assert all(v is not None for w in wos[1:] for v in relidas[w].itens.values())
+    individual = cli.reler(wos[1], bases[wos[1]], 2)
+    assert {k: o.valores for k, o in individual.itens.items()} == {k: o.valores for k, o in relidas[wos[1]].itens.items()}

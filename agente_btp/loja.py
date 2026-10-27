@@ -105,10 +105,13 @@ def motivo_da_wo(r: ResultadoWO) -> str:
             for campo, nota in l.notas.items():
                 if nota.startswith("Não obtido"):
                     return f"campo_ausente:{campo}"
+        if any(n.startswith("Ambígua") for l in r.linhas for n in l.notas.values()):
+            return "quantidade_ambigua"
         if any("tempo máximo" in (l.erro or "") for l in r.leituras):
             return "timeout_wo"
         if any(l.erro for l in r.leituras):
             return "falha_rede"
+        return "auditoria_incompleta"      # nunca uma WO não validada sem explicação
     return ""
 
 
@@ -263,10 +266,10 @@ class Loja:
             saida.append(ex)
         return saida
 
-    def retomavel(self) -> dict | None:
+    def retomavel(self, aceitar=lambda ex: True) -> dict | None:
         """O que oferecer para retomar: a análise mais recente NÃO TERMINADA (pendentes/em andamento);
         se não houver, a última análise, se ela tiver falhas que valha a pena refazer."""
-        recentes = self.listar(10)
+        recentes = [ex for ex in self.listar(10) if aceitar(dict(ex, config=self._config(ex["run_id"])))]
         for ex in recentes:
             if ex["contadores"]["pendente"] + ex["contadores"]["em_andamento"] > 0:
                 ex["restantes"] = len(self.a_processar(ex["run_id"]))
@@ -277,6 +280,10 @@ class Loja:
             if ex["restantes"]:
                 return ex
         return None
+
+    def _config(self, run_id: str) -> dict:
+        linhas = self._q("SELECT config FROM execucoes WHERE run_id=?", (run_id,))
+        return json.loads(linhas[0]["config"] or "{}") if linhas else {}
 
     def apagar(self, run_id: str | None = None) -> None:
         """Remove a análise (ou todas) da base — junto com o histórico dela."""

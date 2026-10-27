@@ -35,6 +35,9 @@ class PonteAba:
         self._fila: deque[dict] = deque()
         self._pendentes: dict[str, dict] = {}
         self._entregues: dict[str, dict] = {}   # tarefas já com a aba, aguardando resposta
+        # Prazo de cada tarefa em execução na aba: enquanto a aba trabalha numa consulta lenta do
+        # BTP (ex.: lote grande), ela não fala com o programa — mas NÃO está desconectada.
+        self._em_curso: dict[str, float] = {}
         self.agente_id: str | None = None
         self._visto_em = 0.0
         self._aba_autenticada = False
@@ -72,6 +75,7 @@ class PonteAba:
             if tarefa["id"] in self._pendentes and tarefa not in self._fila:
                 self._fila.appendleft(tarefa)
         self._entregues.clear()
+        self._em_curso.clear()
         self._cond.notify_all()
 
     def proxima_tarefa(self, agente: str, autenticado: bool, pagina: str,
@@ -100,6 +104,7 @@ class PonteAba:
             if self._fila and agente == self.agente_id:
                 tarefa = self._fila.popleft()
                 self._entregues[tarefa["id"]] = tarefa
+                self._em_curso[tarefa["id"]] = time.monotonic() + tarefa.get("timeout", 60000) / 1000 + 10
                 resposta["tarefa"] = tarefa
             return resposta
 
@@ -120,6 +125,7 @@ class PonteAba:
         with self._cond:
             self._visto_em = time.monotonic()
             self._entregues.pop(dados.get("id"), None)
+            self._em_curso.pop(dados.get("id"), None)
             pendente = self._pendentes.get(dados.get("id"))
             if pendente:
                 pendente["resposta"] = dados
@@ -141,7 +147,13 @@ class PonteAba:
     # ------------------------------------------------ lado do agente (worker)
     @property
     def conectada(self) -> bool:
-        return bool(self.agente_id) and time.monotonic() - self._visto_em < TOLERANCIA_SILENCIO
+        """Aba conectada: falou com o programa há pouco OU está executando uma consulta dentro do
+        prazo dela. (Caso real 27/10: 4 consultas lentas em paralelo deixaram a aba 26 s calada e
+        ela foi dada como desconectada — a análise pausou sem motivo.)"""
+        if not self.agente_id:
+            return False
+        agora = time.monotonic()
+        return agora - self._visto_em < TOLERANCIA_SILENCIO or any(p > agora for p in list(self._em_curso.values()))
 
     def autenticado(self) -> bool:
         return self.conectada and self._aba_autenticada
@@ -200,6 +212,7 @@ class PonteAba:
             with self._cond:
                 self._pendentes.pop(tarefa["id"], None)
                 self._entregues.pop(tarefa["id"], None)
+                self._em_curso.pop(tarefa["id"], None)
                 if tarefa in self._fila:
                     self._fila.remove(tarefa)
         return pendente["resposta"]

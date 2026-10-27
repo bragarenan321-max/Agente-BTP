@@ -268,7 +268,7 @@ class Motor:
                 erro=f"sonda: {exc}", origem=diagnostico.origem(exc), traceback=diagnostico.rastreio(exc)))
             return None, "excecao_app", {}
         self.loja.evento(self.run_id, "sonda", "", motivo=motivo or "",
-                         detalhe={"quando": quando, "ok": ok, **({"evidencia": ev} if ev and ok is not True else {})})
+                         detalhe={"momento": quando, "ok": ok, **({"evidencia": ev} if ev and ok is not True else {})})
         return ok, motivo, ev
 
     def _marcar_queda(self, motivo: str, ev: dict) -> None:

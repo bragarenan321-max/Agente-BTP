@@ -132,3 +132,15 @@ oculta) — **0 diferenças**. Teste de regressão novo garante que a geração 
 | Tela (`/api/estado`) / diagnóstico | 49 ms / 47 ms | 55 ms / 45 ms |
 
 Base: 24 MB; Excel: 10,9 MB (≈37 mil linhas na aba Dados). Nenhuma diferença na conferência.
+
+## 7. Rodada 3 — primeira execução real (27/10, 13.623 WOs): análise do diagnóstico
+Evidência: `diagnostico_analise_1.json` (2.900 WOs feitas, todas "incompletas", 2,88 WO/s, 9,1 consultas/WO).
+
+| Achado | Causa (com evidência) | Correção |
+|---|---|---|
+| **Todas incompletas** | As URLs mostram `RetornoDaBaixa`, não `Pendencias → UltimoRetornoView (status E)` (caminho confirmado no DevTools). A configuração foi aprendida **observando a tela** antes de o dicionário ser lido (`_ao_observar`). Essa tabela tem dois campos de quantidade (`quantidade`, `quantidadeDoc`); sem a fonte confirmada o agente se recusa a escolher ⇒ "Ambígua" ⇒ incompleta. | A observação só decide depois do dicionário lido e **nunca** quando o caminho confirmado existe; fonte não confirmada é trocada por ele antes da amostra; a amostra mostra "Tabela do BTP usada"; `VERSAO_CONFIG = 6` descarta a fonte gravada; análise feita com fonte descartada não é retomada (409, banner some). |
+| **Lento (9,1 consultas/WO)** | `RetornoDaBaixa` é histórico (`contador=12` na chave): muitos registros por WO, e a 2ª conferência relia item a item pelo endereço. | Fonte certa + **releitura por chave em lote** (filtro pelas chaves dos itens, unido por `or`), com volta automática ao item a item. Simulação: 0,85 consulta/WO (antes 6,84), resultado idêntico. |
+| **Diagnóstico calado** sobre as 2.900 incompletas | `motivo_da_wo` não mapeava "Ambígua". | Novos motivos `quantidade_ambigua` (com a ação "Refazer a fonte") e `auditoria_incompleta` — nenhuma WO não validada fica sem explicação. |
+| **Pausa às 10:19 por "aba desconectada"** | 26,2 s de silêncio > 25 s de tolerância, porque os 4 trabalhadores estavam todos esperando consultas lentas. A aba estava viva. | Consulta em execução dentro do prazo mantém a aba conectada. |
+| Pausa às 10:22 | A aba recarregou ("Failed to fetch" + despedida) e depois veio o Parar: comportamento correto. | — |
+| Sondas sem rótulo no JSON | chave `quando` sobrescrita | renomeada para `momento`. |

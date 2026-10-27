@@ -47,6 +47,13 @@ TAXONOMIA: dict[str, tuple[str, str, str]] = {
                     "Corrija o número na lista de entrada."),
     "campo_ausente": ("FONTE", "O BTP não informou um dos campos obrigatórios do item.",
                       "Confira o item na janela Mensagens do BTP."),
+    "quantidade_ambigua": ("FONTE", "O registro do BTP tem mais de um campo de quantidade (ex.: quantidade e "
+                           "quantidadeDoc) e nenhum é claramente o faltante: o agente não escolhe. Em muitas WOs, "
+                           "indica que a tabela usada NÃO é a da janela Mensagens.",
+                           "Confira a tabela mostrada na conferência da amostra; se não for UltimoRetornoView, use "
+                           "'Refazer a fonte de dados' na engrenagem e execute de novo."),
+    "auditoria_incompleta": ("FONTE", "A conferência da WO não pôde ser concluída (veja a observação na planilha).",
+                             "Confira a observação da WO na planilha; use 'Retomar' se foi falha passageira."),
     "parse_falhou": ("FONTE", "A resposta do BTP não é um JSON/OData reconhecível.",
                      "Se repetir, baixe este diagnóstico e envie para ajuste."),
     "erro_servico": ("FONTE", "O serviço do BTP respondeu com uma mensagem de erro.",

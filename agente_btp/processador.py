@@ -326,7 +326,21 @@ def processar_grupo(cliente: ClienteBTP, wos: list[str], prefs: Preferencias | N
                         ativas.remove(w)
                     except (FalhaComunicacao, ErroConsulta) as exc:
                         leituras[w].append(Leitura(rodada, "Nova consulta", erro=str(exc)))
-        for w in [w for w in ativas if w not in novas]:
+        por_chave = [w for w in ativas if w not in novas]
+        if len(por_chave) > 1:
+            # Releitura por chave EM LOTE (poucas consultas para o grupo); WO que não puder ser
+            # relida assim (nenhum item voltou, erro, formato) faz a releitura individual abaixo.
+            try:
+                relidas = _com_retentativa(lambda: cliente.reler_lote({w: base[w] for w in por_chave}, rodada),
+                                           extras, prazo)
+                for w, leitura in relidas.items():
+                    if leitura is not None:
+                        leituras[w].append(leitura)
+                        cliente.cache.registrar_releitura(True)
+                por_chave = [w for w, leitura in relidas.items() if leitura is None]
+            except (LoteInconsistente, FalhaComunicacao, ErroConsulta, TempoEsgotado):
+                pass
+        for w in por_chave:
             try:
                 leituras[w].append(_ler_auditoria(cliente, w, base[w], rodada, "Releitura por chave", extras,
                                                   prazo, estados[w]))

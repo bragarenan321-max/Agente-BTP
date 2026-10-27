@@ -70,6 +70,7 @@ class Agente:
         self._motor: Motor | None = None
         self._run_id: str | None = None
         self._sessao = {"estado": "nao_verificada", "em": 0.0, "motivo": ""}
+        self._modelos_lidos = False      # dicionário ($metadata) da aba já lido?
         self._estado = {
             "ocupado": False,
             "fase": "ocioso",            # ocioso | preparando | processando | concluido
@@ -124,7 +125,7 @@ class Agente:
             if copia["fase"] != "concluido":
                 copia["contagem"] = por_situacao          # chips ao vivo, da mesma base
             copia["mensagens"] = copia["mensagens"][-30:] + self.loja.log(run_id, 200)
-        retomar = None if self._estado["ocupado"] else self.loja.retomavel()
+        retomar = None if self._estado["ocupado"] else self.loja.retomavel(aceitar=lambda ex: config_atual(ex["config"]))
         copia["retomavel"] = None if not retomar else {
             "run_id": retomar["run_id"], "numero": retomar["numero"], "total": retomar["total"],
             "validadas": retomar["contadores"]["validada"],
@@ -202,6 +203,7 @@ class Agente:
             self._ultimo_aviso_conexao = agora
         self._candidatos = []   # nova aba/página: o que foi lido antes pode não valer mais
         self._modelos = []
+        self._modelos_lidos = False
         self._testados.clear()
         self._sondadas.clear()
         self._sessao = {"estado": "nao_verificada", "em": 0.0, "motivo": ""}
@@ -251,6 +253,8 @@ class Agente:
             api = cfg.carregar()
             if api.confirmada:
                 return True
+            if self._origem_config() != "receita_btp" and self._trocar_pela_receita(wos):
+                api = cfg.carregar()
             amostra = self._amostra_da_fonte(api, wos)
             self._resposta, self._resposta_fonte = None, threading.Event()
             self._definir(fase="confirmando", confirmacao=amostra, aviso="")
@@ -301,10 +305,10 @@ class Agente:
                                    "quantidade": odata_texto(o.valores["quantidade_faltante"]),
                                    "mensagem_item": o.valores.get("mensagem_item", ""),
                                    "mensagem_alerta": o.valores.get("mensagem_alerta", "")} for o in itens],
-                        "campos": api.campos}
+                        "campos": api.campos, "fonte": _descrever_fonte(api)}
             lidas.append(f"{wo}: nenhum item")
         return {"wo": "", "total": 0, "lidas": lidas, "itens": [], "campos": api.campos,
-                "tem_mensagem_alerta": False}
+                "tem_mensagem_alerta": False, "fonte": _descrever_fonte(api)}
 
     def _aprender_pela_tela(self, wo: str) -> bool:
         """O usuário abre a janela Mensagens no BTP; o agente aprende com as consultas da tela."""
@@ -353,8 +357,34 @@ class Agente:
             diag["erro"] = str(exc)[:500]
             log.info("Dicionário de dados: %s", exc)
         self._modelos = modelos
+        self._modelos_lidos = True
         self._diag["dicionario"] = diag
         return self._candidatos
+
+    def _receita_disponivel(self) -> dict | None:
+        """O caminho CONFIRMADO no BTP real (Pendencias -> UltimoRetornoView, status E), se o
+        serviço da aba o oferece e o usuário não o recusou."""
+        for servico, modelo in self._modelos:
+            dados = receita_monitor(servico, modelo)
+            if dados and not _rejeitada(dados):
+                return dados
+        return None
+
+    def _trocar_pela_receita(self, wos: list[str]) -> bool:
+        """Fonte ainda não confirmada e diferente da receita: se a receita traz as mensagens das
+        WOs, ela substitui a fonte (a conferência da amostra mostra a receita)."""
+        if not self._modelos_lidos:
+            self._buscar_candidatos()
+        dados = self._receita_disponivel()
+        if not dados:
+            return False
+        amostra = [w for w in wos if wo_valida(w)][:5]
+        if self._validar(dados, amostra, self._transporte_com_cache(self.ponte.get), {}) != 2:
+            return False
+        self._gravar_config(dados, "receita_btp", ["Fonte trocada pelo caminho confirmado da janela Mensagens: "
+                                                   "Pendencias -> UltimoRetornoView (status E)."])
+        self._msg("Fonte de dados trocada pelo caminho confirmado da janela Mensagens (UltimoRetornoView).")
+        return True
 
     def _validar(self, dados: dict, amostra: list[str], get, achados: dict) -> int:
         """2 = trouxe as mensagens da WO; 1 = nenhuma WO da amostra está na lista; 0 = não serve.
@@ -509,6 +539,12 @@ class Agente:
         try:
             if cfg.ARQUIVO_CONFIG.exists():
                 self.ponte.parar_captura()
+                return
+            # A observação da tela NÃO decide antes de o dicionário ser lido: se o serviço oferece o
+            # caminho confirmado da janela Mensagens, é ele que vale (caso real 27/10: a observação
+            # gravou RetornoDaBaixa — histórico com dois campos de quantidade — e 2.900 WOs ficaram
+            # "incompletas").
+            if not self._modelos_lidos or self._receita_disponivel():
                 return
             try:
                 dados, relatorio = analisar({"requisicoes": consultas})
@@ -696,6 +732,10 @@ class Agente:
             self._estado["mensagens"] = []
         if not ex:
             self._definir(fase="ocioso", aviso="Análise não encontrada para retomar.")
+            return
+        if not config_atual(ex["config"]):
+            self._definir(fase="ocioso", aviso=f"A análise nº {ex['numero']} usou uma fonte de dados que foi descartada "
+                                               "(não era a janela Mensagens). Inicie uma nova análise.")
             return
         if not self.ponte.conectada:
             self._definir(fase="ocioso", aviso="Conecte a aba do BTP: clique no favorito 'Agente BTP' na aba já logada.")
@@ -973,6 +1013,23 @@ def _indicadores(resultados: list, total: int) -> dict:
         "com_ocorrencias": sum(r.status is Status.PROCESSADA for r in resultados),
         "ocorrencias": sum(r.registros for r in resultados),
     }
+
+
+def _descrever_fonte(api) -> str:
+    """De qual tabela do BTP os itens vêm (mostrado na conferência da amostra)."""
+    def conjunto(url):
+        return (url or "").split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1].split("(", 1)[0]
+    lista = conjunto(api.url_lista)
+    if api.url_mensagens:
+        itens = conjunto(api.url_mensagens)
+        filtro = " (só linhas com status E)" if "status eq 'E'" in api.url_mensagens else ""
+        return f"{lista} → {itens}{filtro}"
+    return f"{lista} (a própria lista traz os itens)" if api.campo_mensagens_expandidas == "." else lista
+
+
+def config_atual(config: dict) -> bool:
+    """A fonte gravada numa análise ainda é aceita pela versão atual do programa?"""
+    return int((config or {}).get("versao", 0) or 0) >= cfg.VERSAO_CONFIG
 
 
 def _indicadores_loja(c: dict, por_situacao: dict) -> dict:
