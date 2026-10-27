@@ -218,7 +218,7 @@ with sync_playwright() as p:
     confere(esperar(lambda: agente.estado()["fonte"]["mensagem_origem"] == "ambas", 10), "mensagem 'As duas' gravada na fonte")
     pg.select_option("#cfgTema", "escuro")
     fundo = pg.evaluate("getComputedStyle(document.body).backgroundColor")
-    confere(pg.evaluate("document.documentElement.dataset.tema") == "escuro" and fundo == "rgb(14, 19, 27)", f"tema escuro aplicado ({fundo})")
+    confere(pg.evaluate("document.documentElement.dataset.tema") == "escuro" and fundo == "rgb(15, 16, 18)", f"tema escuro aplicado ({fundo})")
     pg.screenshot(path=str(PRINTS / "config_escuro.png"), full_page=True)
     pg.reload(); pg.wait_for_timeout(800)
     confere(pg.evaluate("document.documentElement.dataset.tema") == "escuro", "tema lembrado depois de recarregar")

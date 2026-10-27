@@ -220,3 +220,20 @@ em 6 colunas fixas. Uso da largura: 1920 px = 66%; zoom 67% (2150 px CSS) = 59%;
   logo, 390/768 px).
 - Layout em 1280×720, 1440×900, 1920×1080, 1800/2150/2880 px (zoom 80/67/50%), 1024, 820 e 390 px: sem overflow.
 - `rodar_aba.py`, `rodar_sessao.py`, `rodar_extensao.py` (com os ícones novos): passaram.
+
+## 10. Rodada 6 — identidade sem azul e nova logo
+
+- **Problema relatado:** o azul-marinho (cabeçalho, títulos, barra de progresso, links) brigava com o vermelho da logo.
+- **Correção:** a identidade passou a ser neutra (grafite), e o vermelho é a única cor de marca.
+  - Tema claro: cabeçalho branco com borda.
+  - Tema escuro: cabeçalho grafite quase preto, com tokens próprios do cabeçalho (`--cab-*`).
+  - Títulos, barra, links, balões de ajuda e notificações em grafite.
+  - Os cinzas perderam o leve tom azulado.
+  - Verde, âmbar e vermelho seguem só como cores de estado (o significado dos indicadores não mudou).
+- **Logo:** marca-símbolo sem moldura. É um "Λ" maciço com um ponto: lê-se como o "A" de Agente e como sinal de alerta.
+  - Funciona em fundo claro e escuro, e de 16 px a 128 px.
+  - Aplicada no cabeçalho, no favicon, em `docs/logo-agente-btp.svg` e nos ícones da extensão.
+- **Validação:**
+  - pytest 152 ok;
+  - `rodar_tela` 71/71 (o teste do tema escuro agora confere o novo fundo `rgb(15, 16, 18)`);
+  - `rodar_aba`, `rodar_sessao` e `rodar_extensao` ok.

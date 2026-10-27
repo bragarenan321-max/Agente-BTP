@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agente BTP</title>
 <meta name="color-scheme" content="light dark">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%2032%2032%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%23E3261E%22/%3E%3Cpath%20d%3D%22M9%2013V9h4M19%209h4v4M23%2019v4h-4M13%2023H9v-4%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.4%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3Cpath%20d%3D%22M12%2016.4l3%203%205.4-6%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.6%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%2032%2032%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cpath%20d%3D%22M16%203.5%2029%2028h-6.6L16%2015.6%209.6%2028H3z%22%20fill%3D%22%23E3261E%22/%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2224.4%22%20r%3D%222.9%22%20fill%3D%22%23E3261E%22/%3E%3C/svg%3E">
 <script>try { document.documentElement.dataset.tema = localStorage.getItem("agenteBtpTema") || "auto"; }
         catch (e) { document.documentElement.dataset.tema = "auto"; }</script>
 <style>
@@ -14,22 +14,22 @@
     --marca: #E3261E;            /* vermelho da marca: ação principal, foco e identidade */
     --marca-esc: #C01F18;
     --marca-suave: #FDECEA;
-    --marinho: #1C2A4A;          /* cabeçalho e títulos */
-    --marinho-2: #2A3B61;
-    --fundo: #F4F5F7;
+    --fundo: #F4F4F5;
     --superficie: #FFFFFF;
-    --superficie-2: #F9FAFB;
+    --superficie-2: #FAFAFA;
     --texto: #1A1D23;
-    --texto-2: #5B6270;
-    --texto-3: #8A909C;
-    --borda: #E3E6EB;
-    --borda-forte: #CDD2DA;
+    --texto-2: #5F636B;
+    --texto-3: #8B8F96;
+    --borda: #E4E5E8;
+    --borda-forte: #D0D2D6;
     --ok: #1E8E52;     --ok-suave: #E7F5EE;
     --atencao: #B26B00; --atencao-suave: #FFF4DE;
     --erro: #C21F14;   --erro-suave: #FDE9E7;
-    --info: #2F5DA8;   --info-suave: #E9F0FB;
-    --titulo: #1C2A4A;  --cab: #1C2A4A;  --linha: #F0F2F5;  --neutro: #EEF0F4;  --hover: #F7F8FA;  --selecao: #F1F4FA;
-    --barra-fundo: #E9ECF1;  --barra: #1C2A4A;  --campo: #FFFFFF;  --codigo: #3B4250;  --desab: #C5CAD3;  --borda-perigo: #F1B8B3;
+    --info: #4B5563;   --info-suave: #EEF0F2;     /* neutro (grafite): só o vermelho é cor de marca */
+    --titulo: #1D2026;  --linha: #F0F1F3;  --neutro: #EEEFF1;  --hover: #F7F7F8;  --selecao: #F1F2F4;
+    --cab: #FFFFFF;  --cab-texto: #1D2026;  --cab-texto-2: #6B7280;  --cab-borda: #E4E5E8;
+    --cab-botao: #F4F4F5;  --cab-botao-hover: #EAEBED;  --escuro: #1D2026;
+    --barra-fundo: #E8E9EC;  --barra: #2B2F36;  --campo: #FFFFFF;  --codigo: #3D4047;  --desab: #C9CBCF;  --borda-perigo: #F1B8B3;
     color-scheme: light;
     --fonte: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
     --mono: Consolas, "Cascadia Mono", "SF Mono", monospace;
@@ -46,20 +46,24 @@
   }
   /* Tema: data-tema="claro" | "escuro" | "auto" (segue o sistema). Escolha em Configurações › Aparência. */
   :root[data-tema="escuro"] { color-scheme: dark;
-    --fundo: #0E131B; --superficie: #161C26; --superficie-2: #1B2230; --texto: #E7EAF0; --texto-2: #A9B1BF; --texto-3: #7D8696;
-    --borda: #283041; --borda-forte: #3A4356; --titulo: #E3E9F5; --cab: #0B111C; --linha: #212836; --neutro: #252D3B;
-    --hover: #1E2532; --selecao: #222C3D; --barra-fundo: #263042; --barra: #8FB0E8; --campo: #111720; --codigo: #C9D1DE;
-    --desab: #3A4354; --borda-perigo: #6B2A26; --marca-suave: #3A1513;
+    --fundo: #0F1012; --superficie: #17191C; --superficie-2: #1D2024; --texto: #E8E9EC; --texto-2: #A8ADB5; --texto-3: #7E838C;
+    --borda: #2A2D33; --borda-forte: #3B3F47; --titulo: #F2F3F5; --linha: #222529; --neutro: #272A30;
+    --cab: #0B0C0E; --cab-texto: #F2F3F5; --cab-texto-2: #9CA3AF; --cab-borda: #1F2226;
+    --cab-botao: rgba(255, 255, 255, .06); --cab-botao-hover: rgba(255, 255, 255, .12); --escuro: #2A2D33;
+    --hover: #1F2226; --selecao: #25282D; --barra-fundo: #2A2D33; --barra: #D9DCE1; --campo: #121417; --codigo: #C9CDD4;
+    --desab: #3A3D43; --borda-perigo: #6B2A26; --marca-suave: #3A1513;
     --ok: #4CC38A; --ok-suave: #132A20; --atencao: #E8B04B; --atencao-suave: #2E2412; --erro: #F2685E; --erro-suave: #351816;
-    --info: #85ACF2; --info-suave: #17233A;
+    --info: #B4BAC4; --info-suave: #24272C;
     --sombra: 0 1px 2px rgba(0, 0, 0, .45); --sombra-alta: 0 12px 32px rgba(0, 0, 0, .6); }
   @media (prefers-color-scheme: dark) { :root[data-tema="auto"] { color-scheme: dark;
-    --fundo: #0E131B; --superficie: #161C26; --superficie-2: #1B2230; --texto: #E7EAF0; --texto-2: #A9B1BF; --texto-3: #7D8696;
-    --borda: #283041; --borda-forte: #3A4356; --titulo: #E3E9F5; --cab: #0B111C; --linha: #212836; --neutro: #252D3B;
-    --hover: #1E2532; --selecao: #222C3D; --barra-fundo: #263042; --barra: #8FB0E8; --campo: #111720; --codigo: #C9D1DE;
-    --desab: #3A4354; --borda-perigo: #6B2A26; --marca-suave: #3A1513;
+    --fundo: #0F1012; --superficie: #17191C; --superficie-2: #1D2024; --texto: #E8E9EC; --texto-2: #A8ADB5; --texto-3: #7E838C;
+    --borda: #2A2D33; --borda-forte: #3B3F47; --titulo: #F2F3F5; --linha: #222529; --neutro: #272A30;
+    --cab: #0B0C0E; --cab-texto: #F2F3F5; --cab-texto-2: #9CA3AF; --cab-borda: #1F2226;
+    --cab-botao: rgba(255, 255, 255, .06); --cab-botao-hover: rgba(255, 255, 255, .12); --escuro: #2A2D33;
+    --hover: #1F2226; --selecao: #25282D; --barra-fundo: #2A2D33; --barra: #D9DCE1; --campo: #121417; --codigo: #C9CDD4;
+    --desab: #3A3D43; --borda-perigo: #6B2A26; --marca-suave: #3A1513;
     --ok: #4CC38A; --ok-suave: #132A20; --atencao: #E8B04B; --atencao-suave: #2E2412; --erro: #F2685E; --erro-suave: #351816;
-    --info: #85ACF2; --info-suave: #17233A;
+    --info: #B4BAC4; --info-suave: #24272C;
     --sombra: 0 1px 2px rgba(0, 0, 0, .45); --sombra-alta: 0 12px 32px rgba(0, 0, 0, .6); } }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -88,27 +92,27 @@
   .btn svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
 
   /* ============================================================ cabeçalho */
-  .topo { background: var(--cab); color: #fff; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 0 rgba(0,0,0,.2); }
+  .topo { background: var(--cab); color: var(--cab-texto); position: sticky; top: 0; z-index: 50; border-bottom: 1px solid var(--cab-borda); }
   .topo-in { width: 100%; padding: 0 var(--margem); height: var(--topo); display: flex; align-items: center; gap: clamp(16px, 2vw, 40px); }
   .marca { display: flex; align-items: center; gap: 10px; flex: none; }
-  .marca-selo { width: 34px; height: 34px; flex: none; display: block; }
+  .marca-selo { width: 30px; height: 30px; flex: none; display: block; }
   .marca-selo svg { width: 100%; height: 100%; display: block; }
-  .marca b { display: block; font-size: 18px; line-height: 1.1; letter-spacing: -.1px; }
-  .marca small { display: block; font-size: 12px; color: #AAB4C8; }
+  .marca b { display: block; font-size: 18px; line-height: 1.1; letter-spacing: -.4px; font-weight: 700; }
+  .marca small { display: block; font-size: 12px; color: var(--cab-texto-2); }
   .abas { display: flex; gap: var(--e1); height: 100%; }
-  .abas button { background: none; border: none; color: #C3CBDB; font: 600 var(--t-md) var(--fonte); padding: 0 var(--e4); cursor: pointer;
-                 border-bottom: 3px solid transparent; border-top: 3px solid transparent; }
-  .abas button:hover { color: #fff; }
-  .abas button.ativa { color: #fff; border-bottom-color: var(--marca); }
+  .abas button { background: none; border: none; color: var(--cab-texto-2); font: 600 var(--t-md) var(--fonte); padding: 0 var(--e4); cursor: pointer;
+                 border-bottom: 2px solid transparent; border-top: 2px solid transparent; }
+  .abas button:hover { color: var(--cab-texto); }
+  .abas button.ativa { color: var(--cab-texto); border-bottom-color: var(--marca); }
   .topo-dir { margin-left: auto; display: flex; align-items: center; gap: var(--e2); }
-  .conexao { display: flex; align-items: center; gap: var(--e2); font-size: var(--t-sm); color: #DDE3EE; padding: 5px 10px;
-             border-radius: 999px; background: rgba(255,255,255,.08); white-space: nowrap; }
-  .ponto { width: 8px; height: 8px; border-radius: 50%; background: #8A93A6; flex: none; }
-  .ponto.ok { background: #4ADE80; } .ponto.esp { background: #FBBF24; }
-  .btn-topo { background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.14); border-radius: var(--raio);
+  .conexao { display: flex; align-items: center; gap: var(--e2); font-size: var(--t-sm); color: var(--cab-texto-2); padding: 5px 10px;
+             border-radius: 999px; background: var(--cab-botao); white-space: nowrap; }
+  .ponto { width: 8px; height: 8px; border-radius: 50%; background: #9CA3AF; flex: none; }
+  .ponto.ok { background: #22A05B; } .ponto.esp { background: #E3A008; }
+  .btn-topo { background: var(--cab-botao); color: var(--cab-texto); border: 1px solid var(--cab-borda); border-radius: var(--raio);
               font: 600 var(--t-sm) var(--fonte); padding: 6px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-  .btn-topo:hover { background: rgba(255,255,255,.16); }
-  .btn-topo.ativa { background: #fff; color: #1C2A4A; }
+  .btn-topo:hover { background: var(--cab-botao-hover); }
+  .btn-topo.ativa { background: var(--cab-texto); color: var(--cab); }
   .btn-topo svg { width: 16px; height: 16px; fill: currentColor; }
 
   /* ============================================================ página */
@@ -208,7 +212,7 @@
   .ajuda-ctx { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--borda-forte); background: var(--superficie);
                color: var(--texto-2); font: 700 11px var(--fonte); cursor: pointer; padding: 0; line-height: 16px; flex: none; }
   .ajuda-ctx:hover, .ajuda-ctx[aria-expanded="true"] { border-color: var(--titulo); color: var(--titulo); }
-  .dica { position: fixed; z-index: 80; max-width: 300px; background: var(--marinho); color: #fff; font-size: var(--t-sm); line-height: 1.45;
+  .dica { position: fixed; z-index: 80; max-width: 300px; background: var(--escuro); color: #fff; font-size: var(--t-sm); line-height: 1.45;
           padding: 10px 12px; border-radius: var(--raio); box-shadow: var(--sombra-alta); }
   .dica b { display: block; margin-bottom: 2px; }
 
@@ -226,7 +230,7 @@
   @keyframes pulso { 50% { opacity: .3; } }
   .exec-cab .acoes { margin-left: auto; display: flex; gap: var(--e2); }
   .barra { height: 12px; background: var(--barra-fundo); border-radius: 999px; overflow: hidden; }
-  .barra > div { height: 100%; width: 0; background: var(--marinho); border-radius: 999px; transition: width .4s; }
+  .barra > div { height: 100%; width: 0; background: var(--barra); border-radius: 999px; transition: width .4s; }
   .barra.ok > div { background: var(--ok); }
   .barra.indef > div { width: 30% !important; animation: vai 1.3s ease-in-out infinite; }
   @keyframes vai { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
@@ -325,7 +329,7 @@
   @media (max-width: 640px) { .campo { grid-template-columns: 1fr; } .campo .entrada { grid-row: auto; grid-column: 1; justify-content: flex-start; } }
 
   /* ============================================================ notificação (toast) */
-  .toast { position: fixed; right: var(--e5); bottom: var(--e5); z-index: 90; max-width: 380px; background: var(--marinho); color: #fff;
+  .toast { position: fixed; right: var(--e5); bottom: var(--e5); z-index: 90; max-width: 380px; background: var(--escuro); color: #fff;
            padding: 10px 14px; border-radius: var(--raio); box-shadow: var(--sombra-alta); font-size: var(--t-md); }
   .toast.erro { background: var(--erro); }
 
@@ -353,7 +357,7 @@
 <body>
 <header class="topo">
   <div class="topo-in">
-    <div class="marca"><span class="marca-selo"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#E3261E"/><path d="M9 13V9h4M19 9h4v4M23 19v4h-4M13 23H9v-4" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 16.4l3 3 5.4-6" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <div class="marca"><span class="marca-selo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.5 29 28h-6.6L16 15.6 9.6 28H3z" fill="#E3261E"/><circle cx="16" cy="24.4" r="2.9" fill="#E3261E"/></svg></span>
       <div><b>Agente BTP</b><small>Extração e auditoria de alertas</small></div></div>
     <nav class="abas" aria-label="Seções">
       <button class="ativa" id="abaAnalise" aria-current="page">Nova análise</button>
