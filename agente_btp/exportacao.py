@@ -1,14 +1,19 @@
 """Relatório Excel — direto e autoexplicativo, derivado de UMA estrutura (os ResultadoWO auditados).
 
 Abas:
-  Dados    — TODAS as WOs consultadas: WO, Material SAP, Fornecedor SAP, Quantidade faltante,
+  Dados    — TODAS as WOs consultadas: WO, Material SAP, Tipo Material, Fornecedor SAP, Quantidade faltante,
              Mensagem e Observação ("-" quando está tudo certo; em português claro quando não).
              Célula sem informação leva "-" (nunca fica em branco). O mesmo item que o BTP
              devolve mais de uma vez com dados idênticos aparece numa linha só, com a observação.
+             Tipo Material vem da tabela de valores importada (Configurações).
+  Materiais — um material SAP por linha: Tipo Material, quantidade total faltante (soma de todas
+             as WOs), valor total (quantidade total × unitário) e o valor unitário da tabela.
   Análise  — números da análise, materiais mais recorrentes, mensagens e a situação de cada WO.
   Rastreio — (oculta) cada leitura feita ao BTP, para investigar uma divergência se preciso.
+  Tabela de valores — (oculta) a tabela importada inteira (Material SAP com 18 dígitos, como no
+             BTP; Tipo Material; valor unitário), para quem quiser usá-la em fórmulas.
 
-Ao final, o arquivo gravado é reaberto e a aba Dados é conferida célula a célula.
+Ao final, o arquivo gravado é reaberto e as abas Dados e Materiais são conferidas célula a célula.
 """
 from __future__ import annotations
 
@@ -24,10 +29,19 @@ from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from .materiais import TabelaMateriais, chave_material
 from .modelos import CAMPOS, ROTULO, STATUS_FALHA, Auditoria, LinhaMensagem, ResultadoWO, Status
 
-ABAS = ["Dados", "Análise", "Rastreio"]
-COLUNAS_DADOS = ["WO", "Material SAP", "Fornecedor SAP", "Quantidade faltante", "Mensagem", "Observação", "Status"]
+ABAS = ["Dados", "Materiais", "Análise", "Rastreio", "Tabela de valores"]
+COLUNAS_TABELA = ["Material SAP", "Tipo Material", "Valor unitário (R$)"]
+COLUNAS_DADOS = ["WO", "Material SAP", "Tipo Material", "Fornecedor SAP", "Quantidade faltante", "Mensagem",
+                 "Observação", "Status"]
+# Ao lado da quantidade, o valor total dela (quantidade total × unitário); o unitário vem depois, para conferência.
+COLUNAS_MATERIAIS = ["Material SAP", "Tipo Material", "Quantidade total", "Valor total (R$)",
+                     "Valor unitário (R$)", "Observação"]
+_COL_OBS = COLUNAS_DADOS.index("Observação")
+_REAIS = '"R$" #,##0.00'
+
 # Status da WO na análise (o mesmo da base de execução e da tela).
 ROTULO_ESTADO = {"validada": "Validada", "divergente": "Divergente", "incompleta": "Incompleta",
                  "falha": "Falha", "pendente": "Pendente"}
@@ -134,7 +148,13 @@ def _preencher(valores: list) -> list:
     return [SEM_INFO if v is None or v == "" else v for v in valores]
 
 
-def linhas_dados(resultados: list[ResultadoWO], exportar_incompletos: bool = True) -> list[list]:
+def _tipo(tabela: TabelaMateriais | None, material) -> str | None:
+    achado = tabela.buscar(material) if tabela else None
+    return achado.tipo if achado else None
+
+
+def linhas_dados(resultados: list[ResultadoWO], exportar_incompletos: bool = True,
+                 tabela: TabelaMateriais | None = None) -> list[list]:
     """Linhas da aba Dados: um item por linha; WO sem itens aparece numa linha com a observação."""
     saida = []
     for r in resultados:
@@ -142,8 +162,8 @@ def linhas_dados(resultados: list[ResultadoWO], exportar_incompletos: bool = Tru
         itens = [l for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO]
         for l, n in itens_unicos(itens):
             obs = "; ".join(o for o in (observacao_item(l), NOTA_REPETIDO.format(n=n) if n > 1 else "") if o)
-            saida.append(_preencher([l.wo, l.material, l.fornecedor, l.quantidade_faltante, l.mensagem, obs,
-                                     estado]))
+            saida.append(_preencher([l.wo, l.material, _tipo(tabela, l.material), l.fornecedor,
+                                     l.quantidade_faltante, l.mensagem, obs, estado]))
         if not itens:
             obs = SITUACAO[r.status]
             if r.linhas:   # havia itens, mas não validados e a exportação deles está desligada
@@ -152,13 +172,62 @@ def linhas_dados(resultados: list[ResultadoWO], exportar_incompletos: bool = Tru
                 obs = r.observacao or obs
             elif r.status in STATUS_FALHA and r.observacao and r.observacao != "OK":
                 obs = f"{obs} ({r.observacao})"
-            saida.append(_preencher([r.wo, None, None, None, None, obs, estado]))
+            saida.append(_preencher([r.wo, None, None, None, None, None, obs, estado]))
     return saida
+
+
+def _decimal(v) -> Decimal:
+    return v if isinstance(v, Decimal) else Decimal(str(v))
+
+
+def _numero(d: Decimal):
+    """Decimal exato para gravar: inteiro quando não tem casas (12, não 12.0)."""
+    return int(d) if d == d.to_integral_value() else d.normalize()
+
+
+def linhas_materiais(itens: list[LinhaMensagem], tabela: TabelaMateriais | None) -> tuple[list[list], list]:
+    """Aba Materiais: um material SAP por linha (todas as WOs juntas) e a linha de total.
+
+    Quantidade total = soma da quantidade faltante dos itens CONFERIDOS (os mesmos da aba Dados,
+    sem as cópias). Item não conferido ou sem quantidade fica fora da soma e é avisado.
+    Valor total = quantidade total × valor unitário da tabela. Sem valor na tabela: "-"."""
+    grupos: dict[str, list[LinhaMensagem]] = OrderedDict()
+    for l in itens:
+        if l.material:
+            grupos.setdefault(chave_material(l.material), []).append(l)
+    linhas = []
+    for ls in grupos.values():
+        somados = [l for l in ls if l.auditoria is Auditoria.VALIDADO and l.quantidade_faltante is not None]
+        quantidade = sum((_decimal(l.quantidade_faltante) for l in somados), Decimal(0)) if somados else None
+        achado = tabela.buscar(ls[0].material) if tabela else None
+        unitario = achado.unitario if achado else None
+        total = quantidade * unitario if quantidade is not None and unitario is not None else None
+        obs = []
+        if tabela is None:
+            obs.append("Tabela de valores não importada (Configurações)")
+        elif achado is None:
+            obs.append("Material fora da tabela de valores")
+        elif unitario is None:
+            obs.append("Sem valor unitário na tabela de valores")
+        fora = len(ls) - len(somados)
+        if fora:
+            obs.append(f"{fora} item(ns) não conferido(s) fora da soma: conferir no BTP")
+        linhas.append(_preencher([ls[0].material, achado.tipo if achado else None,
+                                  None if quantidade is None else _numero(quantidade),
+                                  None if total is None else _numero(total),
+                                  None if unitario is None else _numero(unitario), "; ".join(obs) + ("." if obs else "")]))
+    linhas.sort(key=lambda l: (l[3] == SEM_INFO, -(l[3] if l[3] != SEM_INFO else 0), l[0]))
+    sem_valor = sum(1 for l in linhas if l[3] == SEM_INFO)
+    soma = sum((_decimal(l[3]) for l in linhas if l[3] != SEM_INFO), Decimal(0))
+    total = _preencher(["Total", None, None, _numero(soma) if len(linhas) > sem_valor else None, None,
+                        f"{sem_valor} material(is) sem valor ficaram fora do total." if sem_valor else None])
+    return linhas, total
 
 
 def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: int | None = None,
                    emitida_em: datetime | None = None, origem: str = "", prefs=None,
-                   fonte_campos: dict | None = None, releitura_por_chave: bool | None = None) -> Path:
+                   fonte_campos: dict | None = None, releitura_por_chave: bool | None = None,
+                   tabela: TabelaMateriais | None = None) -> Path:
     """Grava o Excel em modo de ESCRITA CONTÍNUA (write-only): cada linha vai direto para o
     arquivo, sem montar a planilha inteira na memória (13 mil WOs: ~1 GB a menos)."""
     destino = Path(destino)
@@ -172,26 +241,48 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
 
     # ================================================================ Dados
     ws = wb.create_sheet(ABAS[0])
-    dados = linhas_dados(resultados, exportar_incompletos)
-    _preparar(ws, [18, 22, 16, 12, 55, 55, 13], linha_cab=1)
+    dados = linhas_dados(resultados, exportar_incompletos, tabela)
+    _preparar(ws, [18, 22, 34, 16, 12, 55, 55, 13], linha_cab=1)
     if dados:
         ws.auto_filter.ref = f"A1:{get_column_letter(len(COLUNAS_DADOS))}{len(dados) + 1}"
     ws.append(_cabecalho(ws, COLUNAS_DADOS))
     for valores in dados:
         # Item com observação de conferência: destaca só a célula de Observação.
-        destaque = valores[1] != SEM_INFO and valores[5] != SEM_INFO and not valores[5].startswith("O BTP traz")
-        ws.append([_celula(ws, v, formato="@" if col in (1, 2, 3, 5, 6, 7) else None,
-                           alinhamento=_QUEBRA if col in (5, 6) else _TOPO, borda=_BORDA,
-                           fundo=_ATENCAO if col == 6 and destaque else None)
+        obs = valores[_COL_OBS]
+        destaque = valores[1] != SEM_INFO and obs != SEM_INFO and not obs.startswith("O BTP traz")
+        ws.append([_celula(ws, v, formato="@" if col in (1, 2, 3, 4, 6, 7, 8) else None,
+                           alinhamento=_QUEBRA if col in (6, 7) else _TOPO, borda=_BORDA,
+                           fundo=_ATENCAO if col == _COL_OBS + 1 and destaque else None)
+                   for col, v in enumerate(valores, start=1)])
+
+    # ================================================================ Materiais
+    wm = wb.create_sheet(ABAS[1])
+    mats, total = linhas_materiais(linhas, tabela)
+    _preparar(wm, [22, 44, 16, 18, 20, 55], linha_cab=1)
+    if mats:
+        wm.auto_filter.ref = f"A1:{get_column_letter(len(COLUNAS_MATERIAIS))}{len(mats) + 1}"
+    wm.append(_cabecalho(wm, COLUNAS_MATERIAIS))
+    for valores in mats + [None, total]:
+        if valores is None:
+            wm.append([])
+            continue
+        negrito = Font(bold=True) if valores is total else None
+        wm.append([_celula(wm, v, fonte=negrito, borda=_BORDA, alinhamento=_QUEBRA if col == 6 else _TOPO,
+                           formato="@" if col in (1, 2) else (_REAIS if col in (4, 5) and v != SEM_INFO else None),
+                           fundo=_ATENCAO if col == 6 and v != SEM_INFO and valores is not total else None)
                    for col, v in enumerate(valores, start=1)])
 
     # ================================================================ Análise
-    wa = wb.create_sheet(ABAS[1])
+    wa = wb.create_sheet(ABAS[2])
     for col, largura in enumerate([40, 30, 12, 40, 16, 50], start=1):
         wa.column_dimensions[get_column_letter(col)].width = largura
     wa.append([_celula(wa, f"Análise{' nº ' + str(numero) if numero else ''} — Monitor de Alertas",
                        fonte=Font(bold=True, size=14, color=VERMELHO))])
     wa.append([_celula(wa, f"Emitida em {emitida_em:%d/%m/%Y %H:%M}" + (f" · {origem}" if origem else ""),
+                       fonte=Font(size=10, color="595959"))])
+    wa.append([_celula(wa, (f"Tabela de valores: {tabela.arquivo} (importada em "
+                            f"{datetime.fromisoformat(tabela.importada_em):%d/%m/%Y %H:%M}, {len(tabela.itens)} materiais)")
+                       if tabela else "Tabela de valores: não importada (Tipo Material e valores ficam \"-\")",
                        fonte=Font(size=10, color="595959"))])
     st = Counter(r.status for r in resultados)
     com_obs = sum(1 for l in linhas if l.auditoria is not Auditoria.VALIDADO)
@@ -237,7 +328,7 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
     _secao(wa, "Situação de cada WO", ["WO", "Situação", "Itens", "Materiais SAP", "Observação"], por_wo, texto={1})
 
     # ================================================================ Rastreio (oculta)
-    wr = wb.create_sheet(ABAS[2])
+    wr = wb.create_sheet(ABAS[3])
     wr.sheet_state = "hidden"
     wr.append(_cabecalho(wr, ["WO", "Material SAP", "Identificação do item", "Leitura", "Tipo", "Data/hora",
                               "Quantidade", "Fornecedor SAP", "Mensagem", "Comparação", "Resultado"]))
@@ -252,8 +343,27 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
         wr.append([_celula(wr, v) for v in ["Campos do BTP usados"]
                    + [f"{ROTULO[c]} = {fonte_campos.get(c, '?')}" for c in CAMPOS]])
 
+    # ================================================================ Tabela de valores (oculta)
+    wt = wb.create_sheet(ABAS[4])
+    wt.sheet_state = "hidden"
+    _preparar(wt, [22, 44, 18], linha_cab=1)
+    wt.append(_cabecalho(wt, COLUNAS_TABELA))
+    for valores in linhas_tabela(tabela):
+        wt.append([_celula(wt, v, formato="@" if col in (1, 2) else (_REAIS if col == 3 and v != SEM_INFO else None))
+                   for col, v in enumerate(valores, start=1)])
+
     wb.save(destino)
     return destino
+
+
+def linhas_tabela(tabela: TabelaMateriais | None) -> list[list]:
+    """A tabela de valores importada, com o material no formato do BTP (18 dígitos) para que
+    PROCV/XLOOKUP com a coluna Material SAP da aba Dados funcione direto."""
+    if not tabela:
+        return []
+    return [_preencher([chave.zfill(18) if chave.isdigit() else chave, m.tipo,
+                        None if m.unitario is None else _numero(m.unitario)])
+            for chave, m in sorted(tabela.itens.items(), key=lambda kv: (len(kv[0]), kv[0]))]
 
 
 def _soma(linhas: list[LinhaMensagem]):
@@ -277,35 +387,55 @@ def _secao(ws, titulo, cabecalho, linhas, texto=frozenset()):
 
 
 def verificar_planilha(destino: str | Path, resultados: list[ResultadoWO],
-                       exportar_incompletos: bool = True) -> list[str]:
-    """Reabre o arquivo gravado e confere a aba Dados, célula a célula, com os dados auditados."""
-    esperadas = linhas_dados(resultados, exportar_incompletos)
+                       exportar_incompletos: bool = True, tabela: TabelaMateriais | None = None) -> list[str]:
+    """Reabre o arquivo gravado e confere as abas Dados e Materiais, célula a célula."""
+    esperadas = linhas_dados(resultados, exportar_incompletos, tabela)
+    itens = [l for r in resultados for l, _ in itens_unicos(
+        [l for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO])]
+    mats, total = linhas_materiais(itens, tabela)
     # Somente leitura: lê célula a célula sem montar a planilha inteira na memória (13 mil WOs:
     # 3 MB em vez de ~840 MB) e ainda informa o TIPO de cada célula (fórmula = "f").
     wb = load_workbook(destino, read_only=True)
     try:
         if wb.sheetnames != ABAS:
             return [f"Abas fora da ordem esperada: {wb.sheetnames}"]
-        linhas, problemas = [], []
-        for i, linha in enumerate(wb[ABAS[0]].iter_rows(max_col=len(COLUNAS_DADOS)), start=1):
-            linhas.append(tuple(c.value for c in linha))
-            problemas += [f"{get_column_letter(col)}{i}: gravado como fórmula ({c.value!r})"
-                          for col, c in enumerate(linha, start=1) if getattr(c, "data_type", "") == "f"]
+        problemas: list[str] = []
+        dados = _ler_aba(wb[ABAS[0]], len(COLUNAS_DADOS), problemas)
+        materiais = _ler_aba(wb[ABAS[1]], len(COLUNAS_MATERIAIS), problemas)
+        tabela_gravada = _ler_aba(wb[ABAS[4]], len(COLUNAS_TABELA), problemas)
     finally:
         wb.close()
-    if not linhas or list(linhas[0]) != COLUNAS_DADOS:
-        problemas.append(f"Cabeçalho da aba Dados diferente: {linhas[0] if linhas else '(vazia)'}")
-        return problemas
+    problemas += _comparar("Dados", COLUNAS_DADOS, dados, esperadas)
+    problemas += _comparar("Materiais", COLUNAS_MATERIAIS, materiais,
+                           mats + ([[None] * len(COLUNAS_MATERIAIS), total]))
+    problemas += _comparar("Tabela de valores", COLUNAS_TABELA, tabela_gravada, linhas_tabela(tabela))
+    return problemas
+
+
+def _ler_aba(ws, colunas: int, problemas: list[str]) -> list[tuple]:
+    linhas = []
+    for i, linha in enumerate(ws.iter_rows(max_col=colunas), start=1):
+        valores = tuple(c.value for c in linha)
+        linhas.append(valores + (None,) * (colunas - len(valores)))
+        problemas += [f"{ws.title}!{get_column_letter(col)}{i}: gravado como fórmula ({c.value!r})"
+                      for col, c in enumerate(linha, start=1) if getattr(c, "data_type", "") == "f"]
+    return linhas
+
+
+def _comparar(aba: str, cabecalho: list[str], linhas: list[tuple], esperadas: list[list]) -> list[str]:
+    if not linhas or list(linhas[0]) != cabecalho:
+        return [f"Cabeçalho da aba {aba} diferente: {linhas[0] if linhas else '(vazia)'}"]
+    problemas = []
     gravadas = linhas[1:]
     if len(gravadas) != len(esperadas):
-        problemas.append(f"Aba Dados tem {len(gravadas)} linha(s); esperado {len(esperadas)}.")
+        problemas.append(f"Aba {aba} tem {len(gravadas)} linha(s); esperado {len(esperadas)}.")
     for i, (g, e) in enumerate(zip(gravadas, esperadas), start=2):
         for col, (vg, ve) in enumerate(zip(g, [_limpar(v) for v in e])):
             numeros = isinstance(vg, (int, float)) and isinstance(ve, (int, float, Decimal))
             if numeros and math.isclose(float(vg), float(ve), rel_tol=1e-12):
                 continue   # o Excel guarda número com 15 dígitos significativos
             if _txt(vg) != _txt(ve):
-                problemas.append(f"Linha {i}, {COLUNAS_DADOS[col]}: gravado {vg!r}, esperado {ve!r}")
+                problemas.append(f"{aba}, linha {i}, {cabecalho[col]}: gravado {vg!r}, esperado {ve!r}")
     return problemas
 
 

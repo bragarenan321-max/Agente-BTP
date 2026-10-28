@@ -158,15 +158,16 @@ def test_planilha_preserva_zeros_e_tipos(tmp_path):
     rs = processar_lote(ClienteBTP(CONFIG, t), ["88412|126579742"])
     destino = gerar_planilha(rs, tmp_path / "out.xlsx", numero=7)
     wb = load_workbook(destino)
-    assert wb.sheetnames == ["Dados", "Análise", "Rastreio"] and wb["Rastreio"].sheet_state == "hidden"
+    assert wb.sheetnames == ["Dados", "Materiais", "Análise", "Rastreio", "Tabela de valores"]
+    assert wb["Rastreio"].sheet_state == "hidden" and wb["Tabela de valores"].sheet_state == "hidden"
     ws = wb["Dados"]
-    assert [c.value for c in ws[1]] == ["WO", "Material SAP", "Fornecedor SAP", "Quantidade faltante",
+    assert [c.value for c in ws[1]] == ["WO", "Material SAP", "Tipo Material", "Fornecedor SAP", "Quantidade faltante",
                                         "Mensagem", "Observação", "Status"]
-    assert [c.value for c in ws[2]] == ["88412|126579742", "000000000022026169", "0000137628", 2,
+    assert [c.value for c in ws[2]] == ["88412|126579742", "000000000022026169", "-", "0000137628", 2,
                                         "Estoque indisponível", "-", "Validada"]   # conferido: sem observação ("-")
-    assert ws["B2"].data_type == "s" and ws["C2"].data_type == "s" and ws["D2"].data_type == "n"
-    assert ws.freeze_panes == "A2" and ws.auto_filter.ref == "A1:G2"
-    assert ws["E2"].alignment.wrap_text
+    assert ws["B2"].data_type == "s" and ws["D2"].data_type == "s" and ws["E2"].data_type == "n"
+    assert ws.freeze_panes == "A2" and ws.auto_filter.ref == "A1:H2"
+    assert ws["F2"].alignment.wrap_text
     assert "Análise nº 7" in wb["Análise"]["A1"].value
 
 

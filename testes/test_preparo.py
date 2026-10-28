@@ -330,7 +330,7 @@ def test_lote_so_comeca_depois_da_conferencia_e_recusa_troca_a_fonte(agente, mon
     assert e["fase"] == "concluido" and e["contagem"] == {Status.PROCESSADA.value: 1}
     from openpyxl import load_workbook
     d = list(load_workbook(agente_mod.PASTA_SAIDAS / e["ultimo_arquivo"])["Dados"].iter_rows(min_row=2, values_only=True))
-    assert d == [(WO, "000000000022066463", "0000138480", 2, "Estoque indisponível", "-", "Validada")]
+    assert d == [(WO, "000000000022066463", "-", "0000138480", 2, "Estoque indisponível", "-", "Validada")]
     # Histórico: o relatório é gerado de novo a partir da base (regras atuais), substituindo o
     # arquivo gravado na época — sem nenhuma consulta nova ao BTP.
     import io
@@ -365,7 +365,7 @@ def test_mensagem_do_alerta_pode_ser_escolhida(agente, monkeypatch, tmp_path):
     from openpyxl import load_workbook
     e = agente.estado()
     d = list(load_workbook(agente_mod.PASTA_SAIDAS / e["ultimo_arquivo"])["Dados"].iter_rows(min_row=2, values_only=True))
-    assert d[0][4] == amostras[0]["itens"][0]["mensagem_alerta"]
+    assert d[0][5] == amostras[0]["itens"][0]["mensagem_alerta"]
 
 
 def test_raio_x_mostra_de_onde_vem_cada_dado():

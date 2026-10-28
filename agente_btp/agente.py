@@ -28,6 +28,7 @@ from . import preferencias
 from .exportacao import gerar_planilha, nome_analise, verificar_planilha
 from .entrada import wo_valida
 from .loja import Loja
+from . import materiais
 from .modelos import STATUS_FALHA, Auditoria, ErroConsulta, FalhaComunicacao, SessaoExpirada, Status, TempoEsgotado
 from .motor import Motor
 from . import odata
@@ -904,10 +905,11 @@ class Agente:
         else:
             destino = nome_analise(PASTA_SAIDAS, ex["numero"], ex["total"])
         try:
+            tabela = materiais.carregar()      # tabela de valores vigente (Tipo Material e R$)
             arquivo = gerar_planilha(resultados, destino, numero=ex["numero"], emitida_em=emitida_em, origem=descricao,
                                      prefs=prefs, fonte_campos=api.campos,
-                                     releitura_por_chave=bool(api.url_item and api.chaves_item))
-            problemas = verificar_planilha(arquivo, resultados, prefs.exportar_incompletos)
+                                     releitura_por_chave=bool(api.url_item and api.chaves_item), tabela=tabela)
+            problemas = verificar_planilha(arquivo, resultados, prefs.exportar_incompletos, tabela)
             if not parcial:
                 self.loja.definir_arquivo(run_id, arquivo.name)
             if problemas:

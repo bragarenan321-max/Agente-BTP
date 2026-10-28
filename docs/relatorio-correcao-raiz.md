@@ -259,3 +259,25 @@ em 6 colunas fixas. Uso da largura: 1920 px = 66%; zoom 67% (2150 px CSS) = 59%;
 **Validação:**
 - pytest 153 ok, incluindo os testes novos: item igual em alertas diferentes, relatório regerado sem consultar o BTP, e equivalência que exige a remoção das cópias e nada mais;
 - `rodar_tela` 71/71; `rodar_sessao`, `rodar_aba` e `rodar_extensao` ok.
+
+## 12. Rodada 8 — Tipo Material, aba Materiais e tabela de valores
+
+**Fonte do tipo e do valor:** tabela do usuário ("TABELA VALORES 07-2026.xlsx": Material, Texto breve material, Unitário). Ela é importada em Configurações → Tabela de valores e gravada em `config/tabela_materiais.json` (`agente_btp/materiais.py`).
+- Tipo Material = "Texto breve material", exatamente como está.
+- O material é comparado pelo número: `000000000022056365` (BTP) = `22056365` (tabela).
+- Se a tabela tem o mesmo material com tipo ou valor diferentes, a importação é recusada e diz quais materiais.
+- O unitário é lido sem resíduo de ponto flutuante (0.13 fica 0.13).
+
+**Planilha:**
+- **Dados:** nova coluna "Tipo Material" ao lado de Material SAP. Material fora da tabela = "-".
+- **Materiais (nova):** um material SAP por linha, juntando todas as WOs. Colunas: Quantidade total | Valor total (R$) = quantidade total × unitário | Valor unitário (R$) | Observação.
+  - Ordem: maior valor primeiro, com a linha Total no fim.
+  - Item não conferido fica fora da soma e é avisado.
+  - Material fora da tabela ou sem preço sai com "-" e aviso.
+- **Tabela de valores (oculta):** a tabela importada inteira, com o material em 18 dígitos como no BTP, para PROCV direto com a aba Dados.
+- A conferência depois de gravar passou a cobrir as abas Dados, Materiais e Tabela de valores, célula a célula.
+
+**Validação com os arquivos reais:** análise de 13.623 WOs (sem as 218 cópias) + tabela de 1.305 materiais.
+- 270 materiais: 263 com preço, 7 fora da tabela (22069613 com 2.144 unidades, 22067265 com 62 e outros 5).
+- Total R$ 183.667,48, igual à conferência independente (soma de quantidade × unitário).
+- pytest 163 ok (10 novos em `test_materiais.py`); `rodar_tela` 71/71; `rodar_sessao`, `rodar_aba` e `rodar_extensao` ok; importação pela tela testada no navegador com a tabela real.

@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 
 from flask import Flask, Response, abort, jsonify, request, send_file
 
-from . import historico, preferencias
+from . import historico, materiais, preferencias
 from .agente import Agente, caminho_saida, config_atual
 from .ponte import LIMITE_TRABALHADORES_ABA
 from .entrada import ler_wos_planilha, ler_wos_texto, wo_valida
@@ -251,6 +251,32 @@ def criar_app(agente: Agente) -> Flask:
         if not arquivo:
             abort(404)
         return send_file(arquivo, as_attachment=True)
+
+    @app.get("/api/materiais/tabela")
+    def tabela_materiais():
+        tabela = materiais.carregar()
+        return jsonify(tabela.resumo() if tabela else {"carregada": False})
+
+    @app.post("/api/materiais/tabela")
+    def importar_tabela_materiais():
+        """Importa a tabela de valores (Material, Texto breve material, Unitário). Só LÊ o arquivo."""
+        arquivo = request.files.get("arquivo")
+        if not arquivo or not arquivo.filename:
+            return jsonify(ok=False, erro="Nenhuma planilha enviada."), 400
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = Path(pasta) / "tabela.xlsx"
+            arquivo.save(caminho)
+            try:
+                tabela = materiais.ler_planilha(caminho, Path(arquivo.filename).name)
+            except materiais.TabelaInvalida as exc:
+                return jsonify(ok=False, erro=str(exc)), 400
+        materiais.salvar(tabela)
+        return jsonify(ok=True, **tabela.resumo())
+
+    @app.delete("/api/materiais/tabela")
+    def remover_tabela_materiais():
+        materiais.remover()
+        return jsonify(ok=True, carregada=False)
 
     @app.get("/api/execucoes/<run_id>/relatorio")
     def relatorio(run_id: str):

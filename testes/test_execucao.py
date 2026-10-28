@@ -386,7 +386,7 @@ def test_r4_equivalencia_campo_a_campo_em_500_wos_contra_a_versao_anterior(tmp_p
     velhas = [[_txt(x) or "-" for x in l] for l in exp_v.linhas_dados(antigos)]
     vistas = set()                                                       # sem as cópias acima
     velhas = [l for l in velhas if not (tuple(l) in vistas or vistas.add(tuple(l)))]
-    assert [[_txt(x) for x in l[:6]] for l in linhas_dados(novos)] == velhas
+    assert [[_txt(x) for x in l[:2] + l[3:7]] for l in linhas_dados(novos)] == velhas   # sem Tipo Material (novo)
     assert amb.cache.lote_ativo, amb.cache.lote_motivo                       # o lote foi validado no caminho
     # menos consultas ao BTP: relatório antes/depois
     print(f"\nconsultas: versão anterior {btp_velho.consultas} | nova {btp_novo.consultas}")

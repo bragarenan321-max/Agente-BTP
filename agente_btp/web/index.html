@@ -633,6 +633,19 @@
         </div>
       </details>
     </section>
+    <section class="cartao grupo" aria-labelledby="tTabela">
+      <h3 id="tTabela">Tabela de valores</h3>
+      <p class="meta" style="margin:2px 0 8px">Preenche o <b>Tipo Material</b> (coluna "Texto breve material") e o valor unitário
+        (coluna "Unitário") de cada Material SAP. Vale para toda planilha gerada daqui em diante, inclusive o relatório do Histórico.</p>
+      <div class="importar" id="zonaTabela">
+        <label for="arqTabela" class="btn btn-sec" tabindex="0">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-18-5.5 5.5 1.4 1.4L11 5.8V16h2V5.8l3.1 3.1 1.4-1.4L12 2z"/></svg>
+          Importar tabela (.xlsx)</label>
+        <input type="file" id="arqTabela" accept=".xlsx" class="sr-only" tabindex="-1">
+        <span class="arq" id="nomeTabela" aria-live="polite">Nenhuma tabela importada: Tipo Material e valores saem "-".</span>
+        <button class="btn-texto oculto" id="bTirarTabela">Remover</button>
+      </div>
+    </section>
   </div>
   <div id="cfgGrupos" class="cfg-grupos"></div>
   <section class="cartao">
@@ -1156,6 +1169,38 @@ $("cfgRefazer").onclick = async () => {
   $("cfgStatus").textContent = r.ok ? "Fonte apagada: a próxima análise pede a conferência." : r.erro;
 };
 $("cfgPadrao").onclick = () => confirm("Restaurar todos os valores padrão?") && salvarConfig("/api/configuracoes/padrao");
+// Tabela de valores (Material SAP -> Tipo Material e valor unitário): gravada neste computador.
+function desenharTabela(t, erro) {
+  const ok = t && t.carregada;
+  $("zonaTabela").classList.toggle("com-arquivo", !!ok && !erro);
+  $("nomeTabela").classList.toggle("erro", !!erro);
+  $("bTirarTabela").classList.toggle("oculto", !ok);
+  $("nomeTabela").innerHTML = erro ? esc(erro)
+    : ok ? `<b>${esc(t.arquivo)}</b> · ${fmt(t.materiais)} materiais · importada em ${new Date(t.importada_em).toLocaleString("pt-BR")}`
+           + (t.sem_valor ? ` · ${fmt(t.sem_valor)} sem valor unitário` : "")
+    : 'Nenhuma tabela importada: Tipo Material e valores saem "-".';
+}
+async function carregarTabela() {
+  try { desenharTabela(await fetch("/api/materiais/tabela").then(r => r.json())); }
+  catch (_) { desenharTabela(null, "Não foi possível consultar a tabela (o programa está aberto?)."); }
+}
+$("arqTabela").onchange = async () => {
+  const f = $("arqTabela").files[0];
+  if (!f) return;
+  $("nomeTabela").innerHTML = `<b>${esc(f.name)}</b> · lendo…`;
+  const fd = new FormData(); fd.append("arquivo", f);
+  try {
+    const r = await post("/api/materiais/tabela", fd);
+    if (r.ok) { desenharTabela(r); avisar(`Tabela de valores importada: ${fmt(r.materiais)} materiais.`); }
+    else desenharTabela(null, `${f.name}: ${r.erro}`);
+  } catch (_) { desenharTabela(null, "Não foi possível enviar a tabela (o programa está aberto?)."); }
+  $("arqTabela").value = "";
+};
+$("bTirarTabela").onclick = async () => {
+  if (!confirm("Remover a tabela de valores? As próximas planilhas saem sem Tipo Material e valores.")) return;
+  desenharTabela(await fetch("/api/materiais/tabela", { method: "DELETE" }).then(r => r.json()));
+};
+carregarTabela();
 // Aparência: só deste navegador (preferência visual), aplicada na hora.
 function lerTema() { try { return localStorage.getItem("agenteBtpTema") || "auto"; } catch (_) { return "auto"; } }
 $("cfgTema").value = lerTema();
