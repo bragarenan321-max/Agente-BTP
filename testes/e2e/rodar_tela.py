@@ -53,6 +53,33 @@ def esperar(f, t=60):
     return False
 
 
+def sem_rolagem_horizontal(pg):
+    """True se nada passa da largura da janela; senão lista os elementos que passam (para corrigir)."""
+    if pg.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"):
+        return True
+    print("    elementos além da largura:", pg.evaluate("""[...document.querySelectorAll('body *')]
+        .filter(e => e.getClientRects().length && e.getBoundingClientRect().right > innerWidth + 1)
+        .slice(0, 6).map(e => e.tagName + '#' + e.id + '.' + e.className + ' → ' + Math.round(e.getBoundingClientRect().right))"""))
+    return False
+
+
+def abrir_tour(pg):
+    """Ajuda guiada (balões): botão Ajuda do topo."""
+    pg.click("#bAjuda")
+
+
+# Passos da ajuda guiada: (alvo, alternativa se o alvo não estiver visível, página esperada)
+PASSOS = [("#pilulaConexao", None, "#vistaAnalise"), ("#resumoAgente", None, "#vistaAnalise"), ("#texto", None, "#vistaAnalise"),
+          ("#zonaImportar", None, "#vistaAnalise"), ("#bExecutar", None, "#vistaAnalise"),
+          ("#cartaoProgresso .exec-cab", None, "#vistaAnalise"), ("#blocoProgresso", None, "#vistaAnalise"),
+          ("#painel", None, "#vistaAnalise"), ("#acoesResultado", None, "#vistaAnalise"), ("#secRecentes", None, "#vistaAnalise"),
+          ("#vistaHistorico > .cartao:first-child", None, "#vistaHistorico"),
+          ("#detTecnico", "#vistaHistorico > .cartao:first-child", "#vistaHistorico"),
+          ("[aria-labelledby=tFonte]", None, "#vistaConfig"), ("[aria-labelledby=tTabela]", None, "#vistaConfig"),
+          ("[aria-labelledby=tAparencia]", None, "#vistaConfig"), ("#cfgGrupos", None, "#vistaConfig"),
+          (".barra-acoes", None, "#vistaConfig"), ("#bAjuda", None, "#vistaConfig")]
+
+
 def sobrepoe(a, b, folga=12):
     return (a["x"] <= b["x"] + folga and a["y"] <= b["y"] + folga and
             a["x"] + a["width"] >= b["x"] + b["width"] - folga and a["y"] + a["height"] >= b["y"] + b["height"] - folga)
@@ -73,9 +100,15 @@ with sync_playwright() as p:
     confere(pg.locator(".marca-selo svg").count() == 1, "logo própria no cabeçalho")
     confere(not pg.is_visible("#painel") and pg.is_visible("#estadoVazio"), "ocioso sem histórico: estado vazio, sem cartões vazios")
     pg.screenshot(path=str(PRINTS / "tela_inicial.png"), full_page=True)
-    print("== ajuda com a tela ociosa (indicadores ocultos)")
-    pg.click("#bAjuda")
-    for _ in range(4):
+    print("== tela sem explicações permanentes; ajuda só quando pedida")
+    confere(not pg.is_visible("#dica"), "nenhuma dica aberta sem ser pedida")
+    confere(pg.locator("#vistaAnalise .conferencia, #vazioTexto").count() == 0, "análise sem parágrafos explicativos fixos")
+    pg.keyboard.press("F1")
+    confere(pg.is_visible("#tutBalao") and pg.text_content("#tutPasso") == f"Passo 1 de {len(PASSOS)}", "F1 abre a ajuda guiada")
+    pg.keyboard.press("Escape")
+    print("== ajuda guiada com a tela ociosa (indicadores ocultos)")
+    abrir_tour(pg)
+    for _ in range(7):
         pg.keyboard.press("ArrowRight")
     pg.wait_for_timeout(400)
     confere(pg.text_content("#tutTitulo") == "Indicadores" and pg.is_visible("#painel")
@@ -83,6 +116,7 @@ with sync_playwright() as p:
             "passo 'Indicadores' mostra o painel oculto e o destaca")
     pg.keyboard.press("Escape")
     pg.wait_for_timeout(1300)
+    confere(pg.is_visible("#vistaAnalise"), "ao sair, continua na página em que estava")
     confere(not pg.is_visible("#painel"), "ao sair da ajuda, o painel volta a ficar oculto")
 
     print("== entrada")
@@ -114,26 +148,29 @@ with sync_playwright() as p:
     print("== ajuda durante a execução (não pode alterar nada)")
     escritas = []
     pg.on("request", lambda r: escritas.append(r.url) if r.method != "GET" else None)
-    pg.click("#bAjuda")
-    confere(pg.is_visible("#tutBalao") and pg.text_content("#tutPasso") == "Passo 1 de 6", "ajuda abre no passo 1 de 6")
+    abrir_tour(pg)
+    confere(pg.is_visible("#tutBalao") and pg.text_content("#tutPasso") == f"Passo 1 de {len(PASSOS)}",
+            f"ajuda abre no passo 1 de {len(PASSOS)}")
     confere(pg.is_disabled("#tutAnterior"), "Anterior desabilitado no passo 1")
     confere(pg.evaluate("document.activeElement.id") == "tutProximo", "foco no botão Próximo do balão")
     for _ in range(4):
         pg.keyboard.press("Tab")
     confere(pg.evaluate("!!document.activeElement.closest('#tutBalao')"), "Tab não sai do balão (foco preso)")
-    passos = [("#texto",), ("#zonaImportar",), ("#bExecutar",), ("#blocoProgresso",), ("#painel",), ("#secRecentes",)]
-    for i, (alvo,) in enumerate(passos):
+    for i, (alvo, alternativa, vista) in enumerate(PASSOS):
         if i:
             pg.keyboard.press("ArrowRight")
-        pg.wait_for_timeout(450)
+        pg.wait_for_timeout(600)
+        if alternativa and not pg.is_visible(alvo):
+            alvo = alternativa
+        confere(pg.is_visible(vista), f"passo {i + 1}: ajuda leva à página certa ({vista})")
         foco, caixa = pg.locator("#tutFoco").bounding_box(), pg.locator(alvo).first.bounding_box()
         balao = pg.locator("#tutBalao").bounding_box()
         confere(sobrepoe(foco, caixa), f"passo {i + 1}: destaque envolve {alvo}")
         confere(0 <= balao["y"] and balao["y"] + balao["height"] <= 900 and 0 <= balao["x"] <= 1440 - balao["width"],
                 f"passo {i + 1}: balão dentro da tela")
-        if i == 0:
-            pg.screenshot(path=str(PRINTS / "ajuda_passo1.png"))
-        if i == 3:
+        if i in (2, 12):
+            pg.screenshot(path=str(PRINTS / f"ajuda_passo{i + 1}.png"))
+        if i == 6:
             pg.set_viewport_size({"width": 1100, "height": 760})
             pg.wait_for_timeout(450)
             confere(sobrepoe(pg.locator("#tutFoco").bounding_box(), pg.locator(alvo).first.bounding_box()),
@@ -142,26 +179,35 @@ with sync_playwright() as p:
             pg.wait_for_timeout(450)
             confere(sobrepoe(pg.locator("#tutFoco").bounding_box(), pg.locator(alvo).first.bounding_box()),
                     "destaque acompanha o elemento após rolar a página")
-            pg.screenshot(path=str(PRINTS / "ajuda_passo4.png"))
+            pg.screenshot(path=str(PRINTS / "ajuda_passo7.png"))
             pg.set_viewport_size({"width": 1440, "height": 900})
     confere(pg.inner_text("#tutProximo") == "Concluir", "último passo mostra 'Concluir'")
     pg.keyboard.press("Escape")
     pg.wait_for_timeout(300)
     confere(not pg.is_visible("#tutorial") and not pg.is_visible("#tutFoco"), "Esc encerra e limpa o escurecimento")
+    confere(pg.is_visible("#vistaAnalise"), "ao sair, volta para a página em que estava")
     confere(pg.evaluate("document.activeElement.id") == "bAjuda", "foco volta para o botão Ajuda")
     confere(not pg.evaluate("$('vistaAnalise').hasAttribute('inert')"), "tela volta a aceitar cliques")
     for _ in range(3):                                   # abre e fecha várias vezes
-        pg.click("#bAjuda")
+        abrir_tour(pg)
         pg.wait_for_timeout(150)
         pg.click("#tutSair")
     confere(not pg.is_visible("#tutorial"), "ajuda abre e fecha repetidamente")
     confere(not escritas, f"nenhuma requisição de escrita durante a ajuda ({len(escritas)})")
 
     print("== ajuda contextual")
+    opacidade = pg.evaluate("getComputedStyle(document.querySelector('#painel .indicador.ok .ajuda-ctx')).opacity")
+    confere(opacidade == "0", f"'?' dos indicadores discreto até passar o mouse (opacidade {opacidade})")
+    pg.hover("#painel .indicador.ok"); pg.wait_for_timeout(250)
     pg.click("#painel .indicador.ok .ajuda-ctx")
     confere(pg.is_visible("#dica") and "leituras" in pg.inner_text("#dica"), "'?' de Validadas mostra a regra")
     pg.keyboard.press("Escape")
     confere(not pg.is_visible("#dica"), "Esc fecha a dica")
+    pg.hover("#painel .indicador.ok"); pg.click("#painel .indicador.ok .ajuda-ctx")
+    pg.click("#dica .dica-link"); pg.wait_for_timeout(500)
+    confere(pg.is_visible("#tutBalao") and pg.text_content("#tutTitulo") == "Indicadores",
+            "'Ver na Ajuda guiada' abre a ajuda no passo Indicadores")
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
 
     print("== pausar / retomar / parar / retomar análise")
     confere(esperar(lambda: pg.is_visible("#bPausar"), 10), "botão Pausar visível executando")
@@ -210,6 +256,13 @@ with sync_playwright() as p:
     pg.screenshot(path=str(PRINTS / "historico.png"), full_page=True)
     pg.click("#abaConfig")
     confere(esperar(lambda: pg.locator("#cfg_auditorias_por_wo").count() == 1, 10), "configurações carregam")
+    confere(pg.locator("#vistaConfig .campo .ajuda, #vistaConfig p.meta").count() == 0,
+            "configurações sem parágrafos explicativos (só rótulo, campo e unidade)")
+    confere(pg.locator("#vistaConfig .campo [data-ajuda^=cfg_]").count() == 16, "cada parâmetro tem '?' com a explicação")
+    pg.click("[data-ajuda=cfg_concorrencia]")
+    confere("Padrão: 4" in pg.inner_text("#dica"), "'?' do parâmetro mostra a regra e o valor padrão")
+    pg.keyboard.press("Escape")
+    pg.screenshot(path=str(PRINTS / "configuracoes.png"), full_page=True)
     pg.click("#cfgSalvar")
     confere(esperar(lambda: "salvas" in pg.inner_text("#cfgStatus"), 10), "configurações salvam")
     confere(pg.locator("#cfgMensagem option[value=ambas]").count() == 1 and pg.locator("#vistaConfig #bRaiox").count() == 1,
@@ -228,24 +281,25 @@ with sync_playwright() as p:
     pg.screenshot(path=str(PRINTS / "historico_escuro.png"), full_page=True)
     pg.click("#abaConfig"); pg.wait_for_timeout(300)
     pg.select_option("#cfgTema", "claro")
-    pg.click("#bAjuda")
-    confere(pg.is_visible("#vistaAnalise") and pg.is_visible("#tutBalao"), "ajuda aberta em outra aba leva à tela de análise")
+    abrir_tour(pg)
+    confere(pg.is_visible("#vistaAnalise") and pg.is_visible("#tutBalao"), "ajuda aberta em Configurações começa na tela de análise")
     pg.keyboard.press("Escape")
-    confere(pg.is_visible("#vistaConfig"), "ao sair, volta para a aba em que o usuário estava")
+    confere(pg.is_visible("#vistaConfig"), "ao sair, volta para a página em que o usuário estava")
 
     print("== telas pequenas")
     for largura in (390, 768):
         pg.set_viewport_size({"width": largura, "height": 844})
         pg.click("#abaAnalise")
         pg.wait_for_timeout(400)
-        confere(pg.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), f"{largura}px: sem rolagem horizontal")
-        pg.click("#bAjuda")
+        confere(sem_rolagem_horizontal(pg), f"{largura}px: sem rolagem horizontal")
+        abrir_tour(pg)
         pg.wait_for_timeout(400)
         b = pg.locator("#tutBalao").bounding_box()
         confere(b["x"] >= 0 and b["x"] + b["width"] <= largura and b["y"] + b["height"] <= 844,
                 f"{largura}px: balão da ajuda dentro da tela")
         pg.screenshot(path=str(PRINTS / f"ajuda_{largura}px.png"))
         pg.keyboard.press("Escape")
+
         pg.screenshot(path=str(PRINTS / f"tela_{largura}px.png"), full_page=True)
     confere(not erros_js, f"sem erros de JavaScript ({erros_js[:2]})")
     nav.close()

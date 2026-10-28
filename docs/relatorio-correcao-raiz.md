@@ -281,3 +281,49 @@ em 6 colunas fixas. Uso da largura: 1920 px = 66%; zoom 67% (2150 px CSS) = 59%;
 - 270 materiais: 263 com preço, 7 fora da tabela (22069613 com 2.144 unidades, 22067265 com 62 e outros 5).
 - Total R$ 183.667,48, igual à conferência independente (soma de quantidade × unitário).
 - pytest 163 ok (10 novos em `test_materiais.py`); `rodar_tela` 71/71; `rodar_sessao`, `rodar_aba` e `rodar_extensao` ok; importação pela tela testada no navegador com a tabela real.
+
+## 13. Rodada 9 — refinamento de UX/UI: menos explicação fixa, ajuda guiada detalhada, cor da marca
+
+**Explicações fixas removidas:**
+- Configurações: os parágrafos sob os 16 parâmetros, as descrições dos grupos, a introdução da página, os textos de Aparência, Mensagem, Raio-X e Tabela de valores, e o cartão que só tinha o título.
+- Análise: a linha "Cada dado é conferido…", a instrução do estado vazio e o texto padrão da barra.
+- Histórico: a frase "Clique numa análise…".
+- Esses textos agora ficam no "?" de cada item; o valor padrão de cada parâmetro aparece no "?".
+- Continuam visíveis: motivo do Executar bloqueado, avisos de conexão, retomada e versão, conferência da amostra, erros e confirmações.
+
+**Ajuda:** pedido do usuário: no modelo de balão, como antes, mais detalhada.
+- Botão Ajuda ou F1: 18 passos pelas três páginas (Análise, Histórico, Configurações). O tour troca de página sozinho e volta à página de origem ao sair.
+- Só lê: nenhuma requisição de escrita durante o tour (testado).
+- O "?" de cada item tem o link "Ver na Ajuda guiada", que abre o tour no passo do assunto.
+- O "?" dos indicadores e dos parâmetros só aparece ao passar o mouse ou focar; em tela de toque fica sempre visível.
+
+**Visual:**
+- Sem "balões" atrás de tudo: Configurações em seções planas (título com marcador vermelho e linha fina); superfícies sem sombra.
+- Os 6 indicadores numa superfície única com divisórias, com o ícone num círculo tingido pela cor do estado.
+- Cor da marca (pedido do usuário, sem voltar ao azul): faixa vermelha no topo, links vinho e barra de progresso vermelha (verde ao concluir sem ressalvas, âmbar com ressalvas).
+- Também na cor da marca: selo Executando e número da análise em tom da marca, botão ativo e linha selecionada do Histórico com acento vermelho. Tema escuro com os tons equivalentes.
+- Coluna Detalhe do Histórico limitada a 2 linhas (texto completo no tooltip).
+
+**Microinterações:**
+- Entrada de página (0,18 s).
+- Realce animado da aba ativa.
+- Clique dos botões (escala 0,98).
+- ✓ que surge ao escolher a planilha ou a tabela.
+- Número do indicador que assenta ao mudar.
+- Barra com transição suave.
+- Seções recolhíveis com expansão suave (::details-content).
+- Notificação e dica entrando com fade.
+- Retirado: o ponto pulsando sem parar no selo.
+- Tudo desligado com "reduzir movimento" do sistema.
+
+**Validação:**
+- pytest 163 ok.
+- `rodar_tela` 123/123, incluindo:
+  - os 18 passos (página certa, destaque sobre o elemento, balão dentro da tela, inclusive em 390 e 768 px);
+  - F1;
+  - "Ver na Ajuda guiada";
+  - "?" escondido até o hover;
+  - nenhum parágrafo explicativo em Configurações;
+  - 16 "?" de parâmetros com o padrão.
+- `rodar_sessao`, `rodar_aba` e `rodar_extensao` ok.
+- Sem rolagem horizontal e com 100% da largura usada em 1280×720, 1920×1080, 2160×1350 (zoom 67%) e 2880×1800 (zoom 50%), nas três páginas.
