@@ -327,3 +327,42 @@ em 6 colunas fixas. Uso da largura: 1920 px = 66%; zoom 67% (2150 px CSS) = 59%;
   - 16 "?" de parâmetros com o padrão.
 - `rodar_sessao`, `rodar_aba` e `rodar_extensao` ok.
 - Sem rolagem horizontal e com 100% da largura usada em 1280×720, 1920×1080, 2160×1350 (zoom 67%) e 2880×1800 (zoom 50%), nas três páginas.
+
+## 14. Rodada 10 — reestruturação com menu lateral persistente
+
+**Estrutura:** a navegação horizontal saiu. O app é uma grade: menu lateral (236 px) + área de conteúdo, que ocupa todo o resto.
+- **Menu:** marca no topo; grupos Operação (Análise, Histórico), Sistema (Configurações) e Ajuda (ajuda guiada, F1). No rodapé, a conexão com o BTP e "Recolher menu" (trilho de 68 px; a escolha é lembrada no navegador).
+- **Item ativo:** fundo suave da marca + barra lateral vermelha.
+- **Tablet (701–1099 px):** trilho de ícones, com o rótulo no title.
+- **Celular (≤700 px):** barra superior com ícone + rótulo.
+- **Ligações preservadas:** os ids (`abaAnalise`, `abaHistorico`, `abaConfig`, `bAjuda`, `pilulaConexao`), e o estado da tela é mantido ao trocar de página (texto digitado preservado, testado).
+- **Cabeçalho de página compacto:** título + ações à direita. Histórico: "Limpar histórico". Configurações: Restaurar/Salvar, num cabeçalho fixo ao rolar.
+
+**Configurações:** composição deliberada.
+- Aparência e Tabela de valores à esquerda, Fonte de dados à direita; abaixo, Auditoria | Tempo e Execução | Desempenho em 2 colunas (1 coluna abaixo de 1000 px).
+- Cada seção é um título fora + um painel com linhas (rótulo à esquerda, controle à direita); sem cartões dentro de cartões e sem os marcadores vermelhos dos títulos.
+- Fonte de dados numa unidade: Tabela do BTP (com a etiqueta confirmada / a confirmar), Mensagem na planilha, Raio-X recolhível e "Refazer a fonte de dados" no rodapé do painel.
+- Tabela de valores com upload compacto (sem a caixa pontilhada).
+- Valores, limites e regras dos parâmetros não mudaram.
+
+**Componentes padronizados (tokens `--ctl-h`, `--ctl-num`, `--ctl-sel`):**
+- Altura única de 36 px para campos, seletores e botões pequenos.
+- Número com a unidade acoplada (s/min), todos com a mesma largura total.
+- Seletor próprio com seta, interruptor no lugar da caixa de seleção (continua sendo um checkbox) e foco visível em todos.
+- Conjunto único de ícones de traço (sprite SVG) no menu, nos indicadores e nos botões de enviar/baixar.
+
+**Validação:**
+- pytest 163 ok.
+- `rodar_tela` 136/136. Novos:
+  - menu lateral persistente e grupos;
+  - fundo do item ativo;
+  - recolher/expandir lembrado ao recarregar;
+  - texto preservado ao trocar de página;
+  - Aparência ao lado de Fonte;
+  - parâmetros em 2 colunas;
+  - números com a mesma largura;
+  - Salvar visível ao rolar;
+  - trilho em 768 px e barra superior em 390 px.
+- `rodar_sessao`, `rodar_aba` e `rodar_extensao` ok.
+- Sem rolagem horizontal em 1280×720, 1440×900, 1920×1080, 2160×1350 (zoom 67%) e 2880×1800 (zoom 50%).
+- **Limitação percebida na revisão:** os testes conferem posição e largura, não a aparência. Um conflito de nome de classe (`.painel`) passou nos testes e só apareceu nos prints; foi corrigido.

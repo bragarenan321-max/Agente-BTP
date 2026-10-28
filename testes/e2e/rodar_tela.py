@@ -73,11 +73,11 @@ PASSOS = [("#pilulaConexao", None, "#vistaAnalise"), ("#resumoAgente", None, "#v
           ("#zonaImportar", None, "#vistaAnalise"), ("#bExecutar", None, "#vistaAnalise"),
           ("#cartaoProgresso .exec-cab", None, "#vistaAnalise"), ("#blocoProgresso", None, "#vistaAnalise"),
           ("#painel", None, "#vistaAnalise"), ("#acoesResultado", None, "#vistaAnalise"), ("#secRecentes", None, "#vistaAnalise"),
-          ("#vistaHistorico > .cartao:first-child", None, "#vistaHistorico"),
-          ("#detTecnico", "#vistaHistorico > .cartao:first-child", "#vistaHistorico"),
+          ("#vistaHistorico .tabela-cartao", None, "#vistaHistorico"),
+          ("#detTecnico", "#vistaHistorico .tabela-cartao", "#vistaHistorico"),
           ("[aria-labelledby=tFonte]", None, "#vistaConfig"), ("[aria-labelledby=tTabela]", None, "#vistaConfig"),
           ("[aria-labelledby=tAparencia]", None, "#vistaConfig"), ("#cfgGrupos", None, "#vistaConfig"),
-          (".barra-acoes", None, "#vistaConfig"), ("#bAjuda", None, "#vistaConfig")]
+          ("#vistaConfig .pagina-acoes", None, "#vistaConfig"), ("#bAjuda", None, "#vistaConfig")]
 
 
 def sobrepoe(a, b, folga=12):
@@ -97,7 +97,27 @@ with sync_playwright() as p:
     confere(pg.text_content("#seloEstado") == "Pronta para iniciar", "selo 'Pronta para iniciar' com a aba conectada")
     confere(pg.is_disabled("#bExecutar") and "Informe" in pg.inner_text("#motivoBloqueio"),
             "Executar bloqueado sem WOs, com o motivo escrito")
-    confere(pg.locator(".marca-selo svg").count() == 1, "logo própria no cabeçalho")
+    confere(pg.locator(".marca-selo svg").count() == 1, "logo própria no menu lateral")
+    print("== menu lateral")
+    lat = pg.locator(".lateral").bounding_box()
+    confere(pg.is_visible(".lateral") and 200 <= lat["width"] <= 260 and lat["x"] == 0 and lat["height"] >= 880,
+            f"menu lateral persistente à esquerda ({round(lat['width'])}px)")
+    fundo_ativo = pg.evaluate("getComputedStyle(document.getElementById('abaAnalise')).backgroundColor")
+    confere(fundo_ativo not in ("rgba(0, 0, 0, 0)", "transparent"), f"item ativo com fundo próprio ({fundo_ativo})")
+    confere(pg.locator(".lat-grupo").all_inner_texts() == ["OPERAÇÃO", "SISTEMA", "AJUDA"]
+            or [t.upper() for t in pg.locator(".lat-grupo").all_inner_texts()] == ["OPERAÇÃO", "SISTEMA", "AJUDA"],
+            "grupos do menu: Operação, Sistema, Ajuda")
+    pg.click("#bRecolher"); pg.wait_for_timeout(350)
+    confere(round(pg.locator(".lateral").bounding_box()["width"]) == 68 and not pg.is_visible("#abaAnalise .rot"),
+            "Recolher menu vira trilho de ícones")
+    pg.reload(); pg.wait_for_timeout(1200)
+    confere(round(pg.locator(".lateral").bounding_box()["width"]) == 68, "menu recolhido lembrado ao recarregar")
+    pg.click("#bRecolher"); pg.wait_for_timeout(350)
+    confere(round(pg.locator(".lateral").bounding_box()["width"]) > 200, "Expandir menu volta ao tamanho normal")
+    pg.fill("#texto", "12345|123456789")
+    pg.click("#abaHistorico"); pg.wait_for_timeout(200); pg.click("#abaConfig"); pg.wait_for_timeout(200); pg.click("#abaAnalise")
+    confere(pg.input_value("#texto") == "12345|123456789", "texto digitado preservado ao trocar de página")
+    pg.fill("#texto", ""); pg.dispatch_event("#texto", "input")
     confere(not pg.is_visible("#painel") and pg.is_visible("#estadoVazio"), "ocioso sem histórico: estado vazio, sem cartões vazios")
     pg.screenshot(path=str(PRINTS / "tela_inicial.png"), full_page=True)
     print("== tela sem explicações permanentes; ajuda só quando pedida")
@@ -256,6 +276,18 @@ with sync_playwright() as p:
     pg.screenshot(path=str(PRINTS / "historico.png"), full_page=True)
     pg.click("#abaConfig")
     confere(esperar(lambda: pg.locator("#cfg_auditorias_por_wo").count() == 1, 10), "configurações carregam")
+    caixa = lambda sel: pg.locator(sel).first.bounding_box()
+    confere(abs(caixa("[aria-labelledby=tAparencia]")["y"] - caixa("[aria-labelledby=tFonte]")["y"]) < 2,
+            "Aparência e Fonte de dados lado a lado")
+    secoes = pg.locator("#cfgGrupos .cfg-secao")
+    confere(secoes.count() == 4 and abs(secoes.nth(0).bounding_box()["y"] - secoes.nth(1).bounding_box()["y"]) < 2,
+            "parâmetros em 2 colunas (Auditoria | Tempo)")
+    larguras = {round(pg.locator(f"#cfg_{i}").evaluate("e => e.parentElement.getBoundingClientRect().width"))
+                for i in ("auditorias_por_wo", "tempo_consulta_wo_seg", "tempo_max_lote_min", "concorrencia")}
+    confere(len(larguras) == 1, f"campos numéricos com a mesma largura (com ou sem unidade): {larguras}")
+    pg.mouse.wheel(0, 1500); pg.wait_for_timeout(300)
+    confere(pg.locator("#cfgSalvar").bounding_box()["y"] < 120, "Salvar continua visível ao rolar (cabeçalho fixo)")
+    pg.mouse.wheel(0, -1500)
     confere(pg.locator("#vistaConfig .campo .ajuda, #vistaConfig p.meta").count() == 0,
             "configurações sem parágrafos explicativos (só rótulo, campo e unidade)")
     confere(pg.locator("#vistaConfig .campo [data-ajuda^=cfg_]").count() == 16, "cada parâmetro tem '?' com a explicação")
@@ -292,6 +324,9 @@ with sync_playwright() as p:
         pg.click("#abaAnalise")
         pg.wait_for_timeout(400)
         confere(sem_rolagem_horizontal(pg), f"{largura}px: sem rolagem horizontal")
+        lb = pg.locator(".lateral").bounding_box()
+        confere((largura == 768 and round(lb["width"]) == 68) or (largura == 390 and lb["width"] >= 380 and lb["height"] < 70),
+                f"{largura}px: menu adaptado ({'trilho' if largura == 768 else 'barra superior'})")
         abrir_tour(pg)
         pg.wait_for_timeout(400)
         b = pg.locator("#tutBalao").bounding_box()

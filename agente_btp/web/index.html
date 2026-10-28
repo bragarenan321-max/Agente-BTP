@@ -39,7 +39,11 @@
     --t-pagina: clamp(22px, 0.9rem + 0.7vw, 30px);           /* título da área de trabalho */
     --t-num: clamp(28px, 1.2rem + 1vw, 40px);               /* valores dos indicadores */
     --margem: clamp(16px, 2.2vw, 48px);                     /* margem lateral fluida (sem largura máxima) */
-    --topo: 60px;
+    --topo: 0px;                       /* barra superior só existe no celular (ver @media) */
+    --lat: 236px;                      /* largura do menu lateral; trilho = 68px */
+    --lat-fundo: #FBFBFB; --lat-hover: #F1F1F2;
+    --ctl-h: 36px;                     /* altura única de campos, seletores e botões pequenos */
+    --ctl-num: 132px; --ctl-sel: 268px;
     --e1: 4px; --e2: 8px; --e3: 12px; --e4: 16px; --e5: 24px; --e6: 32px;
     --raio: 8px; --raio-g: 12px;
     --sombra: none;   /* superfícies planas: separação por borda fina, sem sombra */
@@ -53,6 +57,7 @@
     --borda: #2A2D33; --borda-forte: #3B3F47; --titulo: #F2F3F5; --linha: #222529; --neutro: #272A30;
     --cab: #0B0C0E; --cab-texto: #F2F3F5; --cab-texto-2: #9CA3AF; --cab-borda: #1F2226;
     --cab-botao: rgba(255, 255, 255, .06); --cab-botao-hover: rgba(255, 255, 255, .12); --escuro: #2A2D33;
+    --lat-fundo: #121315; --lat-hover: rgba(255, 255, 255, .05);
     --hover: #1D1A1A; --selecao: #2C1A19; --barra-fundo: #3A1F1D; --barra: #F0443B; --campo: #121417; --codigo: #C9CDD4;
     --desab: #3A3D43; --borda-perigo: #6B2A26; --marca-suave: #3A1513; --marca-2: #FF8F86; --marca-tinta: #221514;
     --ok: #4CC38A; --ok-suave: #132A20; --atencao: #E8B04B; --atencao-suave: #2E2412; --erro: #F2685E; --erro-suave: #351816;
@@ -63,6 +68,7 @@
     --borda: #2A2D33; --borda-forte: #3B3F47; --titulo: #F2F3F5; --linha: #222529; --neutro: #272A30;
     --cab: #0B0C0E; --cab-texto: #F2F3F5; --cab-texto-2: #9CA3AF; --cab-borda: #1F2226;
     --cab-botao: rgba(255, 255, 255, .06); --cab-botao-hover: rgba(255, 255, 255, .12); --escuro: #2A2D33;
+    --lat-fundo: #121315; --lat-hover: rgba(255, 255, 255, .05);
     --hover: #1D1A1A; --selecao: #2C1A19; --barra-fundo: #3A1F1D; --barra: #F0443B; --campo: #121417; --codigo: #C9CDD4;
     --desab: #3A3D43; --borda-perigo: #6B2A26; --marca-suave: #3A1513; --marca-2: #FF8F86; --marca-tinta: #221514;
     --ok: #4CC38A; --ok-suave: #132A20; --atencao: #E8B04B; --atencao-suave: #2E2412; --erro: #F2685E; --erro-suave: #351816;
@@ -94,35 +100,72 @@
   .btn-largo { width: 100%; padding: 11px 16px; font-size: var(--t-lg); }
   .btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
   .btn-primario:disabled { background: var(--desab); color: #fff; opacity: 1; }
-  .btn svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
+  .btn-sm { padding: 0 12px; height: var(--ctl-h); font-size: var(--t-sm); }
+  .ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .btn .ic { width: 16px; height: 16px; }
 
-  /* ============================================================ cabeçalho */
-  .topo { background: var(--cab); color: var(--cab-texto); position: sticky; top: 0; z-index: 50; border-bottom: 1px solid var(--cab-borda);
-          box-shadow: inset 0 2px 0 var(--marca); }
-  .topo-in { width: 100%; padding: 0 var(--margem); height: var(--topo); display: flex; align-items: center; gap: clamp(16px, 2vw, 40px); }
-  .marca { display: flex; align-items: center; gap: 10px; flex: none; }
-  .marca-selo { width: 30px; height: 30px; flex: none; display: block; }
+  /* ============================================================ estrutura: menu lateral + conteúdo */
+  .app { display: grid; grid-template-columns: var(--lat) minmax(0, 1fr); min-height: 100dvh; transition: grid-template-columns .2s var(--ease); }
+  .app.recolhido { --lat: 68px; }
+  .conteudo { min-width: 0; }
+  .lateral { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: var(--e2); padding: var(--e4) var(--e3);
+             background: var(--lat-fundo); border-right: 1px solid var(--borda); z-index: 50; overflow: hidden auto; }
+  .lat-marca { display: flex; align-items: center; gap: 10px; padding: 2px 8px var(--e3); min-width: 0; }
+  .marca-selo { width: 28px; height: 28px; flex: none; display: block; }
   .marca-selo svg { width: 100%; height: 100%; display: block; }
-  .marca b { display: block; font-size: 18px; line-height: 1.1; letter-spacing: -.4px; font-weight: 700; }
-  .marca small { display: block; font-size: 12px; color: var(--cab-texto-2); }
-  .abas { display: flex; gap: var(--e1); height: 100%; }
-  .abas button { background: none; border: none; color: var(--cab-texto-2); font: 600 var(--t-md) var(--fonte); padding: 0 var(--e4); cursor: pointer;
-                 border-bottom: 2px solid transparent; border-top: 2px solid transparent; transition: color .15s, border-color .2s var(--ease); }
-  .abas button:hover { color: var(--cab-texto); border-bottom-color: color-mix(in srgb, var(--marca) 30%, transparent); }
-  .abas button.ativa { color: var(--cab-texto); border-bottom-color: var(--marca); }
-  .topo-dir { margin-left: auto; display: flex; align-items: center; gap: var(--e2); }
-  .conexao { display: flex; align-items: center; gap: var(--e2); font-size: var(--t-sm); color: var(--cab-texto-2); padding: 5px 10px;
-             border-radius: 999px; background: var(--cab-botao); white-space: nowrap; }
+  .lat-nome { min-width: 0; white-space: nowrap; }
+  .lat-nome b { display: block; font-size: 16px; line-height: 1.15; letter-spacing: -.3px; color: var(--titulo); }
+  .lat-nome small { display: block; font-size: var(--t-xs); color: var(--texto-3); }
+  .lat-nav { display: grid; gap: 2px; }
+  .lat-grupo { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--texto-3);
+               padding: var(--e4) 10px 6px; white-space: nowrap; }
+  .lat-grupo:first-child { padding-top: 0; }
+  .lat-item { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 0 10px; border: 0;
+              border-radius: var(--raio); background: none; color: var(--texto-2); font: 500 var(--t-md) var(--fonte); text-align: left;
+              cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
+  .lat-item:hover { background: var(--lat-hover); color: var(--texto); }
+  .lat-item.ativa { background: var(--marca-suave); color: var(--marca-2); font-weight: 600; }
+  .lat-item.ativa::before { content: ""; position: absolute; left: calc(-1 * var(--e3)); top: 8px; bottom: 8px; width: 3px;
+                            border-radius: 0 3px 3px 0; background: var(--marca); }
+  .lat-item kbd { margin-left: auto; font: 11px var(--mono); color: var(--texto-3); border: 1px solid var(--borda); border-radius: 4px; padding: 0 5px; }
+  .lat-rodape { margin-top: auto; display: grid; gap: var(--e2); padding-top: var(--e3); border-top: 1px solid var(--borda); }
+  .lat-recolher { color: var(--texto-3); font-size: var(--t-sm); }
+  .conexao { display: flex; align-items: center; gap: var(--e2); font-size: var(--t-sm); color: var(--texto-2); padding: 8px 10px; line-height: 1.3; }
   .ponto { width: 8px; height: 8px; border-radius: 50%; background: #9CA3AF; flex: none; }
-  .ponto.ok { background: #22A05B; } .ponto.esp { background: #E3A008; }
-  .btn-topo { background: var(--cab-botao); color: var(--cab-texto); border: 1px solid var(--cab-borda); border-radius: var(--raio);
-              font: 600 var(--t-sm) var(--fonte); padding: 6px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-  .btn-topo:hover { background: var(--cab-botao-hover); }
-  .btn-topo.ativa { background: var(--marca-suave); color: var(--marca-2); border-color: color-mix(in srgb, var(--marca) 35%, transparent); }
-  .btn-topo svg { width: 16px; height: 16px; fill: currentColor; }
+  .ponto.ok { background: #22A05B; box-shadow: 0 0 0 3px color-mix(in srgb, #22A05B 18%, transparent); }
+  .ponto.esp { background: #E3A008; box-shadow: 0 0 0 3px color-mix(in srgb, #E3A008 18%, transparent); }
+  /* trilho (menu recolhido ou tablet): só ícones, centralizados; o rótulo fica no title */
+  .app.recolhido .lat-nome, .app.recolhido .lat-item .rot, .app.recolhido .lat-item kbd, .app.recolhido #conexao { display: none; }
+  .app.recolhido .lat-grupo { font-size: 0; padding: var(--e3) 0 var(--e1); border-top: 1px solid var(--borda); margin: var(--e2) 6px 0; }
+  .app.recolhido .lat-grupo:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+  .app.recolhido .lat-item, .app.recolhido .conexao, .app.recolhido .lat-marca { justify-content: center; padding-left: 0; padding-right: 0; }
+  .app.recolhido .lat-recolher .ic { transform: scaleX(-1); }
+  @media (max-width: 1099px) and (min-width: 701px) {
+    .app { --lat: 68px; }
+    .lat-nome, .lat-item .rot, .lat-item kbd, #conexao, .lat-recolher { display: none; }
+    .lat-grupo { font-size: 0; padding: var(--e3) 0 var(--e1); border-top: 1px solid var(--borda); margin: var(--e2) 6px 0; }
+    .lat-grupo:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+    .lat-item, .conexao, .lat-marca { justify-content: center; padding-left: 0; padding-right: 0; }
+  }
+  /* celular: o menu vira uma barra superior compacta (ícone + rótulo curto) */
+  @media (max-width: 700px) {
+    :root { --topo: 60px; }
+    .app, .app.recolhido { grid-template-columns: minmax(0, 1fr); }
+    .lateral { height: auto; flex-direction: row; align-items: center; padding: 6px var(--e3); border-right: 0; border-bottom: 1px solid var(--borda);
+               overflow: visible; gap: var(--e2); }
+    .lat-marca { padding: 0; } .lat-nome { display: none; }
+    .lat-nav { display: flex; gap: 2px; flex: 1; justify-content: space-around; }
+    .lat-grupo, .lat-item kbd, .lat-recolher { display: none !important; }
+    .lat-item { flex-direction: column; gap: 2px; min-height: 46px; padding: 4px 6px; font-size: 11px; justify-content: center; width: auto; }
+    .lat-item .rot { display: block !important; }
+    .lat-item.ativa::before { left: 8px; right: 8px; top: auto; bottom: -7px; width: auto; height: 3px; border-radius: 3px 3px 0 0; }
+    .lat-rodape { margin: 0; padding: 0; border: 0; }
+    #conexao { display: none; } .conexao { padding: 6px; }
+  }
 
   /* ============================================================ página */
   .pagina { width: 100%; min-height: calc(100dvh - var(--topo)); padding: var(--e5) var(--margem) var(--e6);
+            --margem: clamp(16px, 2.2vw, 40px);
             display: grid; gap: var(--e4); align-content: start; }
   .pagina.entrando { animation: pagina .18s var(--ease); }
   @keyframes pagina { from { opacity: 0; transform: translateY(4px); } }
@@ -146,27 +189,25 @@
             grid-template-rows: auto 1fr; }
     .area-prep { grid-row: 1 / span 2; }
   }
-  @media (min-width: 1100px) and (min-height: 700px) { .area-prep { position: sticky; top: calc(var(--topo) + var(--e4)); } }
+  @media (min-width: 1100px) and (min-height: 700px) { .area-prep { position: sticky; top: var(--e4); } }
   /* Muito espaço (monitor largo ou zoom 67%/50%): o apoio vira uma 3ª coluna em vez de sobrar tela vazia. */
   @media (min-width: 2000px) {
     .area { grid-template-columns: minmax(0, 27fr) minmax(0, 48fr) minmax(0, 25fr); grid-template-areas: "prep monitor apoio"; }
     .area-prep { grid-row: auto; }
     .area-apoio { grid-template-columns: minmax(0, 1fr); }
   }
-  @media (max-width: 900px) {
-    .btn-topo .rot { display: none; }
-    .marca small { display: none; }
-    .abas button { padding: 0 var(--e3); }
-    #conexao { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
-  @media (max-width: 640px) { .pagina { padding: var(--e3); } .cartao { padding: var(--e4); }
-    .topo-in { padding: 8px var(--e3) 0; gap: 4px var(--e3); height: auto; flex-wrap: wrap; }
-    .marca small { display: none; }
-    .abas { order: 3; width: 100%; height: 40px; }
-    .conexao { padding: 7px; } #conexao { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+  @media (max-width: 640px) { .pagina { padding: var(--e3); } .cartao { padding: var(--e4); } }
 
   /* cabeçalho da área de trabalho */
-  .pagina-cab { display: flex; align-items: flex-end; gap: var(--e4); flex-wrap: wrap; }
-  .pagina-cab h1 { margin: 0; font-size: var(--t-pagina); line-height: 1.15; color: var(--titulo); letter-spacing: -.3px; }
+  .pagina-cab { display: flex; align-items: center; gap: var(--e3) var(--e4); flex-wrap: wrap; min-height: 44px; }
+  .pagina-cab h1 { margin: 0; font-size: clamp(22px, .9rem + .6vw, 26px); line-height: 1.2; color: var(--titulo); letter-spacing: -.4px; font-weight: 700; }
+  .pagina-sub { margin: 2px 0 0; font-size: var(--t-sm); color: var(--texto-3); }
+  .pagina-acoes { margin-left: auto; display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; }
+  .pagina-cab.fixo { position: sticky; top: var(--topo); z-index: 20; margin: calc(-1 * var(--e5)) calc(-1 * var(--margem)) 0;
+                     padding: var(--e4) var(--margem); background: color-mix(in srgb, var(--fundo) 92%, transparent);
+                     backdrop-filter: blur(8px); border-bottom: 1px solid var(--borda); }
+  .tabela-cartao { padding: 0; overflow: hidden; }
+  .tabela-cartao .rolagem { border: 0; border-radius: 0; margin: 0; }
   .resumo { display: flex; gap: var(--e2) var(--e5); flex-wrap: wrap; margin-top: 6px; font-size: var(--t-sm); color: var(--texto-2); }
   .resumo span { display: inline-flex; align-items: center; gap: 6px; }
   .resumo b { color: var(--texto); font-weight: 600; }
@@ -176,7 +217,7 @@
   .vazio-estado { display: flex; gap: var(--e4); align-items: center; padding: var(--e2) 0 0; }
   .vazio-estado .icone { width: 40px; height: 40px; border-radius: 10px; background: var(--marca-suave); color: var(--marca);
                          display: grid; place-items: center; flex: none; }
-  .vazio-estado .icone svg { width: 22px; height: 22px; fill: currentColor; }
+  .vazio-estado .icone .ic { width: 22px; height: 22px; }
   .vazio-estado h3 { margin: 0; font-size: var(--t-lg); color: var(--titulo); }
   .vazio-estado p { margin: 0; color: var(--texto-2); max-width: 70ch; }
   .ultima { margin-top: var(--e3); display: flex; flex-wrap: wrap; gap: var(--e2); align-items: center; font-size: var(--t-sm); }
@@ -209,14 +250,14 @@
   textarea:focus { outline: none; border-color: var(--marca); box-shadow: var(--foco); background: var(--campo); }
   .contagem { display: grid; gap: 2px; margin: 6px 0 var(--e4); font-size: var(--t-sm); color: var(--texto-2); }
   .contagem b { color: var(--texto); font-variant-numeric: tabular-nums; }
-  .importar { border: 1px dashed var(--borda-forte); border-radius: var(--raio); padding: var(--e3); display: flex; align-items: center;
-              gap: var(--e3); flex-wrap: wrap; margin-bottom: var(--e4); }
+  .importar { border: 1px solid var(--borda); border-radius: var(--raio); padding: 6px; display: flex; align-items: center;
+              gap: var(--e2) var(--e3); flex-wrap: wrap; margin-bottom: var(--e4); background: var(--superficie-2); }
   .importar.com-arquivo { border-style: solid; border-color: color-mix(in srgb, var(--ok) 35%, transparent); background: var(--ok-suave); }
   .importar .arq { flex: 1; min-width: 150px; font-size: var(--t-sm); color: var(--texto-2); overflow-wrap: anywhere; }
   .importar .arq b { color: var(--texto); }
   .importar .arq.erro { color: var(--erro); }
   .importar { transition: background .2s, border-color .2s; }
-  .ok-icone { display: none; width: 20px; height: 20px; fill: var(--ok); flex: none; }
+  .ok-icone { display: none; width: 18px; height: 18px; color: var(--ok); stroke-width: 2.4; }
   .importar.com-arquivo .ok-icone { display: block; animation: surge .25s var(--ease); }
   @keyframes surge { from { opacity: 0; transform: scale(.6); } }
   #motivoBloqueio { margin-top: var(--e2); min-height: 20px; }
@@ -269,7 +310,7 @@
   .indicador:hover .ajuda-ctx, .indicador .ajuda-ctx:focus-visible, .indicador .ajuda-ctx[aria-expanded="true"] { opacity: 1; }
   @media (hover: none) { .indicador .ajuda-ctx { opacity: 1; } }
   .indicador .rot { display: flex; align-items: flex-start; gap: 7px; font-size: var(--t-sm); color: var(--texto-2); font-weight: 600; line-height: 1.3; }
-  .indicador .rot svg { width: 24px; height: 24px; flex: none; fill: currentColor; margin-top: -3px; padding: 5px; border-radius: 50%;
+  .indicador .rot .ic { width: 26px; height: 26px; margin-top: -4px; padding: 5px; border-radius: 50%; stroke-width: 2;
                         background: var(--neutro); color: var(--texto-2); }
   .indicador .rot .ajuda-ctx { margin-left: auto; vertical-align: 0; }
   .indicador b { display: block; font-size: var(--t-num); line-height: 1.1; font-weight: 700; letter-spacing: -.5px;
@@ -330,9 +371,21 @@
   .rotulo-cat { font-size: 11px; font-weight: 700; letter-spacing: .4px; border-radius: 4px; padding: 1px 6px; margin-right: 6px; }
   .rotulo-cat.FONTE { background: var(--erro-suave); color: var(--erro); } .rotulo-cat.APP { background: var(--info-suave); color: var(--info); }
   .rotulo-cat.ENTRADA { background: var(--atencao-suave); color: var(--atencao); }
-  input[type=text], input[type=number], select { font: var(--t-md) var(--fonte); padding: 7px 9px; border: 1px solid var(--borda-forte); border-radius: 6px;
-       background: var(--campo); color: var(--texto); }
+  input[type=text], input[type=number], select { font: var(--t-md) var(--fonte); height: var(--ctl-h); padding: 0 10px; border: 1px solid var(--borda-forte);
+       border-radius: var(--raio); background: var(--campo); color: var(--texto); transition: border-color .15s, box-shadow .15s; }
+  input[type=text]:hover, input[type=number]:hover, select:hover { border-color: var(--texto-3); }
   input:focus, select:focus { outline: none; border-color: var(--marca); box-shadow: var(--foco); }
+  select { appearance: none; padding-right: 32px; cursor: pointer;
+           background-image: linear-gradient(45deg, transparent 50%, var(--texto-2) 50%), linear-gradient(135deg, var(--texto-2) 50%, transparent 50%);
+           background-position: calc(100% - 17px) 52%, calc(100% - 12px) 52%; background-size: 5px 5px; background-repeat: no-repeat; }
+  /* interruptor (é um checkbox de verdade: só o visual muda) */
+  .campo input[type=checkbox] { appearance: none; width: 36px; height: 20px; margin: 0; border-radius: 999px;
+       background: var(--borda-forte); position: relative; cursor: pointer; transition: background .2s var(--ease); flex: none; }
+  .campo input[type=checkbox]::before { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+       background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .2s var(--ease); }
+  .campo input[type=checkbox]:checked { background: var(--marca); }
+  .campo input[type=checkbox]:checked::before { transform: translateX(16px); }
+  .campo input[type=checkbox]:focus-visible { box-shadow: var(--foco); }
 
   /* ============================================================ histórico */
   tr.clicavel { cursor: pointer; } tr.clicavel:hover td { background: var(--hover); }
@@ -344,38 +397,58 @@
   .res { display: flex; gap: 4px; flex-wrap: wrap; }
   .detalhe { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--texto-2); }
 
-  /* ============================================================ configurações */
-  .pilha { display: grid; gap: var(--e6); align-content: start; }
-  #vistaConfig .cartao.grupo { background: none; border: 0; border-radius: 0; box-shadow: none; padding: var(--e4) 0 0;
-                               border-top: 1px solid var(--borda-forte); }
-  #vistaConfig .cfg-grupos { column-gap: var(--e6); row-gap: var(--e6); }
+  /* ============================================================ configurações
+     Aparência e Tabela (pequenas) à esquerda, Fonte de dados à direita; abaixo, os parâmetros em 2 colunas.
+     Seção = título fora + UM painel com linhas (rótulo à esquerda, controle à direita). Sem cartões dentro de cartões. */
+  .cfg-layout { display: grid; gap: var(--e6); align-items: start;
+                grid-template-columns: minmax(0, 1fr); grid-template-areas: "aparencia" "fonte" "tabela" "parametros"; }
+  @media (min-width: 1000px) {
+    .cfg-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "aparencia fonte" "tabela fonte" "parametros parametros";
+                  grid-template-rows: auto 1fr auto; }
+  }
+  .cfg-parametros { display: grid; gap: var(--e6); grid-template-columns: minmax(0, 1fr); align-items: start; }
+  @media (min-width: 1000px) { .cfg-parametros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .cfg-secao { min-width: 0; }
+  .secao-cab { display: flex; align-items: center; gap: 6px; margin: 0 0 var(--e2); }
+  .secao-cab h2 { margin: 0; font-size: var(--t-md); font-weight: 650; color: var(--titulo); letter-spacing: -.1px; }
+  .secao-cab .ajuda-ctx { margin-left: 2px; vertical-align: 0; }
+  .cfg-painel { background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-g); }
+  .cfg-painel > .importar { margin: 0; border: 0; background: none; padding: 10px var(--e4); }
+  .painel-rodape { display: flex; justify-content: flex-end; padding: 10px var(--e4); border-top: 1px solid var(--linha);
+                   background: var(--superficie-2); border-radius: 0 0 var(--raio-g) var(--raio-g); }
+  .cfg-painel .secao { border-top: 1px solid var(--linha); border-bottom: 0; }
+  .cfg-painel .secao > summary { padding: 12px var(--e4); font-weight: 500; color: var(--texto); }
+  .cfg-painel .secao .conteudo { padding: 0 var(--e4) var(--e4); }
+  .cfg-painel .secao input[type=text] { width: min(230px, 100%); }
+  .campo { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--e2) var(--e4);
+           min-height: 52px; padding: 8px var(--e4); border-top: 1px solid var(--linha); transition: background .15s; }
+  .campo:first-child { border-top: 0; }
+  .campo:hover { background: color-mix(in srgb, var(--superficie-2) 70%, transparent); }
+  .campo .rotulo { display: flex; align-items: center; min-width: 0; color: var(--texto); }
+  .campo label { font-weight: 500; }
+  .campo .entrada { display: flex; align-items: center; justify-content: flex-end; }
+  .campo select { width: var(--ctl-sel); }
+  .campo-info { grid-template-columns: auto minmax(0, 1fr); }
+  .campo-info .rotulo { white-space: nowrap; }
+  .campo-info .valor { display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; justify-content: flex-end; text-align: right;
+                       font-size: var(--t-sm); color: var(--texto-2); }
+  .campo-info .valor b { color: var(--texto); font-weight: 600; }
+  /* número com unidade acoplada: todos com a mesma largura total */
+  .num-grupo { display: inline-flex; width: var(--ctl-num); }
+  .num-grupo input { width: 100%; min-width: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  .num-grupo.com-un input { border-radius: var(--raio) 0 0 var(--raio); }
+  .num-grupo .un { display: grid; place-items: center; min-width: 40px; padding: 0 8px; height: var(--ctl-h); border: 1px solid var(--borda-forte);
+                   border-left: 0; border-radius: 0 var(--raio) var(--raio) 0; background: var(--superficie-2); color: var(--texto-2); font-size: var(--t-sm); }
   /* "?" dos parâmetros: só ao passar o mouse ou focar a linha (toque: sempre visível) */
   .campo .ajuda-ctx { opacity: 0; }
   .campo:hover .ajuda-ctx, .campo:focus-within .ajuda-ctx, .campo .ajuda-ctx[aria-expanded="true"] { opacity: 1; }
   @media (hover: none) { .campo .ajuda-ctx { opacity: 1; } }
-  .campo { transition: background .15s; }
-  .cfg-grupos { display: grid; gap: var(--e4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); align-items: start; }
-  .grupo h3 { margin: 0; font-size: var(--t-lg); color: var(--titulo); }
-  .grupo-cab { display: flex; align-items: center; margin-bottom: var(--e2); }
-  .grupo-cab h3::before { content: ""; display: inline-block; width: 3px; height: 14px; border-radius: 2px; background: var(--marca);
-                          margin-right: 10px; vertical-align: -1px; }
-  .grupo-cab .ajuda-ctx { vertical-align: 0; }
-  .estado-linha { margin: 0 0 var(--e2); font-size: var(--t-sm); color: var(--texto-2); }
-  .estado-linha b { color: var(--texto); font-weight: 600; }
-  .acoes-grupo { margin-top: var(--e4); }
-  .campo { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--e2) var(--e4); padding: 10px 0;
-           border-top: 1px solid var(--linha); }
-  .grupo-cab + .campo, .estado-linha + .campo { border-top: 0; }
-  .campo .rotulo { display: flex; align-items: center; min-width: 0; }
-  .campo label { font-weight: 500; }
-  .campo .entrada { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
-  .campo input[type=number] { width: 96px; text-align: right; }
-  .campo input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--marca); }
-  .campo select { width: 220px; }
-  .campo .un { font-size: var(--t-xs); color: var(--texto-2); min-width: 22px; }
-  .barra-acoes { position: sticky; bottom: 0; z-index: 5; display: flex; gap: var(--e2); padding: var(--e3) 0;
-                 background: linear-gradient(to top, var(--fundo) 70%, transparent); }
-  @media (max-width: 640px) { .campo { grid-template-columns: 1fr; } .campo .entrada { justify-content: flex-start; } }
+  @media (max-width: 640px) {
+    .campo { grid-template-columns: 1fr; }
+    .campo .entrada, .campo-info .valor { justify-content: flex-start; text-align: left; }
+    .campo select { width: 100%; }
+    .pagina-cab.fixo { margin: calc(-1 * var(--e3)) calc(-1 * var(--e3)) 0; padding: var(--e3); }
+  }
 
   /* ============================================================ notificação (toast) */
   .toast { position: fixed; right: var(--e5); bottom: var(--e5); z-index: 90; max-width: 380px; background: var(--escuro); color: #fff;
@@ -405,31 +478,47 @@
 </style>
 </head>
 <body>
-<header class="topo">
-  <div class="topo-in">
-    <div class="marca"><span class="marca-selo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.5 29 28h-6.6L16 15.6 9.6 28H3z" fill="#E3261E"/><circle cx="16" cy="24.4" r="2.9" fill="#E3261E"/></svg></span>
-      <div><b>Agente BTP</b><small>Extração e auditoria de alertas</small></div></div>
-    <nav class="abas" aria-label="Seções">
-      <button class="ativa" id="abaAnalise" aria-current="page">Análise</button>
-      <button id="abaHistorico">Histórico</button>
-    </nav>
-    <div class="topo-dir">
-      <span class="conexao" id="pilulaConexao" role="status"><span class="ponto" id="pt"></span><span id="conexao">Aguardando o BTP</span></span>
-      <button class="btn-topo" id="bAjuda" aria-haspopup="dialog" title="Ajuda guiada (F1)">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 17h-2v-2h2v2zm2.1-7.7-.9.9c-.7.7-1.2 1.3-1.2 2.8h-2v-.5c0-1.1.5-2.1 1.2-2.8l1.2-1.3c.4-.3.6-.8.6-1.4a2 2 0 0 0-4 0H8a4 4 0 0 1 8 0c0 .9-.4 1.7-.9 2.3z"/></svg>
-        <span class="rot">Ajuda</span></button>
-      <button class="btn-topo" id="abaConfig" title="Configurações" aria-label="Configurações">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.4 7.4 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 0-.5.4l-.4 2.7a7.4 7.4 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.7c0 .2.2.4.5.4h4c.3 0 .5-.2.5-.4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
-        <span class="rot">Configurações</span></button>
-    </div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-analise" viewBox="0 0 24 24"><path d="M3 12h4l3 7 4-14 3 7h4"/></symbol>
+  <symbol id="i-historico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-config" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="i-ajuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17.2v.1"/></symbol>
+  <symbol id="i-recolher" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m15 10-2 2 2 2"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-soma" viewBox="0 0 24 24"><path d="M17 5H7l6 7-6 7h10"/></symbol>
+  <symbol id="i-relogio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-diverge" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14M15 4 9 20"/></symbol>
+  <symbol id="i-meia" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-lista" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+</svg>
+<div class="app" id="app">
+<aside class="lateral" aria-label="Navegação principal">
+  <div class="lat-marca"><span class="marca-selo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.5 29 28h-6.6L16 15.6 9.6 28H3z" fill="#E3261E"/><circle cx="16" cy="24.4" r="2.9" fill="#E3261E"/></svg></span>
+    <div class="lat-nome"><b>Agente BTP</b><small>Extração e auditoria</small></div></div>
+  <nav class="lat-nav" aria-label="Seções">
+    <span class="lat-grupo">Operação</span>
+    <button class="lat-item ativa" id="abaAnalise" aria-current="page" title="Análise"><svg class="ic" aria-hidden="true"><use href="#i-analise"/></svg><span class="rot">Análise</span></button>
+    <button class="lat-item" id="abaHistorico" title="Histórico"><svg class="ic" aria-hidden="true"><use href="#i-historico"/></svg><span class="rot">Histórico</span></button>
+    <span class="lat-grupo">Sistema</span>
+    <button class="lat-item" id="abaConfig" title="Configurações"><svg class="ic" aria-hidden="true"><use href="#i-config"/></svg><span class="rot">Configurações</span></button>
+    <span class="lat-grupo">Ajuda</span>
+    <button class="lat-item" id="bAjuda" aria-haspopup="dialog" title="Ajuda guiada (F1)"><svg class="ic" aria-hidden="true"><use href="#i-ajuda"/></svg><span class="rot">Ajuda</span><kbd>F1</kbd></button>
+  </nav>
+  <div class="lat-rodape">
+    <span class="conexao" id="pilulaConexao" role="status"><span class="ponto" id="pt"></span><span id="conexao">Aguardando o BTP</span></span>
+    <button class="lat-item lat-recolher" id="bRecolher" aria-expanded="true" title="Recolher menu"><svg class="ic" aria-hidden="true"><use href="#i-recolher"/></svg><span class="rot">Recolher menu</span></button>
   </div>
-</header>
+</aside>
+<div class="conteudo">
 
 <!-- ================================================================ NOVA ANÁLISE -->
 <main id="vistaAnalise" class="pagina">
   <div class="pagina-cab">
     <div>
-      <h1>Monitor de alertas</h1>
+      <h1>Análise</h1>
       <div class="resumo" id="resumoAgente" aria-live="polite"></div>
     </div>
   </div>
@@ -490,11 +579,9 @@
       <textarea id="texto" placeholder="Insira as WOs, uma por linha…" spellcheck="false" aria-describedby="contador"></textarea>
       <div class="contagem"><span id="contador" aria-live="polite"><b>0</b> WOs</span><span id="contadorInvalidas"></span></div>
       <div class="importar" id="zonaImportar">
-        <label for="arquivo" class="btn btn-sec" tabindex="0" id="rotArquivo">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-18-5.5 5.5 1.4 1.4L11 5.8V16h2V5.8l3.1 3.1 1.4-1.4L12 2z"/></svg>
-          Importar planilha (.xlsx)</label>
+        <label for="arquivo" class="btn btn-sec btn-sm" tabindex="0" id="rotArquivo"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>Importar planilha (.xlsx)</label>
         <input type="file" id="arquivo" accept=".xlsx" class="sr-only" tabindex="-1">
-        <svg class="ok-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg><span class="arq" id="nomeArquivo">Nenhuma planilha escolhida</span>
+        <svg class="ok-icone ic" aria-hidden="true"><use href="#i-check"/></svg><span class="arq" id="nomeArquivo">Nenhuma planilha escolhida</span>
         <button class="btn-texto oculto" id="bTirarArquivo" aria-label="Remover a planilha escolhida">Remover</button>
       </div>
       <button class="btn btn-primario btn-largo" id="bExecutar">Executar análise</button>
@@ -542,7 +629,7 @@
           <p class="etapa" id="etapa"></p>
         </div>
         <div class="vazio-estado oculto" id="estadoVazio">
-          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg></span>
+          <span class="icone" aria-hidden="true"><svg class="ic"><use href="#i-lista"/></svg></span>
           <div>
             <h3 id="vazioTitulo">Nenhuma análise em andamento</h3>
             <div class="ultima oculto" id="vazioUltima"></div>
@@ -550,12 +637,12 @@
         </div>
         <p class="meta oculto" id="painelLegenda" style="margin-top:var(--e5)"></p>
         <div class="painel" id="painel">
-          <div class="indicador neutro"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v3h-2V6H9.4l4.6 6-4.6 6H17v-1h2v3H5v-1.4L10.6 12 5 5.4z"/></svg>Processadas<button class="ajuda-ctx" data-ajuda="processadas" aria-label="O que conta como processada">?</button></span><b id="iProcessadas">—</b></div>
-          <div class="indicador neutro"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm1-13h-2v6l5 3 1-1.7-4-2.3z"/></svg>Pendentes<button class="ajuda-ctx" data-ajuda="pendentes" aria-label="O que conta como pendente">?</button></span><b id="iPendentes">—</b></div>
-          <div class="indicador ok"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>Validadas<button class="ajuda-ctx" data-ajuda="validadas" aria-label="O que conta como validada">?</button></span><b id="iValidadas">—</b></div>
-          <div class="indicador amb"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.6 3.5 15.9 7H4v2h10.9l-2 4H4v2h7.9l-2.3 4.6 1.8.9L14.1 15H20v-2h-4.9l2-4H20V7h-1.9l1.3-2.6z"/></svg>Divergência<button class="ajuda-ctx" data-ajuda="divergentes" aria-label="O que é divergência">?</button></span><b id="iDivergentes">—</b></div>
-          <div class="indicador amb"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18V4a8 8 0 0 1 0 16z"/></svg>Incompletas<button class="ajuda-ctx" data-ajuda="incompletas" aria-label="O que conta como incompleta">?</button></span><b id="iIncompletas">—</b></div>
-          <div class="indicador err"><span class="rot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>Falha de extração<button class="ajuda-ctx" data-ajuda="falhas" aria-label="O que conta como falha de extração">?</button></span><b id="iFalhas">—</b></div>
+          <div class="indicador neutro"><span class="rot"><svg class="ic" aria-hidden="true"><use href="#i-soma"/></svg>Processadas<button class="ajuda-ctx" data-ajuda="processadas" aria-label="O que conta como processada">?</button></span><b id="iProcessadas">—</b></div>
+          <div class="indicador neutro"><span class="rot"><svg class="ic" aria-hidden="true"><use href="#i-relogio"/></svg>Pendentes<button class="ajuda-ctx" data-ajuda="pendentes" aria-label="O que conta como pendente">?</button></span><b id="iPendentes">—</b></div>
+          <div class="indicador ok"><span class="rot"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Validadas<button class="ajuda-ctx" data-ajuda="validadas" aria-label="O que conta como validada">?</button></span><b id="iValidadas">—</b></div>
+          <div class="indicador amb"><span class="rot"><svg class="ic" aria-hidden="true"><use href="#i-diverge"/></svg>Divergência<button class="ajuda-ctx" data-ajuda="divergentes" aria-label="O que é divergência">?</button></span><b id="iDivergentes">—</b></div>
+          <div class="indicador amb"><span class="rot"><svg class="ic" aria-hidden="true"><use href="#i-meia"/></svg>Incompletas<button class="ajuda-ctx" data-ajuda="incompletas" aria-label="O que conta como incompleta">?</button></span><b id="iIncompletas">—</b></div>
+          <div class="indicador err"><span class="rot"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>Falha de extração<button class="ajuda-ctx" data-ajuda="falhas" aria-label="O que conta como falha de extração">?</button></span><b id="iFalhas">—</b></div>
         </div>
         <p class="meta oculto" id="prepInfo" style="margin-top:10px">Consultas da aba observadas: <b id="observadas">0</b>
           · <a href="/api/diagnostico">Baixar diagnóstico da preparação</a></p>
@@ -564,8 +651,7 @@
         <p class="meta ultimo-evento" id="ultimoEvento"></p>
         <div class="resultado-acoes" id="acoesResultado">
           <a id="baixar" class="btn btn-primario oculto" href="#">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-4 5.5-5.5-1.4-1.4L13 12.2V2h-2v10.2L7.9 9.1 6.5 10.5 12 16z"/></svg>
-            Baixar relatório auditado (.xlsx)</a>
+            <svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Baixar relatório auditado (.xlsx)</a>
           <a id="baixarParcial" class="btn btn-sec oculto" href="#">Baixar planilha parcial (.xlsx)</a>
           <button class="btn btn-sec oculto" id="bVerDiag">Ver diagnóstico desta análise</button>
           <button class="btn btn-primario oculto" id="bRaioxPronto">Já abri a janela Mensagens</button>
@@ -592,9 +678,9 @@
 
 <!-- ================================================================ HISTÓRICO -->
 <main id="vistaHistorico" class="pagina oculto">
-  <section class="cartao" aria-labelledby="tHist">
-    <div class="cartao-cab"><h2 id="tHist">Histórico de análises</h2>
-      <div class="dir"><button class="btn btn-perigo" id="bLimpar">Limpar histórico</button></div></div>
+  <div class="pagina-cab"><div><h1 id="tHist">Histórico</h1></div>
+    <div class="pagina-acoes"><button class="btn btn-perigo" id="bLimpar">Limpar histórico</button></div></div>
+  <section class="cartao tabela-cartao" aria-labelledby="tHist">
     <div class="rolagem" style="max-height:none">
       <table>
         <thead><tr><th class="num">Nº</th><th>Data</th><th>Origem</th><th class="num">WOs</th><th>Resultado</th>
@@ -643,57 +729,59 @@
 
 <!-- ================================================================ CONFIGURAÇÕES -->
 <main id="vistaConfig" class="pagina oculto">
-  <div class="pagina-cab"><h1 id="tCfg">Configurações</h1><span class="meta" id="cfgStatus" role="status" style="margin-left:auto"></span></div>
-  <div class="cfg-grupos">
-    <div class="pilha">
-    <section class="cartao grupo" aria-labelledby="tAparencia">
-      <div class="grupo-cab"><h3 id="tAparencia">Aparência</h3></div>
-      <div class="campo"><span class="rotulo"><label for="cfgTema">Tema</label><button class="ajuda-ctx" data-ajuda="tema" aria-label="Sobre o tema">?</button></span>
-        <div class="entrada"><select id="cfgTema"><option value="auto">Automático (segue o sistema)</option>
-          <option value="claro">Claro</option><option value="escuro">Escuro</option></select></div></div>
-    </section>
-    <section class="cartao grupo" aria-labelledby="tTabela">
-      <div class="grupo-cab"><h3 id="tTabela">Tabela de valores</h3><button class="ajuda-ctx" data-ajuda="tabela" aria-label="Sobre a tabela de valores">?</button></div>
-      <div class="importar" id="zonaTabela">
-        <label for="arqTabela" class="btn btn-sec" tabindex="0">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-18-5.5 5.5 1.4 1.4L11 5.8V16h2V5.8l3.1 3.1 1.4-1.4L12 2z"/></svg>
-          Importar tabela (.xlsx)</label>
-        <input type="file" id="arqTabela" accept=".xlsx" class="sr-only" tabindex="-1">
-        <svg class="ok-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg><span class="arq" id="nomeTabela" aria-live="polite">Nenhuma tabela importada</span>
-        <button class="btn-texto oculto" id="bTirarTabela">Remover</button>
+  <div class="pagina-cab fixo"><div><h1 id="tCfg">Configurações</h1><p class="pagina-sub">Valem a partir da próxima análise.</p></div>
+    <div class="pagina-acoes"><span class="meta" id="cfgStatus" role="status"></span>
+      <button class="btn btn-sec" id="cfgPadrao">Restaurar padrões</button>
+      <button class="btn btn-primario" id="cfgSalvar">Salvar configurações</button></div></div>
+  <div class="cfg-layout">
+    <section class="cfg-secao" style="grid-area:aparencia" aria-labelledby="tAparencia">
+      <div class="secao-cab"><h2 id="tAparencia">Aparência</h2></div>
+      <div class="cfg-painel">
+        <div class="campo"><span class="rotulo"><label for="cfgTema">Tema</label><button class="ajuda-ctx" data-ajuda="tema" aria-label="Sobre o tema">?</button></span>
+          <div class="entrada"><select id="cfgTema"><option value="auto">Automático (segue o sistema)</option>
+            <option value="claro">Claro</option><option value="escuro">Escuro</option></select></div></div>
       </div>
     </section>
-    </div>
-    <section class="cartao grupo" aria-labelledby="tFonte">
-      <div class="grupo-cab"><h3 id="tFonte">Fonte de dados</h3><button class="ajuda-ctx" data-ajuda="fonte" aria-label="Sobre a fonte de dados">?</button></div>
-      <p class="estado-linha" id="fonteDescricao">Ainda não configurada</p>
-      <div class="campo"><span class="rotulo"><label for="cfgMensagem">Mensagem na planilha</label><button class="ajuda-ctx" data-ajuda="mensagem" aria-label="Sobre a mensagem na planilha">?</button></span>
-        <div class="entrada"><select id="cfgMensagem"><option value="item">Mensagem do item</option>
-          <option value="alerta">Mensagem do alerta</option><option value="ambas">As duas</option></select></div></div>
-      <details class="secao recolhivel" id="caixaRaiox">
-        <summary>Raio-X da fonte</summary>
-        <div class="conteudo">
-          <div class="linha">
-            <label class="sr-only" for="rxWo">WO</label>
-            <input type="text" id="rxWo" class="mono" placeholder="WO (ex.: 06201|740923282)" style="width:230px">
-            <label class="sr-only" for="rxCons">Consolidado</label>
-            <input type="text" id="rxCons" class="mono" placeholder="Consolidado (opcional)" style="width:230px">
-            <button class="btn btn-sec" id="bRaiox">Gerar Raio-X</button>
-            <button class="ajuda-ctx" data-ajuda="raiox" aria-label="Sobre o Raio-X">?</button>
-          </div>
+    <section class="cfg-secao" style="grid-area:tabela" aria-labelledby="tTabela">
+      <div class="secao-cab"><h2 id="tTabela">Tabela de valores</h2><button class="ajuda-ctx" data-ajuda="tabela" aria-label="Sobre a tabela de valores">?</button></div>
+      <div class="cfg-painel">
+        <div class="importar" id="zonaTabela">
+          <label for="arqTabela" class="btn btn-sec btn-sm" tabindex="0"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>Importar .xlsx</label>
+          <input type="file" id="arqTabela" accept=".xlsx" class="sr-only" tabindex="-1">
+          <svg class="ok-icone ic" aria-hidden="true"><use href="#i-check"/></svg><span class="arq" id="nomeTabela" aria-live="polite">Nenhuma tabela importada</span>
+          <button class="btn-texto oculto" id="bTirarTabela">Remover</button>
         </div>
-      </details>
-      <div class="linha acoes-grupo">
-        <button class="btn btn-perigo" id="cfgRefazer">Refazer a fonte de dados</button>
       </div>
     </section>
-  </div>
-  <div id="cfgGrupos" class="cfg-grupos"></div>
-  <div class="barra-acoes">
-    <button class="btn btn-primario" id="cfgSalvar">Salvar configurações</button>
-    <button class="btn btn-sec" id="cfgPadrao">Restaurar padrões</button>
+    <section class="cfg-secao" style="grid-area:fonte" aria-labelledby="tFonte">
+      <div class="secao-cab"><h2 id="tFonte">Fonte de dados</h2><button class="ajuda-ctx" data-ajuda="fonte" aria-label="Sobre a fonte de dados">?</button></div>
+      <div class="cfg-painel">
+        <div class="campo campo-info"><span class="rotulo">Tabela do BTP</span><span class="valor" id="fonteDescricao">Ainda não configurada</span></div>
+        <div class="campo"><span class="rotulo"><label for="cfgMensagem">Mensagem na planilha</label><button class="ajuda-ctx" data-ajuda="mensagem" aria-label="Sobre a mensagem na planilha">?</button></span>
+          <div class="entrada"><select id="cfgMensagem"><option value="item">Mensagem do item</option>
+            <option value="alerta">Mensagem do alerta</option><option value="ambas">As duas</option></select></div></div>
+        <details class="secao" id="caixaRaiox">
+          <summary>Raio-X da fonte</summary>
+          <div class="conteudo">
+            <div class="linha">
+              <label class="sr-only" for="rxWo">WO</label>
+              <input type="text" id="rxWo" class="mono" placeholder="WO (ex.: 06201|740923282)">
+              <label class="sr-only" for="rxCons">Consolidado</label>
+              <input type="text" id="rxCons" class="mono" placeholder="Consolidado (opcional)">
+              <button class="btn btn-sec btn-sm" id="bRaiox">Gerar Raio-X</button>
+              <button class="ajuda-ctx" data-ajuda="raiox" aria-label="Sobre o Raio-X">?</button>
+            </div>
+          </div>
+        </details>
+        <div class="painel-rodape"><button class="btn btn-perigo btn-sm" id="cfgRefazer">Refazer a fonte de dados</button></div>
+      </div>
+    </section>
+    <div id="cfgGrupos" class="cfg-parametros" style="grid-area:parametros"></div>
   </div>
 </main>
+
+</div><!-- /conteudo -->
+</div><!-- /app -->
 
 <div class="dica oculto" id="dica" role="tooltip"></div>
 <div class="toast oculto" id="toast" role="status" aria-live="polite"></div>
@@ -1123,6 +1211,18 @@ function abrirAba(nome) {
 $("abaAnalise").onclick = () => abrirAba("analise");
 $("abaHistorico").onclick = () => abrirAba("historico");
 $("abaConfig").onclick = () => abrirAba("config");
+function aplicarMenu(recolhido) {
+  $("app").classList.toggle("recolhido", recolhido);
+  $("bRecolher").setAttribute("aria-expanded", String(!recolhido));
+  $("bRecolher").title = recolhido ? "Expandir menu" : "Recolher menu";
+  $("bRecolher").querySelector(".rot").textContent = recolhido ? "Expandir menu" : "Recolher menu";
+}
+try { aplicarMenu(localStorage.getItem("agenteBtpMenu") === "recolhido"); } catch (_) { aplicarMenu(false); }
+$("bRecolher").onclick = () => {
+  const r = !$("app").classList.contains("recolhido");
+  aplicarMenu(r);
+  try { localStorage.setItem("agenteBtpMenu", r ? "recolhido" : "aberto"); } catch (_) {}
+};
 
 // ---------------------------------------------------------------- configurações
 const CONFIG = [
@@ -1179,17 +1279,17 @@ function textoPadrao(i) {
 }
 function desenharConfig(valores) {
   $("cfgGrupos").innerHTML = CONFIG.map(g => `
-    <section class="cartao grupo"><div class="grupo-cab"><h3>${g.grupo}</h3></div>
+    <section class="cfg-secao"><div class="secao-cab"><h2>${g.grupo}</h2></div><div class="cfg-painel">
     ${g.itens.map(i => {
       const v = valores[i.id];
       const ent = i.tipo === "bool" ? `<input type="checkbox" id="cfg_${i.id}" ${v ? "checked" : ""}>`
         : i.tipo === "opcao" ? `<select id="cfg_${i.id}">${i.opcoes.map(([k, t]) =>
             `<option value="${k}" ${k === v ? "selected" : ""}>${t}</option>`).join("")}</select>`
-        : `<input type="number" id="cfg_${i.id}" value="${v}" min="${i.min}" max="${i.max}" step="${i.tipo === "int" ? 1 : 0.5}">`;
+        : `<span class="num-grupo${i.un ? " com-un" : ""}"><input type="number" id="cfg_${i.id}" value="${v}" min="${i.min}" max="${i.max}" step="${i.tipo === "int" ? 1 : 0.5}">${i.un ? `<span class="un">${i.un}</span>` : ""}</span>`;
       return `<div class="campo"><span class="rotulo"><label for="cfg_${i.id}">${i.rotulo}</label>
           <button class="ajuda-ctx" data-ajuda="cfg_${i.id}" aria-label="Sobre: ${esc(i.rotulo)}">?</button></span>
-        <div class="entrada">${ent}<span class="un">${i.tipo === "bool" || i.tipo === "opcao" ? "" : i.un}</span></div></div>`;
-    }).join("")}</section>`).join("");
+        <div class="entrada">${ent}</div></div>`;
+    }).join("")}</div></section>`).join("");
 }
 async function carregarConfig() {
   const r = await fetch("/api/configuracoes").then(r => r.json());
@@ -1268,8 +1368,8 @@ function desenharFonte(f) {
   const chave = JSON.stringify(f || null);
   if (chave === fonteDesenhada) return;
   fonteDesenhada = chave;
-  $("fonteDescricao").innerHTML = f ? `Tabela do BTP: <b>${esc(f.descricao)}</b> · ${f.confirmada ? "confirmada por você" : "ainda a confirmar"}`
-                                    : "Ainda não configurada: é feita na primeira análise.";
+  $("fonteDescricao").innerHTML = f ? `<b>${esc(f.descricao)}</b><span class="tag ${f.confirmada ? "ok" : "amb"}">${f.confirmada ? "confirmada" : "a confirmar"}</span>`
+                                    : "Ainda não configurada";
   $("cfgMensagem").value = f ? f.mensagem_origem : "item";
   $("cfgMensagem").disabled = !f || !f.tem_mensagem_alerta;
   [...$("cfgMensagem").options].forEach(o => { o.disabled = o.value !== "item" && !(f && f.tem_mensagem_alerta); });
@@ -1459,7 +1559,7 @@ const Dica = (() => {
 // A ajuda só LÊ: nenhum botão do site é acionado enquanto ela está aberta.
 const PASSOS_TUTORIAL = [
   { aba: "analise", chave: "conexao", alvo: "#pilulaConexao", titulo: "Conexão com o BTP",
-    texto: "O agente lê o Monitor de alertas pela aba do Chrome em que você já está logado — só consulta, nunca aciona \"Reprocessar\" ou \"Efetuar Baixa\", e não guarda senha. Verde: BTP conectado e sessão válida. Amarelo: aba conectada, sessão a verificar (ou sessão expirada: faça login de novo na aba). Cinza: aguardando o BTP — abra o BTP com a extensão Agente BTP ou use o favorito." },
+    texto: "No rodapé do menu: o agente lê o Monitor de alertas pela aba do Chrome em que você já está logado — só consulta, nunca aciona \"Reprocessar\" ou \"Efetuar Baixa\", e não guarda senha. Verde: BTP conectado e sessão válida. Amarelo: aba conectada, sessão a verificar (ou sessão expirada: faça login de novo na aba). Cinza: aguardando o BTP — abra o BTP com a extensão Agente BTP ou use o favorito." },
   { aba: "analise", chave: "resumo", alvo: "#resumoAgente", titulo: "Resumo do agente",
     texto: "Mostra a conexão, a tabela do BTP usada como fonte dos dados (\"a confirmar\" até você conferir a amostra), quantas vezes cada WO é conferida (ex.: 2×, até 5× se houver divergência) e, durante uma análise, o número dela e o total de WOs." },
   { aba: "analise", chave: "wos", alvo: "#texto", titulo: "Campo de WOs",
@@ -1482,9 +1582,9 @@ const PASSOS_TUTORIAL = [
     texto: "Ao concluir, \"Baixar relatório auditado\" entrega o Excel: aba Dados (um item por linha, com Tipo Material e Observação; \"-\" onde não há informação; observação amarela = conferir no BTP), aba Materiais (quantidade e valor total por material) e aba Análise. Durante a análise há a planilha parcial; \"Ver diagnóstico\" abre o que deu errado no Histórico." },
   { aba: "analise", chave: "recentes", alvo: "#secRecentes", titulo: "Execuções recentes",
     texto: "As últimas análises com número, origem, data, total de WOs, duração, situação e o resumo (✓ validadas, ≠ divergência, ◐ incompletas, ✕ falhas). \"Excel\" gera o relatório de novo a partir da base, com as regras atuais, sem consultar o BTP. Clique numa análise para abrir o detalhe no Histórico." },
-  { aba: "historico", chave: "historico", alvo: "#vistaHistorico > .cartao:first-child", titulo: "Histórico",
+  { aba: "historico", chave: "historico", alvo: "#vistaHistorico .tabela-cartao", titulo: "Histórico",
     texto: "Todas as análises, inclusive a que está em andamento. Clique numa linha para ver o detalhe: a situação de cada WO (com filtro), o diagnóstico e o registro de execução. \"Excel\" baixa o relatório; \"Apagar\" remove a análise e a planilha dela; \"Limpar histórico\" apaga tudo (pede confirmação)." },
-  { aba: "historico", chave: "diagnostico", alvo: "#detTecnico", alternativa: "#vistaHistorico > .cartao:first-child", titulo: "Diagnóstico e registro",
+  { aba: "historico", chave: "diagnostico", alvo: "#detTecnico", alternativa: "#vistaHistorico .tabela-cartao", titulo: "Diagnóstico e registro",
     texto: "No detalhe de uma análise, o Diagnóstico separa os problemas por origem — BTP / sessão (o BTP ou o caminho até ele não entregou o dado), Agente (o programa falhou ou atingiu um limite) e Entrada (a WO informada não serve) — com a próxima ação e a evidência. O Registro mostra os eventos em ordem; o diagnóstico também sai em .json." },
   { aba: "config", chave: "fonte", alvo: "[aria-labelledby=tFonte]", titulo: "Fonte de dados",
     texto: "A tabela do BTP de onde vêm os itens e se você já a confirmou. \"Mensagem na planilha\": do item (janela Mensagens), do alerta (coluna Mensagem do Monitor) ou as duas. O Raio-X investiga uma WO quando os dados não batem com o BTP. \"Refazer a fonte de dados\" apaga a fonte gravada: a próxima análise pede a conferência de novo." },
@@ -1494,10 +1594,10 @@ const PASSOS_TUTORIAL = [
     texto: "Tema claro, escuro ou automático (segue o sistema). Vale só para este navegador e muda na hora." },
   { aba: "config", chave: "parametros", alvo: "#cfgGrupos", titulo: "Parâmetros da análise",
     texto: "Auditoria (quantas conferências por WO e o que fazer em divergência), Tempo (limites de cada consulta, da WO e da análise inteira), Execução (WO sem resultado, erros, exportar não validados) e Desempenho (consultas em paralelo e WOs por lote). Passe o mouse num parâmetro e clique no ? para ver a regra e o valor padrão." },
-  { aba: "config", chave: "salvar", alvo: ".barra-acoes", titulo: "Salvar ou restaurar",
+  { aba: "config", chave: "salvar", alvo: "#vistaConfig .pagina-acoes", titulo: "Salvar ou restaurar",
     texto: "\"Salvar configurações\" grava neste computador (sem senhas ou dados de acesso) e vale a partir da próxima análise. \"Restaurar padrões\" volta todos os parâmetros aos valores originais." },
   { aba: null, chave: "ajuda", alvo: "#bAjuda", titulo: "Ajuda sempre à mão",
-    texto: "Reabra esta ajuda quando quiser pelo botão Ajuda ou pela tecla F1. Para uma dúvida pontual, use o ? ao lado do item: ele explica só aquilo e leva ao passo certo desta ajuda." },
+    texto: "Reabra esta ajuda quando quiser pelo item Ajuda do menu lateral ou pela tecla F1. Para uma dúvida pontual, use o ? ao lado do item: ele explica só aquilo e leva ao passo certo desta ajuda." },
 ];
 
 const Tutorial = (() => {
@@ -1567,7 +1667,7 @@ const Tutorial = (() => {
     Dica.esconder();
     focoAntes = document.activeElement; abaAntes = abaAtual;
     raiz.classList.remove("oculto");
-    document.querySelectorAll(".pagina, .topo").forEach(el => el.setAttribute("inert", ""));
+    document.querySelectorAll(".pagina, .lateral").forEach(el => el.setAttribute("inert", ""));
     $("bAjuda").classList.add("ativa");
     window.tutorialAberto = true; atualizar();
     const inicio = typeof chave === "string" ? PASSOS_TUTORIAL.findIndex(p => p.chave === chave) : 0;
@@ -1579,7 +1679,7 @@ const Tutorial = (() => {
     cancelAnimationFrame(quadro);
     if (restaurar) { restaurar(); restaurar = null; }
     raiz.classList.add("oculto");
-    document.querySelectorAll(".pagina, .topo").forEach(el => el.removeAttribute("inert"));
+    document.querySelectorAll(".pagina, .lateral").forEach(el => el.removeAttribute("inert"));
     $("bAjuda").classList.remove("ativa");
     window.tutorialAberto = false; atualizar();
     if (abaAntes && abaAtual !== abaAntes) abrirAba(abaAntes);
