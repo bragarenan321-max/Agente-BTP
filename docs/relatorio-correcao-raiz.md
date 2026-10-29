@@ -366,3 +366,28 @@ em 6 colunas fixas. Uso da largura: 1920 px = 66%; zoom 67% (2150 px CSS) = 59%;
 - `rodar_sessao`, `rodar_aba` e `rodar_extensao` ok.
 - Sem rolagem horizontal em 1280×720, 1440×900, 1920×1080, 2160×1350 (zoom 67%) e 2880×1800 (zoom 50%).
 - **Limitação percebida na revisão:** os testes conferem posição e largura, não a aparência. Um conflito de nome de classe (`.painel`) passou nos testes e só apareceu nos prints; foi corrigido.
+
+## 15. Rodada 11 — planilha só com "Estoque indisponível"; outras mensagens na Observação
+
+**Regra do usuário:** na planilha só entram itens com a mensagem "Estoque indisponível". Os demais itens da WO continuam sendo lidos e auditados, mas vão para a Observação.
+
+**Implementação:**
+- **Preferência `mensagem_planilha`** (Configurações › Execução › "Mensagem dos itens na planilha"), padrão "Estoque indisponível"; vazio = todos os itens.
+- **Comparação:** com a mensagem do item (janela Mensagens), ignorando maiúsculas, acentos, espaços e pontuação final. É igualdade exata: "Estoque insuficiente" não entra.
+- **Modos "alerta" e "as duas":** o filtro continua olhando o texto do item, que agora é guardado em `LinhaMensagem.mensagem_item` (base e auditoria).
+- **Análises antigas, sem o campo:** no modo item, usa a própria mensagem; no modo "as duas", o trecho antes de " — Alerta: ". No modo "alerta" o texto do item não foi guardado, e o filtro compara a mensagem gravada.
+- **Aba Dados:**
+  - Os outros itens aparecem na Observação da 1ª linha da WO: "Outros itens no BTP, fora da planilha (mensagem diferente de "Estoque indisponível"): <material> (qtd N): <mensagem>; …".
+  - WO só com outras mensagens: uma linha "-", com "Nenhum item com "Estoque indisponível". …".
+  - A nota é informativa (sem amarelo); o amarelo continua só para "conferir no BTP".
+- **Materiais e Análise:** só com os itens da planilha. Análise ganha "Itens com outra mensagem (só na Observação)".
+- **Verificação depois de gravar:** aplica a mesma regra.
+- **Histórico:** o relatório gerado de novo usa a regra (análises antigas recebem o padrão).
+
+**Efeito nos dados reais (análise de 13.623 WOs, sem as cópias):**
+- 15.219 itens: 13.873 com "Estoque indisponível" ficam na planilha; 1.346 vão para a Observação. Exemplos: "Os dados de centro do material … estão bloqueados…", "Estoque insuficiente", "Estor.EstqForn…".
+- WOs com itens: 11.163 só com Estoque indisponível, 37 mistas e 243 só com outras mensagens (estas viram uma linha "-").
+
+**Validação:**
+- pytest 164 ok (teste novo `test_planilha_so_com_estoque_indisponivel_e_outros_na_observacao`; os testes de estrutura, zeros e fórmulas rodam com o filtro vazio, que é o propósito deles).
+- `rodar_tela` 136/136; `rodar_sessao`, `rodar_aba` e `rodar_extensao` ok.

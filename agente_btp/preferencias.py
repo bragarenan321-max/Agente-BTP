@@ -36,6 +36,9 @@ class Preferencias:
     wo_sem_resultado: str = "reconsultar"      # "registrar" | "reconsultar" uma vez antes de concluir
     em_erro: str = "continuar"                 # "continuar" | "interromper" o lote
     exportar_incompletos: bool = True          # incluir no Excel (sinalizadas) ocorrências não validadas
+    # Só itens com esta mensagem (janela Mensagens) viram linha na planilha; os demais itens da WO
+    # vão para a Observação. Vazio = todos os itens.
+    mensagem_planilha: str = "Estoque indisponível"
     # --- Desempenho
     concorrencia: int = 4                      # consultas simultâneas (grupos de WOs em paralelo), máx. 8
     tamanho_lote: int = 20                     # WOs por consulta em lote (1 = uma WO por consulta)
@@ -84,6 +87,8 @@ def validar(dados: dict) -> tuple[Preferencias, list[str]]:
             if not minimo <= valor <= maximo:
                 problemas.append(f"{f.name}: {valor} fora da faixa {minimo}–{maximo}; ajustado")
                 valor = min(max(valor, minimo), maximo)
+        if isinstance(valor, str) and f.name not in _OPCOES:
+            valor = " ".join(valor.split())[:120]
         if f.name in _OPCOES and valor not in _OPCOES[f.name]:
             problemas.append(f"{f.name}: opção inválida ({valor}); mantido {padrao}")
             continue

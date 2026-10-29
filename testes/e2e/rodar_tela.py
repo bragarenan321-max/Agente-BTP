@@ -290,7 +290,7 @@ with sync_playwright() as p:
     pg.mouse.wheel(0, -1500)
     confere(pg.locator("#vistaConfig .campo .ajuda, #vistaConfig p.meta").count() == 0,
             "configurações sem parágrafos explicativos (só rótulo, campo e unidade)")
-    confere(pg.locator("#vistaConfig .campo [data-ajuda^=cfg_]").count() == 16, "cada parâmetro tem '?' com a explicação")
+    confere(pg.locator("#vistaConfig .campo [data-ajuda^=cfg_]").count() == 17, "cada parâmetro tem '?' com a explicação")
     pg.click("[data-ajuda=cfg_concorrencia]")
     confere("Padrão: 4" in pg.inner_text("#dica"), "'?' do parâmetro mostra a regra e o valor padrão")
     pg.keyboard.press("Escape")

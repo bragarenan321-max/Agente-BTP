@@ -64,6 +64,8 @@ class LinhaMensagem:
     observacao: str = ""
     # Notas por campo (divergente, não obtido...), viram comentários na célula do Excel.
     notas: dict = field(default_factory=dict)
+    # Mensagem do próprio item (janela Mensagens), mesmo quando a planilha usa a do alerta ou as duas.
+    mensagem_item: str = ""
 
     def como_lista(self) -> list:
         return [self.wo, self.material, self.fornecedor, self.quantidade_faltante, self.mensagem]

@@ -1,7 +1,9 @@
 """Relatório Excel — direto e autoexplicativo, derivado de UMA estrutura (os ResultadoWO auditados).
 
 Abas:
-  Dados    — TODAS as WOs consultadas: WO, Material SAP, Tipo Material, Fornecedor SAP, Quantidade faltante,
+  Dados    — TODAS as WOs consultadas. Só viram linha os itens com a mensagem configurada (padrão
+             "Estoque indisponível"); os demais itens da WO vão para a Observação. Colunas:
+             WO, Material SAP, Tipo Material, Fornecedor SAP, Quantidade faltante,
              Mensagem e Observação ("-" quando está tudo certo; em português claro quando não).
              Célula sem informação leva "-" (nunca fica em branco). O mesmo item que o BTP
              devolve mais de uma vez com dados idênticos aparece numa linha só, com a observação.
@@ -18,6 +20,7 @@ Ao final, o arquivo gravado é reaberto e as abas Dados e Materiais são conferi
 from __future__ import annotations
 
 import math
+import unicodedata as _ud
 from collections import Counter, OrderedDict
 from datetime import datetime
 from decimal import Decimal
@@ -153,27 +156,79 @@ def _tipo(tabela: TabelaMateriais | None, material) -> str | None:
     return achado.tipo if achado else None
 
 
-def linhas_dados(resultados: list[ResultadoWO], exportar_incompletos: bool = True,
-                 tabela: TabelaMateriais | None = None) -> list[list]:
-    """Linhas da aba Dados: um item por linha; WO sem itens aparece numa linha com a observação."""
+FILTRO_PADRAO = "Estoque indisponível"
+SEPARADOR_ALERTA = " — Alerta: "     # formato de cliente.ocorrencia quando a mensagem é "as duas"
+
+
+def _normalizar(texto: str) -> str:
+    sem_acento = _ud.normalize("NFKD", str(texto or "")).encode("ascii", "ignore").decode()
+    return " ".join(sem_acento.lower().split()).strip(" .;:")
+
+
+def mensagem_do_item(l: LinhaMensagem) -> str:
+    """Mensagem do próprio item (janela Mensagens). Análises antigas não guardavam esse campo:
+    no modo "item" ela é a mensagem gravada; no modo "as duas", o trecho antes de " — Alerta: "."""
+    if l.mensagem_item:
+        return l.mensagem_item
+    return (l.mensagem or "").split(SEPARADOR_ALERTA, 1)[0]
+
+
+def entra_na_planilha(l: LinhaMensagem, filtro: str | None) -> bool:
+    """Só itens com a mensagem configurada viram linha (comparação sem maiúsculas, acentos e espaços)."""
+    return not filtro or _normalizar(mensagem_do_item(l)) == _normalizar(filtro)
+
+
+def _itens_da_wo(r: ResultadoWO, exportar_incompletos: bool, filtro: str | None):
+    """(itens que viram linha, outros itens da WO), sem as cópias idênticas do BTP."""
+    itens = itens_unicos([l for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO])
+    return ([(l, n) for l, n in itens if entra_na_planilha(l, filtro)],
+            [(l, n) for l, n in itens if not entra_na_planilha(l, filtro)])
+
+
+def nota_outros(outros, filtro: str) -> str:
+    """Os itens da WO com outra mensagem, como o BTP trouxe (material, quantidade e mensagem)."""
+    partes = [f"{l.material or '-'} (qtd {_txt(l.quantidade_faltante) or '-'}): {mensagem_do_item(l) or '-'}"
+              for l, _ in outros]
+    return f"Outros itens no BTP, fora da planilha (mensagem diferente de \"{filtro}\"): " + "; ".join(partes) + "."
+
+
+def _linhas_dados(resultados, exportar_incompletos=True, tabela=None, filtro=FILTRO_PADRAO):
+    """[(linha, destacar)]: destaca a Observação só quando há algo a conferir no BTP."""
     saida = []
     for r in resultados:
         estado = estado_rotulo(r)
-        itens = [l for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO]
-        for l, n in itens_unicos(itens):
-            obs = "; ".join(o for o in (observacao_item(l), NOTA_REPETIDO.format(n=n) if n > 1 else "") if o)
-            saida.append(_preencher([l.wo, l.material, _tipo(tabela, l.material), l.fornecedor,
-                                     l.quantidade_faltante, l.mensagem, obs, estado]))
-        if not itens:
+        planilha, outros = _itens_da_wo(r, exportar_incompletos, filtro)
+        extra = nota_outros(outros, filtro) if outros else ""
+        for i, (l, n) in enumerate(planilha):
+            conferir = observacao_item(l)
+            obs = "; ".join(o for o in (conferir, NOTA_REPETIDO.format(n=n) if n > 1 else "",
+                                        extra if i == 0 else "") if o)
+            saida.append((_preencher([l.wo, l.material, _tipo(tabela, l.material), l.fornecedor,
+                                      l.quantidade_faltante, l.mensagem, obs, estado]), bool(conferir)))
+        if not planilha:
             obs = SITUACAO[r.status]
-            if r.linhas:   # havia itens, mas não validados e a exportação deles está desligada
+            if outros:
+                obs = f"Nenhum item com \"{filtro}\". " + extra
+            elif r.linhas:   # havia itens, mas não validados e a exportação deles está desligada
                 obs = f"{len(r.linhas)} item(ns) com divergência omitido(s): conferir no BTP"
             elif r.status is Status.NAO_PROCESSADA:
                 obs = r.observacao or obs
             elif r.status in STATUS_FALHA and r.observacao and r.observacao != "OK":
                 obs = f"{obs} ({r.observacao})"
-            saida.append(_preencher([r.wo, None, None, None, None, None, obs, estado]))
+            saida.append((_preencher([r.wo, None, None, None, None, None, obs, estado]), False))
     return saida
+
+
+def linhas_dados(resultados: list[ResultadoWO], exportar_incompletos: bool = True,
+                 tabela: TabelaMateriais | None = None, filtro: str | None = FILTRO_PADRAO) -> list[list]:
+    """Linhas da aba Dados: um item por linha (só os com a mensagem do filtro; os demais itens da WO
+    vão para a Observação); WO sem itens na planilha aparece numa linha com a observação."""
+    return [linha for linha, _ in _linhas_dados(resultados, exportar_incompletos, tabela, filtro)]
+
+
+def itens_planilha(resultados, exportar_incompletos=True, filtro=FILTRO_PADRAO) -> list[LinhaMensagem]:
+    """Itens que viram linha na aba Dados (base das abas Materiais e Análise)."""
+    return [l for r in resultados for l, _ in _itens_da_wo(r, exportar_incompletos, filtro)[0]]
 
 
 def _decimal(v) -> Decimal:
@@ -234,22 +289,21 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
     destino.parent.mkdir(parents=True, exist_ok=True)
     emitida_em = emitida_em or datetime.now()
     exportar_incompletos = True if prefs is None else prefs.exportar_incompletos
+    filtro = FILTRO_PADRAO if prefs is None else prefs.mensagem_planilha
     # Itens como na aba Dados (o mesmo item repetido pelo BTP conta uma vez: não dobra quantidade).
-    linhas = [l for r in resultados for l, _ in itens_unicos(
-        [l for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO])]
+    linhas = itens_planilha(resultados, exportar_incompletos, filtro)
+    fora = sum(len(_itens_da_wo(r, exportar_incompletos, filtro)[1]) for r in resultados)
     wb = Workbook(write_only=True)
 
     # ================================================================ Dados
     ws = wb.create_sheet(ABAS[0])
-    dados = linhas_dados(resultados, exportar_incompletos, tabela)
+    dados = _linhas_dados(resultados, exportar_incompletos, tabela, filtro)
     _preparar(ws, [18, 22, 34, 16, 12, 55, 55, 13], linha_cab=1)
     if dados:
         ws.auto_filter.ref = f"A1:{get_column_letter(len(COLUNAS_DADOS))}{len(dados) + 1}"
     ws.append(_cabecalho(ws, COLUNAS_DADOS))
-    for valores in dados:
+    for valores, destaque in dados:
         # Item com observação de conferência: destaca só a célula de Observação.
-        obs = valores[_COL_OBS]
-        destaque = valores[1] != SEM_INFO and obs != SEM_INFO and not obs.startswith("O BTP traz")
         ws.append([_celula(ws, v, formato="@" if col in (1, 2, 3, 4, 6, 7, 8) else None,
                            alinhamento=_QUEBRA if col in (6, 7) else _TOPO, borda=_BORDA,
                            fundo=_ATENCAO if col == _COL_OBS + 1 and destaque else None)
@@ -297,6 +351,8 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
         ("Itens faltantes (linhas com material na aba Dados)", len(linhas)),
         ("Itens conferidos sem diferença", len(linhas) - com_obs),
         ("Itens com observação (conferir no BTP)", com_obs),
+        (f"Itens com outra mensagem (só na Observação; planilha = \"{filtro}\")" if filtro
+         else "Itens com outra mensagem (sem filtro: todos na planilha)", fora),
     ])
 
     grupos: dict[tuple, list[LinhaMensagem]] = OrderedDict()
@@ -320,7 +376,7 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
 
     por_wo = []
     for r in resultados:
-        ls = [l for l, _ in itens_unicos([l for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO])]
+        ls = [l for l, _ in _itens_da_wo(r, exportar_incompletos, filtro)[0]]
         obs = "; ".join(o for o in OrderedDict.fromkeys(observacao_item(l) for l in ls) if o)
         por_wo.append((r.wo, SITUACAO[r.status], len(ls),
                        ", ".join(OrderedDict.fromkeys(l.material for l in ls if l.material)),
@@ -387,11 +443,11 @@ def _secao(ws, titulo, cabecalho, linhas, texto=frozenset()):
 
 
 def verificar_planilha(destino: str | Path, resultados: list[ResultadoWO],
-                       exportar_incompletos: bool = True, tabela: TabelaMateriais | None = None) -> list[str]:
+                       exportar_incompletos: bool = True, tabela: TabelaMateriais | None = None,
+                       filtro: str | None = FILTRO_PADRAO) -> list[str]:
     """Reabre o arquivo gravado e confere as abas Dados e Materiais, célula a célula."""
-    esperadas = linhas_dados(resultados, exportar_incompletos, tabela)
-    itens = [l for r in resultados for l, _ in itens_unicos(
-        [l for l in r.linhas if exportar_incompletos or l.auditoria is Auditoria.VALIDADO])]
+    esperadas = linhas_dados(resultados, exportar_incompletos, tabela, filtro)
+    itens = itens_planilha(resultados, exportar_incompletos, filtro)
     mats, total = linhas_materiais(itens, tabela)
     # Somente leitura: lê célula a célula sem montar a planilha inteira na memória (13 mil WOs:
     # 3 MB em vez de ~840 MB) e ainda informa o TIPO de cada célula (fórmula = "f").

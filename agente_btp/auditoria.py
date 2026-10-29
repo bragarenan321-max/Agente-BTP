@@ -155,7 +155,8 @@ def consolidar(wo: str, leituras: list[Leitura], previstas: int):
             consolidado=ref.valores.get("consolidado", ""), wo=finais["wo"] if finais["wo"] else wo,
             material=finais["material"], fornecedor=finais["fornecedor"],
             quantidade_faltante=finais["quantidade_faltante"], mensagem=finais["mensagem"],
-            chave=chave, auditoria=estado, observacao="; ".join(motivos), notas=notas))
+            chave=chave, auditoria=estado, observacao="; ".join(motivos), notas=notas,
+            mensagem_item=ref.valores.get("mensagem_item", "") or ""))
         if GRAVIDADE[estado] > GRAVIDADE[estado_wo]:
             estado_wo = estado
         for l, o in obs:

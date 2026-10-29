@@ -156,7 +156,8 @@ def serializar(r: ResultadoWO) -> dict:
         "motivo": r.motivo, "origem": r.origem,
         "linhas": [{"consolidado": l.consolidado, "wo": l.wo, "material": l.material, "fornecedor": l.fornecedor,
                     "quantidade_faltante": l.quantidade_faltante, "mensagem": l.mensagem, "chave": l.chave,
-                    "auditoria": l.auditoria, "observacao": l.observacao, "notas": l.notas} for l in r.linhas],
+                    "auditoria": l.auditoria, "observacao": l.observacao, "notas": l.notas,
+                    "mensagem_item": l.mensagem_item} for l in r.linhas],
         "leituras": [{"rodada": l.rodada, "tipo": l.tipo, "quando": l.quando, "alertas": l.alertas,
                       "duplicadas": l.duplicadas, "avisos": l.avisos, "erro": l.erro,
                       "itens": None if l.itens is None else [[k, ocorr(o)] for k, o in l.itens.items()]}
@@ -178,7 +179,8 @@ def desserializar(d: dict, leve: bool = False) -> ResultadoWO:
                         None if l["itens"] is None else {k: ocorr(o) for k, o in l["itens"]},
                         l["alertas"], l["duplicadas"], list(l["avisos"]), l["erro"]) for l in d["leituras"]]
     linhas = [LinhaMensagem(l["consolidado"], l["wo"], l["material"], l["fornecedor"], l["quantidade_faltante"],
-                            l["mensagem"], l["chave"], Auditoria[l["auditoria"]], l["observacao"], l["notas"])
+                            l["mensagem"], l["chave"], Auditoria[l["auditoria"]], l["observacao"], l["notas"],
+                            l.get("mensagem_item", ""))     # análises antigas não têm: ver exportacao.mensagem_do_item
               for l in d["linhas"]]
     return ResultadoWO(d["wo"], Status[d["status"]], linhas, d["observacao"], d["data_hora"],
                        Auditoria[d["auditoria"]], d["observacao_auditoria"], leituras, d["rodadas_previstas"],

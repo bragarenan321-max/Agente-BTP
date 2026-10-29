@@ -105,11 +105,11 @@ def test_mensagem_original_e_zeros_preservados(tmp_path):
                   mensagem="Estoque indisponível")]
     rs = processar_lote(ClienteBTP(config_conjunto_unico(), BTP([itens], por_chave=lambda u: next(
         i for i in itens if i["ID"] in u))), [WO], prefs=RAPIDO)
-    destino = gerar_planilha(rs, tmp_path / "a.xlsx")
+    destino = gerar_planilha(rs, tmp_path / "a.xlsx", prefs=Preferencias(mensagem_planilha=""))        # sem filtro: todos os itens
     linhas = list(load_workbook(destino)["Dados"].iter_rows(min_row=2, values_only=True))
     assert linhas == [(WO, "000000000022066463", "-", "0000138480", 2, "Erro durante baixa de estoque", "-", "Validada"),
                       (WO, "000000000011000042", "-", "0000000001", 10, "Estoque indisponível", "-", "Validada")]
-    assert verificar_planilha(destino, rs) == []
+    assert verificar_planilha(destino, rs, filtro="") == []
 
 
 def test_cada_material_fica_com_o_seu_fornecedor_e_a_sua_wo():
@@ -356,9 +356,46 @@ def _lote_misto():
                                                                            divergencia="revisar"))
 
 
+
+def test_planilha_so_com_estoque_indisponivel_e_outros_na_observacao(tmp_path):
+    """Regra do usuário: na planilha, só itens com "Estoque indisponível" (mensagem do item). Os demais
+    itens da WO são lidos e conferidos igual e aparecem na Observação, com material, qtd e mensagem.
+    WO só com outras mensagens: uma linha "-" com a explicação. Maiúsculas/acentos não importam."""
+    def t(url, timeout=None):
+        if "02235" in url:      # WO2: nenhum item com Estoque indisponível
+            return Resposta(200, "application/json", json.dumps({"value": [
+                item(ID="o1", workOrderID=WO2, material="000000000022060652", quantidadeFaltante=1,
+                     mensagem="Estor.EstqForn livre não atingido em 1 UN : 22060652 N190")]}))
+        return Resposta(200, "application/json", json.dumps({"value": [
+            item(ID="a", material="000000000022056366", quantidadeFaltante=1, mensagem="Estoque indisponível"),
+            item(ID="b", material="000000000022063233", quantidadeFaltante=2, mensagem="ESTOQUE INDISPONIVEL "),
+            item(ID="c", material="000000000022069613", quantidadeFaltante=1, mensagem="Estoque insuficiente")]}))
+    rs = processar_lote(ClienteBTP(config_conjunto_unico(url_item=None, chaves_item=["ID"]), t), [WO, WO2], prefs=RAPIDO)
+    assert len(rs[0].linhas) == 3 and rs[0].linhas[2].mensagem_item == "Estoque insuficiente"   # tudo lido e conferido
+    destino = gerar_planilha(rs, tmp_path / "f.xlsx", prefs=Preferencias())
+    assert verificar_planilha(destino, rs) == []
+    wb = load_workbook(destino)
+    d = list(wb["Dados"].iter_rows(min_row=2, values_only=True))
+    assert [(r[0], r[1]) for r in d] == [(WO, "000000000022056366"), (WO, "000000000022063233"), (WO2, "-")]
+    assert "000000000022069613 (qtd 1): Estoque insuficiente" in d[0][6]      # outros itens: 1ª linha da WO
+    assert d[1][6] == "-"
+    assert d[2][6].startswith('Nenhum item com "Estoque indisponível"') and "22060652 N190" in d[2][6]
+    assert wb["Dados"]["G2"].fill.fgColor.rgb in (None, "00000000")           # aviso informativo: sem amarelo
+    mats = {r[0] for r in wb["Materiais"].iter_rows(min_row=2, values_only=True) if r[0]}
+    assert mats == {"000000000022056366", "000000000022063233", "Total"}      # Materiais só com o filtro
+    numeros = {r[0]: r[1] for r in wb["Análise"].iter_rows(values_only=True) if r and len(r) > 1}
+    assert numeros["Itens faltantes (linhas com material na aba Dados)"] == 2
+    assert numeros['Itens com outra mensagem (só na Observação; planilha = "Estoque indisponível")'] == 2
+    # mensagem "as duas" (item — Alerta: alerta) e análise antiga sem mensagem_item: filtra pelo trecho do item
+    from agente_btp.exportacao import entra_na_planilha
+    from agente_btp.modelos import LinhaMensagem
+    antiga = LinhaMensagem("", WO, "1", "2", 1, "Estoque indisponível — Alerta: Erro durante baixa de estoque")
+    assert entra_na_planilha(antiga, "Estoque indisponível") and not entra_na_planilha(antiga, "Erro durante baixa")
+    assert entra_na_planilha(LinhaMensagem("", WO, "1", "2", 1, "Outra"), "")                   # vazio = todos
+
 def test_estrutura_completa_do_excel(tmp_path):
     rs = _lote_misto()
-    destino = gerar_planilha(rs, tmp_path / "x.xlsx", numero=3, prefs=Preferencias(),
+    destino = gerar_planilha(rs, tmp_path / "x.xlsx", numero=3, prefs=Preferencias(mensagem_planilha=""),
                              fonte_campos={"quantidade_faltante": "quantidadeFaltante"})
     wb = load_workbook(destino)
     assert wb.sheetnames == ABAS
@@ -370,7 +407,7 @@ def test_estrutura_completa_do_excel(tmp_path):
                     "Validada")
     assert d[3][7] == "Divergente" and d[0][7] == "Status"
     assert d[1][6] == "-" and d[2][6] == "-"              # conferidos: sem observação ("-")
-    assert verificar_planilha(destino, rs) == []
+    assert verificar_planilha(destino, rs, filtro="") == []
     a = [r for r in wb["Análise"].iter_rows(values_only=True) if r[0]]
     numeros = {r[0]: r[1] for r in a}
     assert numeros["WOs consultadas"] == 3 and numeros["WOs com itens faltantes"] == 2
@@ -384,11 +421,11 @@ def test_estrutura_completa_do_excel(tmp_path):
 
 def test_excel_sem_incompletos_quando_configurado(tmp_path):
     rs = _lote_misto()
-    destino = gerar_planilha(rs, tmp_path / "x.xlsx", prefs=Preferencias(exportar_incompletos=False))
+    destino = gerar_planilha(rs, tmp_path / "x.xlsx", prefs=Preferencias(exportar_incompletos=False, mensagem_planilha=""))
     d = list(load_workbook(destino)["Dados"].iter_rows(min_row=2, values_only=True))
     assert [r[0] for r in d] == [WO, WO, WO2, "99999|999999999"]
     assert d[2][1] == "-" and "omitido" in d[2][6]
-    assert verificar_planilha(destino, rs, exportar_incompletos=False) == []
+    assert verificar_planilha(destino, rs, exportar_incompletos=False, filtro="") == []
 
 
 def test_verificacao_detecta_excel_adulterado(tmp_path):
@@ -537,11 +574,11 @@ def test_situacao_considera_todas_as_leituras():
 def test_texto_com_igual_e_controle_nao_vira_formula_nem_quebra(tmp_path):
     itens = [item(mensagem="=> Saldo insuficiente (-2)"), item(ID="i2", mensagem="Falta\x0bmaterial")]
     rs = processar_lote(ClienteBTP(_sem_chave(), BTP([itens])), [WO], prefs=RAPIDO)
-    destino = gerar_planilha(rs, tmp_path / "x.xlsx")
+    destino = gerar_planilha(rs, tmp_path / "x.xlsx", prefs=Preferencias(mensagem_planilha=""))
     ws = load_workbook(destino)["Dados"]
     assert ws["F2"].value == "=> Saldo insuficiente (-2)" and ws["F2"].data_type == "s"
     assert ws["F3"].value == "Faltamaterial"
-    assert verificar_planilha(destino, rs) == []
+    assert verificar_planilha(destino, rs, filtro="") == []
 
 
 def test_verificacao_acusa_formula_na_aba_1(tmp_path):

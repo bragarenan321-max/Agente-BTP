@@ -909,7 +909,8 @@ class Agente:
             arquivo = gerar_planilha(resultados, destino, numero=ex["numero"], emitida_em=emitida_em, origem=descricao,
                                      prefs=prefs, fonte_campos=api.campos,
                                      releitura_por_chave=bool(api.url_item and api.chaves_item), tabela=tabela)
-            problemas = verificar_planilha(arquivo, resultados, prefs.exportar_incompletos, tabela)
+            problemas = verificar_planilha(arquivo, resultados, prefs.exportar_incompletos, tabela,
+                                           prefs.mensagem_planilha)
             if not parcial:
                 self.loja.definir_arquivo(run_id, arquivo.name)
             if problemas:
