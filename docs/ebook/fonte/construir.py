@@ -318,7 +318,9 @@ def paginas_dos_titulos(pdf: Path, titulos) -> dict[str, int]:
     paginas = {}
     for (nivel, ident, texto), (titulo_pdf, pagina) in zip(titulos, lista):
         # o Chromium às vezes repete o texto do título no marcador (títulos com quebra de página forçada)
-        if _norm(titulo_pdf) not in (_norm(texto), _norm(texto) * 2):
+        # (inteiro ou só a 1ª linha do título quebrado); a posição já é garantida pela ordem.
+        a, b = _norm(titulo_pdf), _norm(texto)
+        if not (a.startswith(b[:12]) and a.endswith(b[-12:]) and len(b) <= len(a) <= 2 * len(b)):
             raise SystemExit(f"[ERRO] ordem dos títulos não confere: '{texto}' x '{titulo_pdf}'")
         paginas[ident] = pagina
     return paginas
