@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 764.0 516" width="764.0" height="516" role="img" aria-label="Leitura em lote com verificação de equivalência" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="764.0" height="516" fill="#FFFFFF"/>
+<path d="M385.5,85.0 L385.5,111.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M385.5,165.0 L385.5,191.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M385.5,245.0 L385.5,271.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M385.5,325.0 L385.5,345.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M289.0,378.0 L225.0,378.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="242.5" y="369.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="257.0" y="381.5" font-size="11" text-anchor="middle" fill="#3B4250">não</text>
+<path d="M385.5,411.0 L385.5,431.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="391.5" y="412.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="405.9" y="424.5" font-size="11" text-anchor="middle" fill="#3B4250">sim</text>
+<rect x="288.96" y="31.0" width="193.04" height="54" rx="27.0" fill="#1D2026" stroke="#1D2026" stroke-width="1.6"/>
+<text x="385.47999999999996" y="54.8" font-size="12" font-weight="600" text-anchor="middle" fill="#FFFFFF">Grupo de até 20 WOs</text>
+<text x="385.47999999999996" y="69.8" font-size="11" font-weight="500" text-anchor="middle" fill="#D0D2D6">(tamanho_lote)</text>
+<rect x="288.96" y="111.0" width="193.04" height="54" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="385.47999999999996" y="134.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">1 consulta da lista:</text>
+<text x="385.47999999999996" y="149.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">filtro OR das 20 WOs</text>
+<rect x="288.96" y="191.0" width="193.04" height="54" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="385.47999999999996" y="214.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Itens de todas as linhas</text>
+<text x="385.47999999999996" y="229.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">em poucas consultas (OR)</text>
+<rect x="288.96" y="271.0" width="193.04" height="54" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="385.47999999999996" y="294.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Reparte por WO pelas</text>
+<text x="385.47999999999996" y="309.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">mesmas regras (_montar)</text>
+<polygon points="385.47999999999996,345.0 481.99999999999994,378.0 385.47999999999996,411.0 288.96,378.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="385.47999999999996" y="374.8" font-size="12" font-weight="600" text-anchor="middle" fill="#5A3A00">Igual à leitura</text>
+<text x="385.47999999999996" y="389.8" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">individual?</text>
+<rect x="18.0" y="351.0" width="206.95999999999998" height="54" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="121.47999999999999" y="374.8" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">Desativa o lote na análise</text>
+<text x="121.47999999999999" y="389.8" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">→ grupo refeito WO a WO</text>
+<rect x="288.96" y="431.0" width="193.04" height="54" rx="7" fill="#E7F5EE" stroke="#1E8E52" stroke-width="2.6"/>
+<text x="385.47999999999996" y="454.8" font-size="12" font-weight="600" text-anchor="middle" fill="#0F4D2C">Segue em lote</text>
+<text x="385.47999999999996" y="469.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(auditorias também)</text>
+<rect x="546.0" y="340.2" width="200.0" height="75.6" rx="4" fill="#FFFFFF" stroke="#B9BCC2" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="646.0" y="367.3" font-size="12" font-weight="600" text-anchor="middle" fill="#5F636B">3 primeiros grupos: todas</text>
+<text x="646.0" y="382.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5F636B">as WOs; depois, 1 com</text>
+<text x="646.0" y="397.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5F636B">itens + 1 vazia por grupo</text>
+</svg>

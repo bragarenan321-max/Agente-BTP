@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 722.24 324" width="722.24" height="324" role="img" aria-label="Roteiro seguro para criar ou alterar uma funcionalidade" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="722.24" height="324" fill="#FFFFFF"/>
+<path d="M197.1,66.0 L261.1,66.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M461.1,66.0 L525.1,66.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M614.7,97.0 L614.7,131.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M525.1,162.0 L461.1,162.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M261.1,162.0 L197.1,162.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M107.6,193.0 L107.6,227.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M197.1,258.0 L261.1,258.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M461.1,258.0 L525.1,258.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="18.0" y="35.0" width="179.11999999999998" height="62" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="107.55999999999999" y="62.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">1. Descrever o</text>
+<text x="107.55999999999999" y="77.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">comportamento desejado</text>
+<rect x="261.12" y="35.0" width="200.0" height="62" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="361.12" y="62.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">2. Localizar o componente</text>
+<text x="361.12" y="77.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">responsável</text>
+<rect x="525.12" y="35.0" width="179.11999999999998" height="62" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="614.68" y="62.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">3. Mapear quem depende</text>
+<text x="614.68" y="77.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">dele (grep, testes)</text>
+<rect x="525.12" y="131.0" width="179.11999999999998" height="62" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="614.68" y="158.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">4. Escrever o teste</text>
+<text x="614.68" y="173.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">que falha</text>
+<rect x="261.12" y="131.0" width="200.0" height="62" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="361.12" y="158.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">5. Implementar a mudança</text>
+<text x="361.12" y="173.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">mínima</text>
+<rect x="18.0" y="131.0" width="179.11999999999998" height="62" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="107.55999999999999" y="158.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">6. Rodar pytest +</text>
+<text x="107.55999999999999" y="173.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">ponta a ponta</text>
+<rect x="18.0" y="227.0" width="179.11999999999998" height="62" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="107.55999999999999" y="254.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">7. Comparar planilha</text>
+<text x="107.55999999999999" y="269.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">antes x depois</text>
+<rect x="261.12" y="227.0" width="200.0" height="62" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="361.12" y="254.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">8. Revisar o diff</text>
+<text x="361.12" y="269.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(nada além do pedido)</text>
+<rect x="525.12" y="227.0" width="179.11999999999998" height="62" rx="7" fill="#E7F5EE" stroke="#1E8E52" stroke-width="2.6"/>
+<text x="614.68" y="254.8" font-size="12" font-weight="600" text-anchor="middle" fill="#0F4D2C">9. Registrar em docs/</text>
+<text x="614.68" y="269.8" font-size="12" font-weight="500" text-anchor="middle" fill="#0F4D2C">e fazer o commit</text>
+</svg>

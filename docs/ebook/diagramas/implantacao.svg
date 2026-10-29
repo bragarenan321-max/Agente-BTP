@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 794.9 324" width="794.9" height="324" role="img" aria-label="Distribuição e implantação no computador do usuário" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="794.9" height="324" fill="#FFFFFF"/>
+<path d="M118.0,96.0 L118.0,132.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M118.0,192.0 L118.0,228.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M218.0,258.0 L282.0,258.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M495.9,66.0 L625.6,66.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="508.5" y="57.5" width="104.5" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="560.8" y="69.5" font-size="11" text-anchor="middle" fill="#3B4250">injeta o agente</text>
+<path d="M701.3,96.0 L701.3,228.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M495.9,258.0 L625.6,258.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-start="url(#pt)" marker-end="url(#pt)"/>
+<rect x="527.4" y="249.5" width="66.7" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="560.8" y="261.5" font-size="11" text-anchor="middle" fill="#3B4250">long-poll</text>
+<path d="M18.0,44.0 L32.0,36.0 L218.0,36.0 L218.0,96.0 L18.0,96.0 Z" fill="#EEF3F8" stroke="#4A6380" stroke-width="1.6"/>
+<text x="118.0" y="62.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2A3A">Pacote Agente-BTP.zip</text>
+<text x="118.0" y="77.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(git archive)</text>
+<rect x="18.0" y="132.0" width="200.0" height="60" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="118.0" y="158.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Extrair por cima da pasta</text>
+<text x="118.0" y="173.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(mantém dados/ e config/)</text>
+<rect x="18.0" y="228.0" width="200.0" height="60" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="118.0" y="254.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Abrir Agente BTP.bat</text>
+<text x="118.0" y="269.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(.venv + pip install)</text>
+<rect x="282.0" y="36.0" width="213.92" height="60" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="286.0" y="40.0" width="205.92" height="52" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="388.96" y="62.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Chrome: extensão carregada</text>
+<text x="388.96" y="77.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">sem compactação (extensao/)</text>
+<rect x="625.62" y="36.0" width="151.27999999999997" height="60" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="629.62" y="40.0" width="143.27999999999997" height="52" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="701.26" y="62.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">BTP no Chrome</text>
+<text x="701.26" y="77.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">login manual + MFA</text>
+<rect x="282.0" y="228.0" width="213.92" height="60" rx="7" fill="#FDECEA" stroke="#C8261E" stroke-width="2.6"/>
+<text x="388.96" y="254.8" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">Agente em execução</text>
+<text x="388.96" y="269.8" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">127.0.0.1:8767</text>
+<rect x="625.62" y="228.0" width="151.27999999999997" height="60" rx="7" fill="#E7F5EE" stroke="#1E8E52" stroke-width="2.6"/>
+<text x="701.26" y="254.8" font-size="12" font-weight="600" text-anchor="middle" fill="#0F4D2C">Aba conectada</text>
+<text x="701.26" y="269.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(selo na página)</text>
+</svg>

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 715.28 466" width="715.28" height="466" role="img" aria-label="Como a aba do BTP se conecta ao programa" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="715.28" height="466" fill="#FFFFFF"/>
+<path d="M104.1,90.0 L104.1,118.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M190.2,147.0 L254.2,147.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M440.2,147.0 L504.2,147.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M440.2,61.0 L600.8,61.0 L600.8,118.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M600.8,176.0 L600.8,198.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M504.2,233.0 L440.2,233.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="457.8" y="224.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="472.2" y="236.5" font-size="11" text-anchor="middle" fill="#3B4250">não</text>
+<path d="M347.2,204.0 L347.2,176.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="353.2" y="181.5" width="47.8" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="377.1" y="193.5" font-size="11" text-anchor="middle" fill="#3B4250">repete</text>
+<path d="M600.8,268.0 L600.8,290.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="606.8" y="270.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="621.2" y="282.5" font-size="11" text-anchor="middle" fill="#3B4250">sim</text>
+<path d="M600.8,348.0 L600.8,376.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="18.0" y="32.0" width="172.16" height="58" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="22.0" y="36.0" width="164.16" height="50" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="104.08" y="57.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Usuário abre o BTP</text>
+<text x="104.08" y="72.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(login + MFA manuais)</text>
+<rect x="254.16" y="32.0" width="186.07999999999998" height="58" rx="4" fill="#FFFFFF" stroke="#B9BCC2" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="347.2" y="57.8" font-size="12" font-weight="600" text-anchor="middle" fill="#5F636B">Alternativa: favorito</text>
+<text x="347.2" y="72.8" font-size="12" font-weight="500" text-anchor="middle" fill="#5F636B">busca /agente_btp.js</text>
+<rect x="18.0" y="118.0" width="172.16" height="58" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="104.08" y="143.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">no_btp.js (extensão)</text>
+<text x="104.08" y="158.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">pede a conexão</text>
+<rect x="254.16" y="118.0" width="186.07999999999998" height="58" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="347.2" y="143.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">fundo.js injeta</text>
+<text x="347.2" y="158.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">agente_btp.js (MAIN)</text>
+<rect x="504.24" y="118.0" width="193.04" height="58" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="600.76" y="143.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">agente_btp.js</text>
+<text x="600.76" y="158.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">POST /api/agente/ola</text>
+<polygon points="600.76,198.0 697.28,233.0 600.76,268.0 504.24,233.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="600.76" y="229.8" font-size="12" font-weight="600" text-anchor="middle" fill="#5A3A00">Programa local</text>
+<text x="600.76" y="244.8" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">respondeu?</text>
+<rect x="254.16" y="204.0" width="186.07999999999998" height="58" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="347.2" y="229.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Aguarda 5 s e tenta</text>
+<text x="347.2" y="244.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">de novo (pela extensão)</text>
+<rect x="504.24" y="290.0" width="193.04" height="58" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="600.76" y="315.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Abre N trabalhadores</text>
+<text x="600.76" y="330.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(N = paralelismo, até 6)</text>
+<rect x="504.24" y="376.0" width="193.04" height="58" rx="7" fill="#E7F5EE" stroke="#1E8E52" stroke-width="2.6"/>
+<text x="600.76" y="401.8" font-size="12" font-weight="600" text-anchor="middle" fill="#0F4D2C">Selo na aba:</text>
+<text x="600.76" y="416.8" font-size="12" font-weight="500" text-anchor="middle" fill="#0F4D2C">&quot;Agente BTP: conectado&quot;</text>
+</svg>

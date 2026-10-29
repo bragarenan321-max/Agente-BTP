@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 771.12 644" width="771.12" height="644" role="img" aria-label="Preparação da fonte de dados (primeira vez)" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="771.12" height="644" fill="#FFFFFF"/>
+<path d="M371.6,82.0 L371.6,100.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M489.0,132.0 L561.2,132.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="510.7" y="123.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="525.1" y="135.5" font-size="11" text-anchor="middle" fill="#3B4250">sim</text>
+<path d="M371.6,164.0 L371.6,182.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="377.6" y="164.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="392.0" y="176.5" font-size="11" text-anchor="middle" fill="#3B4250">não</text>
+<path d="M489.0,208.0 L561.2,208.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="501.2" y="199.5" width="47.8" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="525.1" y="211.5" font-size="11" text-anchor="middle" fill="#3B4250">serviu</text>
+<path d="M657.2,182.0 L657.2,158.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M371.6,234.0 L371.6,258.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="377.6" y="237.5" width="73.0" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="414.1" y="249.5" font-size="11" text-anchor="middle" fill="#3B4250">não serviu</text>
+<path d="M371.6,310.0 L371.6,334.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="377.6" y="313.5" width="73.0" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="414.1" y="325.5" font-size="11" text-anchor="middle" fill="#3B4250">não serviu</text>
+<path d="M371.6,386.0 L371.6,410.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="377.6" y="389.5" width="73.0" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="414.1" y="401.5" font-size="11" text-anchor="middle" fill="#3B4250">não serviu</text>
+<path d="M371.6,462.0 L371.6,486.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="377.6" y="465.5" width="73.0" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="414.1" y="477.5" font-size="11" text-anchor="middle" fill="#3B4250">não serviu</text>
+<path d="M371.6,538.0 L371.6,562.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="377.6" y="541.5" width="98.2" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="426.7" y="553.5" font-size="11" text-anchor="middle" fill="#3B4250">tempo esgotado</text>
+<rect x="254.16000000000003" y="30.0" width="234.79999999999998" height="52" rx="26.0" fill="#1D2026" stroke="#1D2026" stroke-width="1.6"/>
+<text x="371.56" y="60.3" font-size="12" font-weight="500" text-anchor="middle" fill="#FFFFFF">Análise pedida</text>
+<polygon points="371.56,100.0 488.96,132.0 371.56,164.0 254.16000000000003,132.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="371.56" y="128.8" font-size="12" font-weight="600" text-anchor="middle" fill="#5A3A00">config/api.json</text>
+<text x="371.56" y="143.8" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">existe?</text>
+<rect x="561.24" y="106.0" width="191.88" height="52" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="657.1800000000001" y="128.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Conferência da amostra</text>
+<text x="657.1800000000001" y="143.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(se não confirmada)</text>
+<rect x="254.16000000000003" y="182.0" width="234.79999999999998" height="52" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="371.56" y="204.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">0º Receita confirmada:</text>
+<text x="371.56" y="219.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Pendencias → UltimoRetornoView</text>
+<path d="M561.24,190.0 L575.24,182.0 L753.1200000000001,182.0 L753.1200000000001,234.0 L561.24,234.0 Z" fill="#EEF3F8" stroke="#4A6380" stroke-width="1.6"/>
+<text x="657.1800000000001" y="204.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2A3A">Grava config/api.json</text>
+<text x="657.1800000000001" y="219.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(origem + campos)</text>
+<rect x="254.16000000000003" y="258.0" width="234.79999999999998" height="52" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="371.56" y="280.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">1º Exploração pelos dados</text>
+<text x="371.56" y="295.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(exploracao.py)</text>
+<rect x="254.16000000000003" y="334.0" width="234.79999999999998" height="52" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="371.56" y="356.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">2º Candidatos do $metadata</text>
+<text x="371.56" y="371.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(autoconfig.py)</text>
+<rect x="254.16000000000003" y="410.0" width="234.79999999999998" height="52" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="371.56" y="432.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">3º Sondagem na linha</text>
+<text x="371.56" y="447.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">do alerta (sondagem.py)</text>
+<rect x="254.16000000000003" y="486.0" width="234.79999999999998" height="52" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="371.56" y="508.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">4º Observa a tela do Monitor</text>
+<text x="371.56" y="523.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(analisador.py, até 5 min)</text>
+<rect x="254.16000000000003" y="562.0" width="234.79999999999998" height="52" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="371.56" y="584.8" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">Não preparou: avisa e</text>
+<text x="371.56" y="599.8" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">oferece o diagnóstico</text>
+<rect x="561.24" y="323.6" width="191.88" height="148.8" rx="4" fill="#FFFFFF" stroke="#B9BCC2" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="657.1800000000001" y="374.0" font-size="11" font-weight="600" text-anchor="middle" fill="#5F636B">Cada caminho só serve se</text>
+<text x="657.1800000000001" y="388.0" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">trouxer os itens da janela</text>
+<text x="657.1800000000001" y="402.0" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">Mensagens da própria WO</text>
+<text x="657.1800000000001" y="416.0" font-size="10" font-weight="500" text-anchor="middle" fill="#5F636B">(_validar = 2); o primeiro</text>
+<text x="657.1800000000001" y="430.0" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">que servir é gravado</text>
+<rect x="18.0" y="281.05" width="172.16" height="81.9" rx="4" fill="#FFFFFF" stroke="#B9BCC2" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="104.08" y="311.3" font-size="12" font-weight="600" text-anchor="middle" fill="#5F636B">Testes com as 5</text>
+<text x="104.08" y="326.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5F636B">primeiras WOs válidas</text>
+<text x="104.08" y="341.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5F636B">da própria lista</text>
+</svg>

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 823.5079999999999 582" width="823.5079999999999" height="582" role="img" aria-label="Laço do motor: passadas, sondas e pausas (motor.py)" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="823.5079999999999" height="582" fill="#FFFFFF"/>
+<path d="M390.9,83.0 L390.9,109.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M390.9,161.0 L390.9,181.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M282.0,213.0 L218.0,213.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="235.6" y="204.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="250.0" y="216.5" font-size="11" text-anchor="middle" fill="#3B4250">não</text>
+<path d="M390.9,245.0 L390.9,265.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="396.9" y="246.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="411.3" y="258.5" font-size="11" text-anchor="middle" fill="#3B4250">sim</text>
+<path d="M499.7,291.0 L563.7,291.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M390.9,317.0 L390.9,337.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M282.0,369.0 L118.0,369.0 L118.0,421.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="179.2" y="360.5" width="41.5" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="200.0" y="372.5" font-size="11" text-anchor="middle" fill="#3B4250">pausa</text>
+<path d="M499.7,369.0 L684.6,369.0 L684.6,421.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="568.3" y="360.5" width="47.8" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="592.2" y="372.5" font-size="11" text-anchor="middle" fill="#3B4250">sessão</text>
+<path d="M390.9,401.0 L390.9,499.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="396.9" y="441.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="411.3" y="453.5" font-size="11" text-anchor="middle" fill="#3B4250">fim</text>
+<rect x="282.0" y="31.0" width="217.74799999999996" height="52" rx="26.0" fill="#1D2026" stroke="#1D2026" stroke-width="1.6"/>
+<text x="390.87399999999997" y="53.8" font-size="12" font-weight="600" text-anchor="middle" fill="#FFFFFF">executar(): em andamento</text>
+<text x="390.87399999999997" y="68.8" font-size="12" font-weight="500" text-anchor="middle" fill="#FFFFFF">voltam para a fila</text>
+<rect x="282.0" y="109.0" width="217.74799999999996" height="52" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="390.87399999999997" y="131.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Sonda antes de começar</text>
+<text x="390.87399999999997" y="146.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(_verificar_sessao_inicial)</text>
+<polygon points="390.87399999999997,181.0 499.74799999999993,213.0 390.87399999999997,245.0 282.0,213.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="390.87399999999997" y="217.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">Há WOs a processar?</text>
+<rect x="18.0" y="187.0" width="200.0" height="52" rx="7" fill="#E7F5EE" stroke="#1E8E52" stroke-width="2.6"/>
+<text x="118.0" y="217.3" font-size="12" font-weight="500" text-anchor="middle" fill="#0F4D2C">Encerra: concluída</text>
+<rect x="282.0" y="265.0" width="217.74799999999996" height="52" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="390.87399999999997" y="287.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">_passada(): grupos em fila,</text>
+<text x="390.87399999999997" y="302.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">N trabalhadores em paralelo</text>
+<rect x="563.7479999999999" y="265.0" width="241.76" height="52" rx="4" fill="#FFFFFF" stroke="#B9BCC2" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="684.6279999999999" y="287.8" font-size="12" font-weight="600" text-anchor="middle" fill="#5F636B">Sonda a cada 60 s</text>
+<text x="684.6279999999999" y="302.8" font-size="12" font-weight="500" text-anchor="middle" fill="#5F636B">ou 100 WOs</text>
+<polygon points="390.87399999999997,337.0 499.74799999999993,369.0 390.87399999999997,401.0 282.0,369.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="390.87399999999997" y="365.8" font-size="12" font-weight="600" text-anchor="middle" fill="#5A3A00">Como terminou</text>
+<text x="390.87399999999997" y="380.8" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">a passada?</text>
+<rect x="18.0" y="421.0" width="200.0" height="52" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="118.0" y="443.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Pausa do usuário: aguarda</text>
+<text x="118.0" y="458.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Retomar e volta ao início</text>
+<rect x="563.7479999999999" y="421.0" width="241.76" height="52" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="684.6279999999999" y="443.8" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">Sessão caiu: espera aba/sonda</text>
+<text x="684.6279999999999" y="458.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(a cada 30 s) e volta ao início</text>
+<rect x="282.0" y="499.0" width="217.74799999999996" height="52" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="390.87399999999997" y="521.8" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">Parar ou tempo máximo:</text>
+<text x="390.87399999999997" y="536.8" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">interrompida (retomável)</text>
+</svg>

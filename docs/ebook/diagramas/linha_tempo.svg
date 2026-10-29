@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 965.3599999999999 360" width="965.3599999999999" height="360" role="img" aria-label="Linha do tempo do desenvolvimento (histórico Git)" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="965.3599999999999" height="360" fill="#FFFFFF"/>
+<path d="M204.1,72.0 L268.1,72.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M461.1,72.0 L525.1,72.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M704.2,72.0 L768.2,72.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M857.8,110.0 L857.8,142.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M768.2,180.0 L704.2,180.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M525.1,180.0 L461.1,180.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M268.1,180.0 L204.1,180.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M111.0,218.0 L111.0,250.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M204.1,288.0 L268.1,288.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M461.1,288.0 L525.1,288.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M704.2,288.0 L768.2,288.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="18.0" y="34.0" width="186.07999999999998" height="76" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="111.03999999999999" y="61.3" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">01/10</text>
+<text x="111.03999999999999" y="76.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Repositório e README</text>
+<text x="111.03999999999999" y="91.3" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(especificação inicial)</text>
+<rect x="268.08" y="34.0" width="193.04" height="76" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="364.59999999999997" y="61.3" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">13/10</text>
+<text x="364.59999999999997" y="76.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Mapeamento do processo</text>
+<text x="364.59999999999997" y="91.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">+ 1ª versão (Excel)</text>
+<rect x="525.1199999999999" y="34.0" width="179.11999999999998" height="76" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="614.6799999999998" y="61.3" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">13/10</text>
+<text x="614.6799999999998" y="76.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Conexão pela aba</text>
+<text x="614.6799999999998" y="91.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">já aberta (favorito)</text>
+<rect x="768.2399999999999" y="34.0" width="179.11999999999998" height="76" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="857.7999999999998" y="61.3" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">14/10</text>
+<text x="857.7999999999998" y="76.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Extensão do Chrome,</text>
+<text x="857.7999999999998" y="91.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">histórico e auditoria</text>
+<rect x="768.2399999999999" y="142.0" width="179.11999999999998" height="76" rx="7" fill="#FDECEA" stroke="#C8261E" stroke-width="2.6"/>
+<text x="857.7999999999998" y="169.3" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">15/10</text>
+<text x="857.7999999999998" y="184.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">Fonte real: Pendencias</text>
+<text x="857.7999999999998" y="199.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">→ UltimoRetornoView</text>
+<rect x="525.1199999999999" y="142.0" width="179.11999999999998" height="76" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="614.6799999999998" y="169.3" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">21/10</text>
+<text x="614.6799999999998" y="184.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Base SQLite, retomada,</text>
+<text x="614.6799999999998" y="199.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">sessão e lote paralelo</text>
+<rect x="268.08" y="142.0" width="193.04" height="76" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="364.59999999999997" y="169.3" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">22/10</text>
+<text x="364.59999999999997" y="184.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Escala: 13.623 WOs</text>
+<text x="364.59999999999997" y="199.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">sem travar</text>
+<rect x="18.0" y="142.0" width="186.07999999999998" height="76" rx="7" fill="#FDECEA" stroke="#C8261E" stroke-width="2.6"/>
+<text x="111.03999999999999" y="169.3" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">27/10</text>
+<text x="111.03999999999999" y="184.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">1ª execução real →</text>
+<text x="111.03999999999999" y="199.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">correções e redesign</text>
+<rect x="18.0" y="250.0" width="186.07999999999998" height="76" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="111.03999999999999" y="277.3" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">27/10</text>
+<text x="111.03999999999999" y="292.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Itens repetidos e</text>
+<text x="111.03999999999999" y="307.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">células com &quot;-&quot;</text>
+<rect x="268.08" y="250.0" width="193.04" height="76" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="364.59999999999997" y="277.3" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">28/10</text>
+<text x="364.59999999999997" y="292.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Tipo Material, tabela</text>
+<text x="364.59999999999997" y="307.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">de valores, menu lateral</text>
+<rect x="525.1199999999999" y="250.0" width="179.11999999999998" height="76" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="614.6799999999998" y="277.3" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">29/10</text>
+<text x="614.6799999999998" y="292.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Planilha só com</text>
+<text x="614.6799999999998" y="307.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">&quot;Estoque indisponível&quot;</text>
+<rect x="768.2399999999999" y="250.0" width="179.11999999999998" height="76" rx="7" fill="#E7F5EE" stroke="#1E8E52" stroke-width="2.6"/>
+<text x="857.7999999999998" y="277.3" font-size="12" font-weight="600" text-anchor="middle" fill="#0F4D2C">Situação atual</text>
+<text x="857.7999999999998" y="292.3" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(29/10/2026)</text>
+<text x="857.7999999999998" y="307.3" font-size="12" font-weight="500" text-anchor="middle" fill="#0F4D2C">em uso operacional</text>
+</svg>
