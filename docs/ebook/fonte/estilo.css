@@ -4,7 +4,7 @@
 :root {
   --marca: #C8261E; --marca-clara: #FDECEA; --texto: #1F2329; --texto-2: #5B6069; --texto-3: #8B8F96;
   --linha: #E4E5E8; --fundo-suave: #F6F6F7; --mono: "DejaVu Sans Mono", "Liberation Mono", monospace;
-  --sans: Inter, "DejaVu Sans", sans-serif; --serif: "Bitstream Charter", Charter, "DejaVu Serif", serif;
+  --sans: Inter, "DejaVu Sans", sans-serif; --serif: Caladea, "Bitstream Charter", "DejaVu Serif", serif;
 }
 * { box-sizing: border-box; }
 html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

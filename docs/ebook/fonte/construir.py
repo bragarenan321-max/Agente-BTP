@@ -414,6 +414,8 @@ def carimbar(pdf_entrada: Path, pdf_saida: Path, titulos, paginas, pular: int) -
         c.save()
         buf.seek(0)
         pagina.merge_page(PdfReader(buf).pages[0])
+        pagina.compress_content_streams(level=9)   # merge_page grava o conteúdo descomprimido (127 MB)
+    escritor.compress_identical_objects(remove_duplicates=True, remove_unreferenced=True)
     escritor.add_metadata({"/Title": f"{TITULO} — {SUBTITULO}", "/Author": "Documentação do projeto Agente BTP",
                            "/Subject": DESCRICAO})
     with open(pdf_saida, "wb") as f:

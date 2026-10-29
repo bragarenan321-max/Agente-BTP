@@ -1,0 +1,380 @@
+[
+ {
+  "arquivo": "agente_btp/cliente.py",
+  "inicio": 1,
+  "fim": 6,
+  "rotulo": "docstring do módulo"
+ },
+ {
+  "arquivo": "Abrir Agente BTP.bat",
+  "inicio": 1,
+  "fim": 16,
+  "rotulo": "script de inicialização"
+ },
+ {
+  "arquivo": "agente_btp/__main__.py",
+  "inicio": 47,
+  "fim": 58,
+  "rotulo": "main"
+ },
+ {
+  "arquivo": "agente_btp/__main__.py",
+  "inicio": 32,
+  "fim": 44,
+  "rotulo": "desligar_selecao_da_janela"
+ },
+ {
+  "arquivo": "agente_btp/agente.py",
+  "inicio": 53,
+  "fim": 94,
+  "rotulo": "Agente.__init__"
+ },
+ {
+  "arquivo": "agente_btp/agente.py",
+  "inicio": 358,
+  "fim": 368,
+  "rotulo": "Agente._laco"
+ },
+ {
+  "arquivo": "agente_btp/agente.py",
+  "inicio": 221,
+  "fim": 225,
+  "rotulo": "Agente.enviar"
+ },
+ {
+  "arquivo": "agente_btp/servidor.py",
+  "inicio": 47,
+  "fim": 58,
+  "rotulo": "criar_app"
+ },
+ {
+  "arquivo": "agente_btp/ponte.py",
+  "inicio": 81,
+  "fim": 109,
+  "rotulo": "PonteAba.proxima_tarefa"
+ },
+ {
+  "arquivo": "agente_btp/ponte.py",
+  "inicio": 161,
+  "fim": 179,
+  "rotulo": "PonteAba.get"
+ },
+ {
+  "arquivo": "agente_btp/ponte.py",
+  "inicio": 190,
+  "fim": 218,
+  "rotulo": "PonteAba._executar"
+ },
+ {
+  "arquivo": "agente_btp/ponte.py",
+  "inicio": 148,
+  "fim": 156,
+  "rotulo": "PonteAba.conectada"
+ },
+ {
+  "arquivo": "agente_btp/web/agente_btp.js",
+  "inicio": 183,
+  "fim": 205,
+  "rotulo": "função executar"
+ },
+ {
+  "arquivo": "agente_btp/web/agente_btp.js",
+  "inicio": 231,
+  "fim": 280,
+  "rotulo": "função trabalhador"
+ },
+ {
+  "arquivo": "agente_btp/servidor.py",
+  "inicio": 91,
+  "fim": 99,
+  "rotulo": "rota /api/agente/ola"
+ },
+ {
+  "arquivo": "agente_btp/servidor.py",
+  "inicio": 66,
+  "fim": 81,
+  "rotulo": "CORS e verificação de origem"
+ },
+ {
+  "arquivo": "agente_btp/agente.py",
+  "inicio": 165,
+  "fim": 180,
+  "rotulo": "Agente.estado_conexao"
+ },
+ {
+  "arquivo": "agente_btp/agente.py",
+  "inicio": 198,
+  "fim": 219,
+  "rotulo": "Agente.sondar"
+ },
+ {
+  "arquivo": "extensao/fundo.js",
+  "inicio": 26,
+  "fim": 36,
+  "rotulo": "função injetar"
+ },
+ {
+  "arquivo": "agente_btp/config.py",
+  "inicio": 33,
+  "fim": 53,
+  "rotulo": "ApiConfig"
+ },
+ {
+  "arquivo": "agente_btp/autoconfig.py",
+  "inicio": 453,
+  "fim": 482,
+  "rotulo": "receita_monitor"
+ },
+ {
+  "arquivo": "agente_btp/agente.py",
+  "inicio": 418,
+  "fim": 451,
+  "rotulo": "Agente._validar"
+ },
+ {
+  "arquivo": "agente_btp/agente.py",
+  "inicio": 468,
+  "fim": 485,
+  "rotulo": "Agente._preparar_com_wos"
+ },
+ {
+  "arquivo": "agente_btp/agente.py",
+  "inicio": 984,
+  "fim": 1023,
+  "rotulo": "Agente._garantir_preparo"
+ },
+ {
+  "arquivo": "agente_btp/agente.py",
+  "inicio": 272,
+  "fim": 302,
+  "rotulo": "Agente._confirmar_fonte"
+ },
+ {
+  "arquivo": "agente_btp/entrada.py",
+  "inicio": 11,
+  "fim": 17,
+  "rotulo": "normalizar_wo"
+ },
+ {
+  "arquivo": "agente_btp/entrada.py",
+  "inicio": 30,
+  "fim": 60,
+  "rotulo": "ler_wos_planilha"
+ },
+ {
+  "arquivo": "agente_btp/odata.py",
+  "inicio": 27,
+  "fim": 35,
+  "rotulo": "preencher_modelo"
+ },
+ {
+  "arquivo": "agente_btp/cliente.py",
+  "inicio": 287,
+  "fim": 331,
+  "rotulo": "ClienteBTP._montar"
+ },
+ {
+  "arquivo": "agente_btp/cliente.py",
+  "inicio": 627,
+  "fim": 681,
+  "rotulo": "ClienteBTP.ocorrencia"
+ },
+ {
+  "arquivo": "agente_btp/cliente.py",
+  "inicio": 498,
+  "fim": 522,
+  "rotulo": "ClienteBTP.ler_lote"
+ },
+ {
+  "arquivo": "agente_btp/processador.py",
+  "inicio": 258,
+  "fim": 294,
+  "rotulo": "processar_grupo"
+ },
+ {
+  "arquivo": "agente_btp/processador.py",
+  "inicio": 135,
+  "fim": 183,
+  "rotulo": "processar_wo"
+ },
+ {
+  "arquivo": "agente_btp/odata.py",
+  "inicio": 42,
+  "fim": 71,
+  "rotulo": "extrair_pagina"
+ },
+ {
+  "arquivo": "agente_btp/odata.py",
+  "inicio": 84,
+  "fim": 88,
+  "rotulo": "como_texto"
+ },
+ {
+  "arquivo": "agente_btp/odata.py",
+  "inicio": 91,
+  "fim": 99,
+  "rotulo": "como_quantidade"
+ },
+ {
+  "arquivo": "agente_btp/modelos.py",
+  "inicio": 16,
+  "fim": 26,
+  "rotulo": "Status"
+ },
+ {
+  "arquivo": "agente_btp/modelos.py",
+  "inicio": 34,
+  "fim": 40,
+  "rotulo": "Auditoria"
+ },
+ {
+  "arquivo": "agente_btp/modelos.py",
+  "inicio": 53,
+  "fim": 74,
+  "rotulo": "LinhaMensagem"
+ },
+ {
+  "arquivo": "agente_btp/auditoria.py",
+  "inicio": 99,
+  "fim": 153,
+  "rotulo": "consolidar"
+ },
+ {
+  "arquivo": "agente_btp/auditoria.py",
+  "inicio": 44,
+  "fim": 64,
+  "rotulo": "_resolver"
+ },
+ {
+  "arquivo": "agente_btp/loja.py",
+  "inicio": 64,
+  "fim": 72,
+  "rotulo": "estado_da_wo"
+ },
+ {
+  "arquivo": "agente_btp/loja.py",
+  "inicio": 325,
+  "fim": 344,
+  "rotulo": "Loja.concluir"
+ },
+ {
+  "arquivo": "agente_btp/loja.py",
+  "inicio": 346,
+  "fim": 351,
+  "rotulo": "Loja.devolver"
+ },
+ {
+  "arquivo": "agente_btp/exportacao.py",
+  "inicio": 136,
+  "fim": 147,
+  "rotulo": "itens_unicos"
+ },
+ {
+  "arquivo": "agente_btp/agente.py",
+  "inicio": 898,
+  "fim": 925,
+  "rotulo": "Agente._planilha"
+ },
+ {
+  "arquivo": "agente_btp/exportacao.py",
+  "inicio": 195,
+  "fim": 219,
+  "rotulo": "_linhas_dados"
+ },
+ {
+  "arquivo": "agente_btp/exportacao.py",
+  "inicio": 176,
+  "fim": 178,
+  "rotulo": "entra_na_planilha"
+ },
+ {
+  "arquivo": "agente_btp/exportacao.py",
+  "inicio": 168,
+  "fim": 173,
+  "rotulo": "mensagem_do_item"
+ },
+ {
+  "arquivo": "agente_btp/exportacao.py",
+  "inicio": 243,
+  "fim": 279,
+  "rotulo": "linhas_materiais"
+ },
+ {
+  "arquivo": "agente_btp/exportacao.py",
+  "inicio": 503,
+  "fim": 519,
+  "rotulo": "_celula"
+ },
+ {
+  "arquivo": "agente_btp/exportacao.py",
+  "inicio": 445,
+  "fim": 468,
+  "rotulo": "verificar_planilha"
+ },
+ {
+  "arquivo": "agente_btp/entrada.py",
+  "inicio": 11,
+  "fim": 17,
+  "rotulo": "normalizar_wo"
+ },
+ {
+  "arquivo": "agente_btp/modelos.py",
+  "inicio": 130,
+  "fim": 158,
+  "rotulo": "família de exceções do agente"
+ },
+ {
+  "arquivo": "agente_btp/historico.py",
+  "inicio": 38,
+  "fim": 42,
+  "rotulo": "gravação atômica"
+ },
+ {
+  "arquivo": "agente_btp/cliente.py",
+  "inicio": 55,
+  "fim": 85,
+  "rotulo": "classificar"
+ },
+ {
+  "arquivo": "agente_btp/processador.py",
+  "inicio": 33,
+  "fim": 43,
+  "rotulo": "_com_retentativa"
+ },
+ {
+  "arquivo": "agente_btp/motor.py",
+  "inicio": 173,
+  "fim": 193,
+  "rotulo": "Motor._trabalhador"
+ },
+ {
+  "arquivo": "agente_btp/preferencias.py",
+  "inicio": 63,
+  "fim": 96,
+  "rotulo": "validar"
+ },
+ {
+  "arquivo": "agente_btp/diagnostico.py",
+  "inicio": 76,
+  "fim": 93,
+  "rotulo": "consulta à taxonomia"
+ },
+ {
+  "arquivo": "agente_btp/diagnostico.py",
+  "inicio": 96,
+  "fim": 122,
+  "rotulo": "remoção de segredos"
+ },
+ {
+  "arquivo": "agente_btp/agente.py",
+  "inicio": 1112,
+  "fim": 1117,
+  "rotulo": "caminho_saida"
+ },
+ {
+  "arquivo": "agente_btp/processador.py",
+  "inicio": 186,
+  "fim": 201,
+  "rotulo": "processar_wo_seguro"
+ }
+]
