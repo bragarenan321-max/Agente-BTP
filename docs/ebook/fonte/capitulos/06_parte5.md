@@ -29,7 +29,7 @@ Nenhum desses arquivos guarda senha, cookie ou *token*. A docstring de `preferen
 | `url_mensagens` / `campo_mensagens_expandidas` / `campo_mensagens_link` / `campo_mensagens_json` | De onde vêm os itens da janela Mensagens (um dos quatro modos) | Texto ou vazio | Pelo menos um é obrigatório; senão: "Informe de onde vêm as mensagens" |
 | `campos` | Nome técnico de cada campo no BTP (`material`, `fornecedor`, `quantidade_faltante`, `mensagem`...) | Dicionário | Precisa de pelo menos 3 dos 4 obrigatórios, sempre com material ou mensagem |
 | `url_item`, `chaves_item` | Releitura de um item pela chave (auditoria independente) | Texto e lista | Sem eles, as auditorias são sempre novas consultas da WO |
-| `mensagem_origem` | Mensagem que vai para a planilha: `item`, `alerta` ou as duas | Texto | Padrão `item` |
+| `mensagem_origem` | Mensagem que vai para a planilha: `item`, `alerta` ou `ambas` | Texto | Padrão `item` |
 | `confirmada` | Se o usuário confirmou a amostra | Verdadeiro/falso | Fonte não confirmada pede a conferência antes da análise |
 | `versao` | Versão da regra de fonte | Inteiro | Abaixo de `VERSAO_CONFIG` (6), o arquivo é apagado na inicialização (`descartar_se_antiga`) e a fonte é refeita |
 
@@ -89,7 +89,7 @@ Fixos no código: `127.0.0.1`, porta `8767` (`__main__.py`, linha 13). O endere�
 
 ## 23. Como executar o agente do início ao fim {#cap23}
 
-@@figura seq_execucao
+Os passos abaixo seguem a ordem da sequência completa mostrada no Capítulo 31 ([[fig:seq_execucao]]).
 
 Os passos abaixo valem para o computador do usuário (Windows), com o navegador já logado no BTP.
 
@@ -102,7 +102,7 @@ Os passos abaixo valem para o computador do usuário (Windows), com o navegador 
 ### Passo 2 — Verificar o Python
 
 - **Comando** (no Prompt de Comando): `py -3 --version`
-- **Resultado esperado:** `Python 3.x.y`. <span class="naodet">NÃO DETERMINADO</span>: o projeto não declara versão mínima em nenhum arquivo. Os testes deste livro rodaram com Python 3.13.16. As anotações do tipo `str | None` não exigem, sozinhas, uma versão recente, porque todos os módulos usam `from __future__ import annotations`; ainda assim, recomenda-se uma versão 3.10 ou mais nova, ainda mantida pelos desenvolvedores do Python.
+- **Resultado esperado:** `Python 3.x.y`. <span class="naodet">NÃO DETERMINADO</span>: o projeto não declara versão mínima em nenhum arquivo. Os testes deste livro rodaram com Python 3.13.16. As anotações do tipo `str | None` não exigem, sozinhas, uma versão recente, porque todos os módulos com código usam `from __future__ import annotations` (só `__init__.py`, que não define funções, não usa); ainda assim, recomenda-se uma versão 3.10 ou mais nova, ainda mantida pelos desenvolvedores do Python.
 - **Problema:** "py não é reconhecido" → instalar o Python pelo site oficial marcando "Add python.exe to PATH".
 
 ### Passo 3 — Abrir o agente
