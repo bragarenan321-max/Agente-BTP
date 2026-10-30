@@ -391,3 +391,22 @@ em 6 colunas fixas. Uso da largura: 1920 px = 66%; zoom 67% (2150 px CSS) = 59%;
 **Validação:**
 - pytest 164 ok (teste novo `test_planilha_so_com_estoque_indisponivel_e_outros_na_observacao`; os testes de estrutura, zeros e fórmulas rodam com o filtro vazio, que é o propósito deles).
 - `rodar_tela` 136/136; `rodar_sessao`, `rodar_aba` e `rodar_extensao` ok.
+
+## 16. Rodada 12 — regra "Estoque indisponível": Status e mensagens que mudam entre leituras
+
+**Problemas encontrados na regra da rodada 11 (revisão do código):**
+1. **Status contaminado por itens fora da planilha.** O Status da WO (planilha, tela e histórico) vinha de *todos* os itens. Uma WO com o item "Estoque indisponível" conferido e um item de outra mensagem com quantidade instável aparecia como "Divergente", com a Observação da linha "-": duas colunas contraditórias.
+2. **Item de estoque podia sumir da planilha.** `mensagem_item` vinha só da 1ª leitura. Se a 1ª leitura trazia "Estoque insuficiente" e as seguintes "Estoque indisponível", o item ia para a Observação como "outra mensagem". No modo "mensagem do alerta", a variação da mensagem do item nem era detectada como divergência.
+
+**Correção:**
+- `auditoria.consolidar` guarda em `LinhaMensagem.mensagens_lidas` a mensagem do item de **todas** as leituras (gravada na base). Se ela variar, o item fica **Divergente** com a nota "Divergente entre leituras (mensagem do item): …", inclusive no modo alerta.
+- `exportacao.entra_na_planilha`: o item entra se **qualquer** leitura trouxe a mensagem do filtro, ou se o BTP não informou o campo de mensagem (incerto: entra sinalizado). Item sem mensagem própria, de forma consistente, continua fora (como antes).
+- `loja.visao_da_planilha` + `estado_da_wo(r, filtro)` / `motivo_da_wo(r, filtro)`: o estado gravado (contadores da tela, histórico, retomada) e a coluna Status consideram só os itens da planilha. O motor passa `prefs.mensagem_planilha`; sem filtro, nada muda.
+- Aba Análise: "WOs com itens "Estoque indisponível" (na planilha)" e "WOs só com itens de outra mensagem"; na situação por WO, "Sem itens "Estoque indisponível" (só outras mensagens, na Observação)".
+- Observação: valores de divergência com ponto dentro da mensagem não são mais cortados (`_valores_da_nota`).
+
+**Testes:** 3 novos (`test_status_da_planilha_ignora_divergencia_em_item_de_outra_mensagem`, `test_item_cuja_mensagem_muda_para_estoque_indisponivel_fica_na_planilha`, `test_mensagem_do_item_decide_pela_leitura_e_pela_certeza`); 167 passando; ponta a ponta: tela 136/136, sessão OK, aba e extensão OK.
+
+**Efeito nos dados reais:** na análise de 13.623 WOs, todas estavam "Validada" e nenhum item teve mensagem diferente entre leituras: a planilha daquela análise não muda. A correção cobre o que acontece quando o BTP muda durante uma análise.
+
+**Limitação:** análises gravadas antes desta versão não têm `mensagens_lidas`; o relatório regerado usa a mensagem gravada (1ª leitura), como antes. Os contadores já gravados dessas análises também não são recalculados.

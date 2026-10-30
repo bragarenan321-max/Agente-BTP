@@ -103,8 +103,7 @@ def observacao_item(l: LinhaMensagem) -> str:
             continue
         rotulo = ROTULO[campo]
         if nota.startswith("Divergente"):
-            valores = nota.split(":", 1)[1].split(".")[0].strip()
-            valores = " e ".join(v.split("=", 1)[-1] for v in valores.split(" / "))
+            valores = _valores_da_nota(nota)
             if "Resolvida" in nota:
                 partes.append(f"{rotulo} mudou no BTP durante a consulta ({valores}); vale o valor atual")
             else:
@@ -122,11 +121,20 @@ def observacao_item(l: LinhaMensagem) -> str:
     return "; ".join(partes) + ("." if partes else "")
 
 
-def estado_rotulo(r: ResultadoWO) -> str:
+def _valores_da_nota(nota: str) -> str:
+    """'Divergente entre leituras: r0=A / r1=B. Não resolvida...' -> 'A e B' (a mensagem pode ter pontos)."""
+    corpo = nota.split(":", 1)[1]
+    fim = min((i for i in (corpo.find(". Não resolvida"), corpo.find(". Resolvida")) if i >= 0),
+              default=len(corpo.rstrip(".")))
+    return " e ".join(v.split("=", 1)[-1] for v in corpo[:fim].strip().split(" / "))
+
+
+def estado_rotulo(r: ResultadoWO, filtro: str | None = None) -> str:
+    """Status da WO na planilha: só os itens que vão para a planilha contam (ver loja.estado_da_wo)."""
     if r.status is Status.NAO_PROCESSADA:
         return ROTULO_ESTADO["pendente"]
     from .loja import estado_da_wo
-    return ROTULO_ESTADO[estado_da_wo(r)]
+    return ROTULO_ESTADO[estado_da_wo(r, filtro)]
 
 
 SEM_INFO = "-"          # célula sem informação: nunca em branco
@@ -174,8 +182,18 @@ def mensagem_do_item(l: LinhaMensagem) -> str:
 
 
 def entra_na_planilha(l: LinhaMensagem, filtro: str | None) -> bool:
-    """Só itens com a mensagem configurada viram linha (comparação sem maiúsculas, acentos e espaços)."""
-    return not filtro or _normalizar(mensagem_do_item(l)) == _normalizar(filtro)
+    """Só itens com a mensagem configurada viram linha (comparação sem maiúsculas, acentos e espaços).
+
+    Vale a mensagem do item em QUALQUER leitura: se ela mudou entre leituras e uma delas foi a do
+    filtro, o item fica na planilha (sinalizado como divergente), nunca escondido na Observação.
+    Mensagem que o BTP não informou (campo ausente) também fica: não dá para saber que não é."""
+    if not filtro:
+        return True
+    alvo = _normalizar(filtro)
+    lidas = l.mensagens_lidas or [mensagem_do_item(l)]
+    if any(_normalizar(m) == alvo for m in lidas):
+        return True
+    return not any(lidas) and l.notas.get("mensagem", "").startswith("Não obtido")
 
 
 def _itens_da_wo(r: ResultadoWO, exportar_incompletos: bool, filtro: str | None):
@@ -196,7 +214,7 @@ def _linhas_dados(resultados, exportar_incompletos=True, tabela=None, filtro=FIL
     """[(linha, destacar)]: destaca a Observação só quando há algo a conferir no BTP."""
     saida = []
     for r in resultados:
-        estado = estado_rotulo(r)
+        estado = estado_rotulo(r, filtro)
         planilha, outros = _itens_da_wo(r, exportar_incompletos, filtro)
         extra = nota_outros(outros, filtro) if outros else ""
         for i, (l, n) in enumerate(planilha):
@@ -340,9 +358,13 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
                        fonte=Font(size=10, color="595959"))])
     st = Counter(r.status for r in resultados)
     com_obs = sum(1 for l in linhas if l.auditoria is not Auditoria.VALIDADO)
+    wos_planilha = {l.wo for l in linhas}
+    so_outras = sum(1 for r in resultados if r.status is Status.PROCESSADA and r.wo not in wos_planilha)
     _secao(wa, "Números", ["Indicador", "Quantidade"], [
         ("WOs consultadas", len(resultados)),
-        ("WOs com itens faltantes", st[Status.PROCESSADA]),
+        *([(f"WOs com itens \"{filtro}\" (na planilha)", st[Status.PROCESSADA] - so_outras),
+           ("WOs só com itens de outra mensagem (na Observação)", so_outras)] if filtro
+          else [("WOs com itens faltantes", st[Status.PROCESSADA])]),
         ("WOs no Monitor sem itens na janela Mensagens", st[Status.SEM_REGISTROS]),
         ("WOs não encontradas no Monitor de Alertas", st[Status.NAO_ENCONTRADA]),
         ("WOs não consultadas (erro, tempo ou sessão)", sum(st[s] for s in STATUS_FALHA if s is not Status.NAO_PROCESSADA)),
@@ -378,7 +400,9 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
     for r in resultados:
         ls = [l for l, _ in _itens_da_wo(r, exportar_incompletos, filtro)[0]]
         obs = "; ".join(o for o in OrderedDict.fromkeys(observacao_item(l) for l in ls) if o)
-        por_wo.append((r.wo, SITUACAO[r.status], len(ls),
+        situacao = (f"Sem itens \"{filtro}\" (só outras mensagens, na Observação)"
+                    if filtro and r.status is Status.PROCESSADA and not ls and r.linhas else SITUACAO[r.status])
+        por_wo.append((r.wo, situacao, len(ls),
                        ", ".join(OrderedDict.fromkeys(l.material for l in ls if l.material)),
                        obs or ("" if r.status not in STATUS_FALHA else r.observacao)))
     _secao(wa, "Situação de cada WO", ["WO", "Situação", "Itens", "Materiais SAP", "Observação"], por_wo, texto={1})

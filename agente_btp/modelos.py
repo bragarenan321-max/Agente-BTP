@@ -66,6 +66,9 @@ class LinhaMensagem:
     notas: dict = field(default_factory=dict)
     # Mensagem do próprio item (janela Mensagens), mesmo quando a planilha usa a do alerta ou as duas.
     mensagem_item: str = ""
+    # Mensagens do item vistas em TODAS as leituras (sem repetição): decide se o item vai para a
+    # planilha mesmo quando a mensagem mudou entre leituras (ver exportacao.entra_na_planilha).
+    mensagens_lidas: list = field(default_factory=list)
 
     def como_lista(self) -> list:
         return [self.wo, self.material, self.fornecedor, self.quantidade_faltante, self.mensagem]

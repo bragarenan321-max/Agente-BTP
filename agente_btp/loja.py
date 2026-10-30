@@ -21,11 +21,13 @@ import sqlite3
 import threading
 import time
 import zlib
+from dataclasses import replace
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
-from .modelos import (STATUS_FALHA, Auditoria, Leitura, LinhaMensagem, Ocorrencia, ResultadoWO, Status)
+from .modelos import (GRAVIDADE, STATUS_FALHA, Auditoria, Leitura, LinhaMensagem, Ocorrencia, ResultadoWO,
+                      Status)
 from .diagnostico import categoria
 
 ESTADOS = ("pendente", "em_andamento", "validada", "divergente", "incompleta", "falha")
@@ -61,8 +63,21 @@ CREATE TABLE IF NOT EXISTS problemas (
 
 
 # ------------------------------------------------------------------ estado da WO
-def estado_da_wo(r: ResultadoWO) -> str:
+def visao_da_planilha(r: ResultadoWO, filtro: str | None) -> ResultadoWO:
+    """O resultado como a planilha o vê: só os itens com a mensagem do filtro (padrão "Estoque
+    indisponível") contam para o estado. Divergência num item de outra mensagem (que só aparece na
+    Observação) não torna a WO divergente. Sem filtro, falha ou sem itens: o próprio resultado."""
+    if not filtro or not r.linhas or r.status is Status.WO_INVALIDA or r.status in STATUS_FALHA:
+        return r
+    from .exportacao import entra_na_planilha
+    itens = [l for l in r.linhas if entra_na_planilha(l, filtro)]
+    pior = max(itens, key=lambda l: GRAVIDADE[l.auditoria]).auditoria if itens else Auditoria.VALIDADO
+    return replace(r, linhas=itens, auditoria=pior)
+
+
+def estado_da_wo(r: ResultadoWO, filtro: str | None = None) -> str:
     """Estado gravado a partir do resultado (a mesma regra vale para a tela e para a planilha)."""
+    r = visao_da_planilha(r, filtro)
     if r.status is Status.WO_INVALIDA or r.status in STATUS_FALHA:
         return "falha"
     if r.auditoria is Auditoria.VALIDADO:
@@ -72,8 +87,9 @@ def estado_da_wo(r: ResultadoWO) -> str:
     return "incompleta"
 
 
-def motivo_da_wo(r: ResultadoWO) -> str:
+def motivo_da_wo(r: ResultadoWO, filtro: str | None = None) -> str:
     """Motivo (taxonomia do diagnóstico) que explica uma WO não validada ('' = sem problema)."""
+    r = visao_da_planilha(r, filtro)
     if r.status is Status.WO_INVALIDA:
         return "wo_invalida"
     if r.motivo:
@@ -157,7 +173,7 @@ def serializar(r: ResultadoWO) -> dict:
         "linhas": [{"consolidado": l.consolidado, "wo": l.wo, "material": l.material, "fornecedor": l.fornecedor,
                     "quantidade_faltante": l.quantidade_faltante, "mensagem": l.mensagem, "chave": l.chave,
                     "auditoria": l.auditoria, "observacao": l.observacao, "notas": l.notas,
-                    "mensagem_item": l.mensagem_item} for l in r.linhas],
+                    "mensagem_item": l.mensagem_item, "mensagens_lidas": l.mensagens_lidas} for l in r.linhas],
         "leituras": [{"rodada": l.rodada, "tipo": l.tipo, "quando": l.quando, "alertas": l.alertas,
                       "duplicadas": l.duplicadas, "avisos": l.avisos, "erro": l.erro,
                       "itens": None if l.itens is None else [[k, ocorr(o)] for k, o in l.itens.items()]}
@@ -180,7 +196,8 @@ def desserializar(d: dict, leve: bool = False) -> ResultadoWO:
                         l["alertas"], l["duplicadas"], list(l["avisos"]), l["erro"]) for l in d["leituras"]]
     linhas = [LinhaMensagem(l["consolidado"], l["wo"], l["material"], l["fornecedor"], l["quantidade_faltante"],
                             l["mensagem"], l["chave"], Auditoria[l["auditoria"]], l["observacao"], l["notas"],
-                            l.get("mensagem_item", ""))     # análises antigas não têm: ver exportacao.mensagem_do_item
+                            l.get("mensagem_item", ""),     # análises antigas não têm: ver exportacao.mensagem_do_item
+                            list(l.get("mensagens_lidas") or []))
               for l in d["linhas"]]
     return ResultadoWO(d["wo"], Status[d["status"]], linhas, d["observacao"], d["data_hora"],
                        Auditoria[d["auditoria"]], d["observacao_auditoria"], leituras, d["rodadas_previstas"],
@@ -322,11 +339,13 @@ class Loja:
         self._transacao([("UPDATE wos SET status='em_andamento', tentativas=tentativas+1, iniciado_em=? "
                           "WHERE run_id=? AND wo=?", (agora, run_id, w)) for w in wos])
 
-    def concluir(self, run_id: str, r: ResultadoWO, origem_dado: str = "", texto_log: str = "") -> bool:
+    def concluir(self, run_id: str, r: ResultadoWO, origem_dado: str = "", texto_log: str = "",
+                 filtro: str | None = None) -> bool:
         """Grava o resultado de UMA WO e a linha de registro correspondente, juntos.
-        Só grava WO que está em andamento (nunca sobrescreve uma concluída sem reprocessamento)."""
-        estado = estado_da_wo(r)
-        motivo = motivo_da_wo(r)
+        Só grava WO que está em andamento (nunca sobrescreve uma concluída sem reprocessamento).
+        `filtro`: mensagem dos itens da planilha — o estado gravado é o mesmo da coluna Status."""
+        estado = estado_da_wo(r, filtro)
+        motivo = motivo_da_wo(r, filtro)
         payload = zlib.compress(json.dumps(serializar(r), ensure_ascii=False).encode("utf-8"))
         agora = time.time()
         with self._trava:

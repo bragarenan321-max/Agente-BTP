@@ -1263,7 +1263,7 @@ const CONFIG = [
     { id: "exportar_incompletos", rotulo: "Exportar resultados não validados", tipo: "bool",
       ajuda: "Inclui no Excel, destacadas em cor, as ocorrências divergentes, incompletas ou não concluídas." },
     { id: "mensagem_planilha", rotulo: "Mensagem dos itens na planilha", tipo: "texto",
-      ajuda: "Só os itens com esta mensagem (janela Mensagens) viram linha na planilha; os outros itens da WO são lidos e conferidos do mesmo jeito e aparecem na Observação. Maiúsculas, acentos e espaços não importam. Vazio = todos os itens." },
+      ajuda: "Só os itens com esta mensagem (janela Mensagens) viram linha na planilha; os outros itens da WO são lidos e conferidos do mesmo jeito e aparecem na Observação. O Status da WO considera só os itens da planilha. Se a mensagem de um item mudar entre as leituras e uma delas for esta, o item fica na planilha como Divergente (nunca é escondido). Maiúsculas, acentos e espaços não importam. Vazio = todos os itens." },
   ]},
   { grupo: "Desempenho", descricao: "Velocidade sem perder a conferência: a consulta em lote é comparada com a individual durante a análise.", itens: [
     { id: "concorrencia", rotulo: "Consultas em paralelo", tipo: "int", min: 1, max: 8, un: "",

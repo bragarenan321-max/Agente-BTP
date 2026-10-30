@@ -125,6 +125,16 @@ def consolidar(wo: str, leituras: list[Leitura], previstas: int):
                                                                       " Não resolvida: revisar no BTP.")
             motivos.append(f"{ROTULO[campo]} divergente ({vistos})"
                            + (" — resolvida pelo registro de alteração" if explicacao else ""))
+        # Mensagem do próprio item (janela Mensagens) em cada leitura. Conta mesmo quando a planilha
+        # mostra a mensagem do alerta: é ela que decide se o item entra na planilha.
+        lidas = list(dict.fromkeys(str(o.valores.get("mensagem_item", o.valores.get("mensagem")) or "")
+                                   for _, o in presentes))
+        if len(lidas) > 1 and "mensagem" not in notas:
+            divergente = True
+            vistos = " / ".join(f"r{l.rodada}={_texto(o.valores.get('mensagem_item', o.valores.get('mensagem')))}"
+                                for l, o in presentes)
+            notas["mensagem"] = f"Divergente entre leituras (mensagem do item): {vistos}. Não resolvida: revisar no BTP."
+            motivos.append(f"Mensagem do item divergente ({vistos})")
         incompleto = False
         for campo in CAMPOS:
             if campo not in notas and finais[campo] in (None, ""):
@@ -156,7 +166,7 @@ def consolidar(wo: str, leituras: list[Leitura], previstas: int):
             material=finais["material"], fornecedor=finais["fornecedor"],
             quantidade_faltante=finais["quantidade_faltante"], mensagem=finais["mensagem"],
             chave=chave, auditoria=estado, observacao="; ".join(motivos), notas=notas,
-            mensagem_item=ref.valores.get("mensagem_item", "") or ""))
+            mensagem_item=ref.valores.get("mensagem_item", "") or "", mensagens_lidas=lidas))
         if GRAVIDADE[estado] > GRAVIDADE[estado_wo]:
             estado_wo = estado
         for l, o in obs:

@@ -193,7 +193,7 @@ class Motor:
                 self._excecao(grupo, exc, feitas)
 
     def _gravar(self, r: ResultadoWO, feitas: set[str]) -> None:
-        estado = estado_da_wo(r)
+        estado = estado_da_wo(r, self.prefs.mensagem_planilha)
         c = self.loja.contadores(self.run_id)
         feitos = c["validada"] + c["divergente"] + c["incompleta"] + c["falha"] + 1
         texto = (f"[{feitos}/{sum(c.values())}] {r.wo} — {r.status.value}"
@@ -206,7 +206,7 @@ class Motor:
             origem += "; releitura por chave"
         if "Leitura extra" in tipos:
             origem += "; leituras extras individuais (divergência)"
-        if self.loja.concluir(self.run_id, r, origem, texto):
+        if self.loja.concluir(self.run_id, r, origem, texto, self.prefs.mensagem_planilha):
             feitas.add(r.wo)
             with self._trava:
                 self._concluidas_desde_sonda += 1

@@ -393,6 +393,76 @@ def test_planilha_so_com_estoque_indisponivel_e_outros_na_observacao(tmp_path):
     assert entra_na_planilha(antiga, "Estoque indisponível") and not entra_na_planilha(antiga, "Erro durante baixa")
     assert entra_na_planilha(LinhaMensagem("", WO, "1", "2", 1, "Outra"), "")                   # vazio = todos
 
+
+def test_status_da_planilha_ignora_divergencia_em_item_de_outra_mensagem(tmp_path):
+    """Item "Estoque indisponível" conferido + item de OUTRA mensagem com quantidade instável: a WO não
+    fica "Divergente" (nem na planilha, nem na base/tela), porque o item instável só vai para a Observação."""
+    leituras = [0]
+    def t(url, timeout=None):
+        leituras[0] += 1
+        return Resposta(200, "application/json", json.dumps({"value": [
+            item(ID="a", material="000000000022056366", quantidadeFaltante=1, mensagem="Estoque indisponível"),
+            item(ID="c", material="000000000022069613", quantidadeFaltante=leituras[0], mensagem="Estoque insuficiente")]}))
+    rs = processar_lote(ClienteBTP(config_conjunto_unico(url_item=None, chaves_item=["ID"]), t), [WO], prefs=RAPIDO)
+    from agente_btp.loja import estado_da_wo, motivo_da_wo
+    assert rs[0].auditoria is Auditoria.DIVERGENTE                       # a leitura completa continua honesta
+    assert estado_da_wo(rs[0]) == "divergente"                           # sem filtro: como antes
+    assert estado_da_wo(rs[0], "Estoque indisponível") == "validada"     # com o filtro da planilha
+    assert motivo_da_wo(rs[0], "Estoque indisponível") == ""
+    destino = gerar_planilha(rs, tmp_path / "s.xlsx", prefs=Preferencias())
+    assert verificar_planilha(destino, rs) == []
+    d = list(load_workbook(destino)["Dados"].iter_rows(min_row=2, values_only=True))
+    assert len(d) == 1 and d[0][1] == "000000000022056366" and d[0][7] == "Validada"
+    assert "Estoque insuficiente" in d[0][6]                             # o outro item segue na Observação
+    from agente_btp.loja import Loja                                     # base e tela: o mesmo estado da planilha
+    loja = Loja(tmp_path / "e.sqlite3")
+    loja.criar("r", 1, "", [WO], {}, {})
+    loja.iniciar("r", [WO])
+    assert loja.concluir("r", rs[0], filtro="Estoque indisponível")
+    assert loja.estados_ordenados("r") == ["validada"] and loja.linha_wo("r", WO)["motivo"] in ("", None)
+
+
+def test_item_cuja_mensagem_muda_para_estoque_indisponivel_fica_na_planilha(tmp_path):
+    """1ª leitura: "Estoque insuficiente"; leituras seguintes: "Estoque indisponível". Antes o item sumia
+    da planilha (valia só a 1ª leitura). Agora fica, como Divergente, com a observação para conferir."""
+    leituras = [0]
+    def t(url, timeout=None):
+        leituras[0] += 1
+        msg = "Estoque insuficiente" if leituras[0] == 1 else "Estoque indisponível"
+        return Resposta(200, "application/json", json.dumps({"value": [
+            item(ID="a", material="000000000022056366", quantidadeFaltante=1, mensagem=msg)]}))
+    rs = processar_lote(ClienteBTP(config_conjunto_unico(url_item=None, chaves_item=["ID"]), t), [WO], prefs=RAPIDO)
+    linha = rs[0].linhas[0]
+    assert linha.auditoria is Auditoria.DIVERGENTE
+    assert linha.mensagens_lidas[:2] == ["Estoque insuficiente", "Estoque indisponível"]
+    destino = gerar_planilha(rs, tmp_path / "m.xlsx", prefs=Preferencias())
+    assert verificar_planilha(destino, rs) == []
+    d = list(load_workbook(destino)["Dados"].iter_rows(min_row=2, values_only=True))
+    assert d[0][1] == "000000000022056366" and d[0][7] == "Divergente"
+    assert "Mensagem diferente entre consultas (Estoque insuficiente e Estoque indisponível" in d[0][6]
+
+
+def test_mensagem_do_item_decide_pela_leitura_e_pela_certeza():
+    from agente_btp.exportacao import _valores_da_nota, entra_na_planilha
+    from agente_btp.loja import desserializar, serializar
+    from agente_btp.modelos import LinhaMensagem, ResultadoWO
+    f = "Estoque indisponível"
+    # item sem mensagem própria em todas as leituras (a planilha mostraria a do alerta): fora, como antes
+    sem_texto = LinhaMensagem("", WO, "1", "2", 1, "Erro durante baixa de estoque", mensagens_lidas=[""])
+    assert not entra_na_planilha(sem_texto, f)
+    # fonte sem o campo de mensagem: não dá para saber que não é "Estoque indisponível" -> fica, sinalizado
+    sem_campo = LinhaMensagem("", WO, "1", "2", 1, "", notas={"mensagem": "Não obtido no BTP (campo vazio)."},
+                              mensagens_lidas=[""])
+    assert entra_na_planilha(sem_campo, f)
+    assert entra_na_planilha(LinhaMensagem("", WO, "1", "2", 1, "x", mensagens_lidas=["Outra", "ESTOQUE INDISPONIVEL"]), f)
+    assert not entra_na_planilha(LinhaMensagem("", WO, "1", "2", 1, "x", mensagens_lidas=["Outra", "Mais outra"]), f)
+    # mensagem com pontos dentro não corta a observação
+    nota = "Divergente entre leituras: r0=Dados do centro bloq. p/ uso / r1=Estoque indisponível. Não resolvida: revisar no BTP."
+    assert _valores_da_nota(nota) == "Dados do centro bloq. p/ uso e Estoque indisponível"
+    # a base guarda as mensagens lidas (relatório regerado depois decide igual)
+    r = ResultadoWO(WO, Status.PROCESSADA, [LinhaMensagem("", WO, "1", "2", 1, "x", mensagens_lidas=["A", "B"])])
+    assert desserializar(serializar(r)).linhas[0].mensagens_lidas == ["A", "B"]
+
 def test_estrutura_completa_do_excel(tmp_path):
     rs = _lote_misto()
     destino = gerar_planilha(rs, tmp_path / "x.xlsx", numero=3, prefs=Preferencias(mensagem_planilha=""),
