@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 709.64 684" width="709.64" height="684" role="img" aria-label="Fluxo principal de uma análise" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="709.64" height="684" fill="#FFFFFF"/>
+<path d="M397.2,88.0 L397.2,116.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M397.2,172.0 L397.2,194.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M283.3,228.0 L211.0,228.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="232.7" y="219.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="247.2" y="231.5" font-size="11" text-anchor="middle" fill="#3B4250">não</text>
+<path d="M114.5,256.0 L114.5,312.0 L283.3,312.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="175.0" y="303.5" width="47.8" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="198.9" y="315.5" font-size="11" text-anchor="middle" fill="#3B4250">pronta</text>
+<path d="M397.2,262.0 L397.2,284.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="403.2" y="264.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="417.7" y="276.5" font-size="11" text-anchor="middle" fill="#3B4250">sim</text>
+<path d="M397.2,340.0 L397.2,368.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M511.2,396.0 L575.2,396.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-start="url(#pt)" marker-end="url(#pt)"/>
+<rect x="528.7" y="387.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="543.2" y="399.5" font-size="11" text-anchor="middle" fill="#3B4250">GET</text>
+<path d="M283.3,396.0 L211.0,396.0" fill="none" stroke="#C21F14" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#pte)"/>
+<rect x="223.3" y="387.5" width="47.8" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="247.2" y="399.5" font-size="11" text-anchor="middle" fill="#C21F14">sessão</text>
+<path d="M397.2,424.0 L397.2,452.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M397.2,508.0 L397.2,536.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="403.2" y="513.5" width="73.0" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="439.7" y="525.5" font-size="11" text-anchor="middle" fill="#3B4250">fila vazia</text>
+<rect x="283.32000000000005" y="32.0" width="227.83999999999997" height="56" rx="28.0" fill="#1D2026" stroke="#1D2026" stroke-width="1.6"/>
+<text x="397.24" y="56.8" font-size="12" font-weight="600" text-anchor="middle" fill="#FFFFFF">Usuário informa as WOs</text>
+<text x="397.24" y="71.8" font-size="11" font-weight="500" text-anchor="middle" fill="#D0D2D6">(campo ou planilha .xlsx)</text>
+<rect x="283.32000000000005" y="116.0" width="227.83999999999997" height="56" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="397.24" y="140.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">POST /api/executar</text>
+<text x="397.24" y="155.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(servidor.py → agente.enviar)</text>
+<polygon points="397.24,194.0 511.15999999999997,228.0 397.24,262.0 283.32000000000005,228.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="397.24" y="224.8" font-size="12" font-weight="600" text-anchor="middle" fill="#5A3A00">Fonte de dados</text>
+<text x="397.24" y="239.8" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">confirmada?</text>
+<rect x="18.0" y="200.0" width="193.04" height="56" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="114.52" y="224.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Preparação automática</text>
+<text x="114.52" y="239.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">+ conferência da amostra</text>
+<rect x="283.32000000000005" y="284.0" width="227.83999999999997" height="56" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="397.24" y="308.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Motor: grupos de WOs</text>
+<text x="397.24" y="323.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">em paralelo (motor.py)</text>
+<rect x="283.32000000000005" y="368.0" width="227.83999999999997" height="56" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="397.24" y="392.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Extração + auditorias</text>
+<text x="397.24" y="407.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(processador.py)</text>
+<rect x="575.16" y="368.0" width="116.47999999999999" height="56" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="579.16" y="372.0" width="108.47999999999999" height="48" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="633.4" y="392.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Aba do BTP →</text>
+<text x="633.4" y="407.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Serviço OData</text>
+<rect x="18.0" y="368.0" width="193.04" height="56" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="114.52" y="392.8" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">Sessão caiu: pausa</text>
+<text x="114.52" y="407.8" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">e retoma sozinho</text>
+<path d="M283.32000000000005,460.0 L297.32000000000005,452.0 L511.15999999999997,452.0 L511.15999999999997,508.0 L283.32000000000005,508.0 Z" fill="#EEF3F8" stroke="#4A6380" stroke-width="1.6"/>
+<text x="397.24" y="476.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2A3A">Cada WO gravada ao</text>
+<text x="397.24" y="491.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2A3A">terminar (loja.py, SQLite)</text>
+<rect x="283.32000000000005" y="536.0" width="227.83999999999997" height="56" rx="7" fill="#E7F5EE" stroke="#1E8E52" stroke-width="2.6"/>
+<text x="397.24" y="560.8" font-size="12" font-weight="600" text-anchor="middle" fill="#0F4D2C">Excel conferido + histórico</text>
+<text x="397.24" y="575.8" font-size="12" font-weight="500" text-anchor="middle" fill="#0F4D2C">+ diagnóstico</text>
+<rect x="18" y="614" width="16" height="12" rx="2" fill="#1D2026" stroke="#1D2026"/>
+<text x="40" y="624" font-size="11" fill="#5F636B">início / fim</text>
+<rect x="126.80000000000001" y="614" width="16" height="12" rx="2" fill="#FFFFFF" stroke="#3B4250"/>
+<text x="148.8" y="624" font-size="11" fill="#5F636B">etapa do agente</text>
+<rect x="254.8" y="614" width="16" height="12" rx="2" fill="#FFF7E6" stroke="#B26B00"/>
+<text x="276.8" y="624" font-size="11" fill="#5F636B">decisão</text>
+<rect x="331.6" y="614" width="16" height="12" rx="2" fill="#F1F1F3" stroke="#5F636B"/>
+<text x="353.6" y="624" font-size="11" fill="#5F636B">sistema externo</text>
+<rect x="459.6" y="614" width="16" height="12" rx="2" fill="#EEF3F8" stroke="#4A6380"/>
+<text x="481.6" y="624" font-size="11" fill="#5F636B">dado guardado</text>
+<rect x="18" y="640" width="16" height="12" rx="2" fill="#FDECEA" stroke="#C21F14" stroke-dasharray="4 2"/>
+<text x="40" y="650" font-size="11" fill="#5F636B">caminho de falha</text>
+<rect x="152.4" y="640" width="16" height="12" rx="2" fill="#E7F5EE" stroke="#1E8E52"/>
+<text x="174.4" y="650" font-size="11" fill="#5F636B">resultado</text>
+</svg>

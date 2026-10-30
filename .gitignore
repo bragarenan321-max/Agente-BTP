@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+# Dados locais: nunca versionar
+.perfil_navegador/
+saidas/
+descoberta/
+logs/
+config/api.json
+config/tabela_materiais.json
+config/preferencias.json
+historico/
+config/fontes_recusadas.json
+dados/
+*.zip

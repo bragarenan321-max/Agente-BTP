@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 872.56 296" width="872.56" height="296" role="img" aria-label="Como o projeto é verificado" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="872.56" height="296" fill="#FFFFFF"/>
+<path d="M171.6,83.0 L235.6,83.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="189.2" y="74.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="203.6" y="86.5" font-size="11" text-anchor="middle" fill="#3B4250">usa</text>
+<path d="M376.4,83.0 L440.4,83.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="394.0" y="74.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="408.4" y="86.5" font-size="11" text-anchor="middle" fill="#3B4250">usa</text>
+<path d="M632.3,83.0 L696.3,83.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="18.0" y="31.0" width="153.6" height="104" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="94.8" y="66.0" font-size="11" font-weight="600" text-anchor="middle" fill="#1D2026">pytest (unidade e</text>
+<text x="94.8" y="80.0" font-size="11" font-weight="500" text-anchor="middle" fill="#1D2026">integração)</text>
+<text x="94.8" y="94.0" font-size="11" font-weight="500" text-anchor="middle" fill="#1D2026">164 testes</text>
+<text x="94.8" y="108.0" font-size="11" font-weight="500" text-anchor="middle" fill="#1D2026">8 arquivos test_*.py</text>
+<path d="M235.6,39.0 L249.6,31.0 L376.43999999999994,31.0 L376.43999999999994,135.0 L235.6,135.0 Z" fill="#EEF3F8" stroke="#4A6380" stroke-width="1.6"/>
+<text x="306.02" y="66.0" font-size="11" font-weight="600" text-anchor="middle" fill="#1D2A3A">Serviços falsos</text>
+<text x="306.02" y="80.0" font-size="11" font-weight="500" text-anchor="middle" fill="#1D2A3A">servico_real_falso</text>
+<text x="306.02" y="94.0" font-size="11" font-weight="500" text-anchor="middle" fill="#1D2A3A">btp_lote_falso</text>
+<text x="306.02" y="108.0" font-size="11" font-weight="500" text-anchor="middle" fill="#1D2A3A">sap_falso (HTTP)</text>
+<rect x="440.4399999999999" y="31.0" width="191.88" height="104" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="536.3799999999999" y="66.0" font-size="11" font-weight="600" text-anchor="middle" fill="#1D2026">Ponta a ponta</text>
+<text x="536.3799999999999" y="80.0" font-size="10" font-weight="500" text-anchor="middle" fill="#5F636B">(Chromium)</text>
+<text x="536.3799999999999" y="94.0" font-size="11" font-weight="500" text-anchor="middle" fill="#1D2026">rodar_tela · rodar_sessao</text>
+<text x="536.3799999999999" y="108.0" font-size="11" font-weight="500" text-anchor="middle" fill="#1D2026">rodar_aba · rodar_extensao</text>
+<rect x="696.3199999999999" y="31.0" width="158.23999999999998" height="104" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="775.4399999999999" y="72.3" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Medição</text>
+<text x="775.4399999999999" y="87.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">medir_desempenho.py</text>
+<text x="775.4399999999999" y="102.3" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(antes x depois)</text>
+<rect x="154.01999999999998" y="161.0" width="304.0" height="104" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="158.01999999999998" y="165.0" width="296.0" height="96" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="306.02" y="202.3" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Validação no BTP real</text>
+<text x="306.02" y="217.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">conferência da amostra</text>
+<text x="306.02" y="232.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">+ diagnóstico .json</text>
+</svg>

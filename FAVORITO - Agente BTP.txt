@@ -1,0 +1,18 @@
+FAVORITO "Agente BTP" - conecta o Agente BTP a aba do BTP que ja esta aberta
+=============================================================================
+
+Crie UMA VEZ no Chrome:
+  1. Tecle Ctrl+Shift+O (Favoritos) -> menu (tres pontos) -> Adicionar novo favorito
+  2. Nome:  Agente BTP
+  3. URL:   copie a linha inteira abaixo (comeca com javascript:) e cole
+  4. Salve. Se a barra de favoritos nao aparece, tecle Ctrl+Shift+B.
+
+Uso, sempre:
+  - Abra o Agente BTP (Abrir Agente BTP.bat)
+  - Na aba do BTP ja logada, clique no favorito "Agente BTP"
+  - Se o Chrome perguntar sobre acesso a rede local: Permitir
+  - Aparece o selo verde "Agente BTP: conectado" no canto da aba
+
+URL DO FAVORITO (linha unica):
+
+javascript:(async()=>{try{const r=await fetch('http://127.0.0.1:8767/agente_btp.js',{cache:'no-store',targetAddressSpace:'loopback'});(0,eval)(await r.text())}catch(e){alert('Agente BTP nao encontrado. Abra o programa (Abrir Agente BTP.bat), permita o acesso a rede local e clique de novo. '+e)}})()

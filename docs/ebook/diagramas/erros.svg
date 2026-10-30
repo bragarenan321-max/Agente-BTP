@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 937.52 540" width="937.52" height="540" role="img" aria-label="Classificação e tratamento de falhas" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="937.52" height="540" fill="#FFFFFF"/>
+<path d="M474.0,88.0 L474.0,100.2 L114.5,100.2 L114.5,112.5" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M474.0,88.0 L474.0,102.0 L357.6,102.0 L357.6,116.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M474.0,88.0 L474.0,102.0 L590.3,102.0 L590.3,116.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M474.0,88.0 L474.0,100.2 L830.0,100.2 L830.0,112.5" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M114.5,175.5 L114.5,200.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M114.5,256.0 L114.5,278.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M114.5,346.0 L114.5,368.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="120.5" y="348.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="135.0" y="360.5" font-size="11" text-anchor="middle" fill="#3B4250">não</text>
+<path d="M114.5,424.0 L114.5,452.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M211.0,312.0 L275.0,312.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="228.6" y="303.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="243.0" y="315.5" font-size="11" text-anchor="middle" fill="#3B4250">sim</text>
+<path d="M357.6,172.0 L357.6,200.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M590.3,172.0 L590.3,200.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M590.3,256.0 L590.3,278.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M590.3,346.0 L590.3,368.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="596.3" y="348.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="610.8" y="360.5" font-size="11" text-anchor="middle" fill="#3B4250">sim</text>
+<path d="M830.0,175.5 L830.0,200.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M830.0,256.0 L830.0,284.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="377.97999999999996" y="32.0" width="192.0" height="56" rx="28.0" fill="#1D2026" stroke="#1D2026" stroke-width="1.6"/>
+<text x="473.97999999999996" y="56.8" font-size="12" font-weight="600" text-anchor="middle" fill="#FFFFFF">Resposta do GET</text>
+<text x="473.97999999999996" y="71.8" font-size="11" font-weight="500" text-anchor="middle" fill="#D0D2D6">(cliente.classificar)</text>
+<rect x="18.0" y="112.5" width="193.04" height="63" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="114.52" y="133.3" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">Redirecionado, 401, 403,</text>
+<text x="114.52" y="148.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">HTML de login</text>
+<text x="114.52" y="163.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">→ SessaoExpirada</text>
+<rect x="275.03999999999996" y="116.0" width="165.2" height="56" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="357.64" y="140.8" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">Exceção do programa</text>
+<text x="357.64" y="155.8" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">→ excecao_app</text>
+<rect x="504.23999999999995" y="116.0" width="172.16" height="56" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="590.3199999999999" y="140.8" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">429, 5xx, rede, tempo</text>
+<text x="590.3199999999999" y="155.8" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">→ FalhaComunicacao</text>
+<rect x="740.4" y="112.5" width="179.11999999999998" height="63" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="829.9599999999999" y="133.3" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">404, outro 4xx,</text>
+<text x="829.9599999999999" y="148.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">JSON inválido</text>
+<text x="829.9599999999999" y="163.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">→ ErroConsulta</text>
+<rect x="18.0" y="200.0" width="193.04" height="56" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="114.52" y="224.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Motor faz a sonda</text>
+<text x="114.52" y="239.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">da sessão</text>
+<polygon points="114.52,278.0 211.04,312.0 114.52,346.0 18.0,312.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="114.52" y="316.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">Sonda passa?</text>
+<rect x="18.0" y="368.0" width="193.04" height="56" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="114.52" y="392.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Pausa: WOs em andamento</text>
+<text x="114.52" y="407.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">voltam a pendente</text>
+<rect x="18.0" y="452.0" width="193.04" height="56" rx="7" fill="#E7F5EE" stroke="#1E8E52" stroke-width="2.6"/>
+<text x="114.52" y="476.8" font-size="12" font-weight="600" text-anchor="middle" fill="#0F4D2C">Login na aba →</text>
+<text x="114.52" y="491.8" font-size="12" font-weight="500" text-anchor="middle" fill="#0F4D2C">retoma sozinho</text>
+<rect x="275.03999999999996" y="284.0" width="165.2" height="56" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="357.64" y="308.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Só esta WO falha;</text>
+<text x="357.64" y="323.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">análise continua</text>
+<rect x="275.03999999999996" y="200.0" width="165.2" height="56" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="357.64" y="224.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Grupo vira falha com</text>
+<text x="357.64" y="239.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">traceback; segue</text>
+<rect x="504.23999999999995" y="200.0" width="172.16" height="56" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="590.3199999999999" y="224.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Repete até 2×</text>
+<text x="590.3199999999999" y="239.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">+ ritmo adaptativo</text>
+<polygon points="590.3199999999999,278.0 676.4,312.0 590.3199999999999,346.0 504.23999999999995,312.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="590.3199999999999" y="316.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">Persistiu?</text>
+<rect x="504.23999999999995" y="368.0" width="172.16" height="56" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="590.3199999999999" y="392.8" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">WO = falha</text>
+<text x="590.3199999999999" y="407.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(Retomar refaz)</text>
+<rect x="740.4" y="200.0" width="179.11999999999998" height="56" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="829.9599999999999" y="224.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Em lote: grupo</text>
+<text x="829.9599999999999" y="239.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">refeito WO a WO</text>
+<rect x="740.4" y="284.0" width="179.11999999999998" height="56" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="829.9599999999999" y="308.8" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">Individual: WO = falha</text>
+<text x="829.9599999999999" y="323.8" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">com motivo</text>
+</svg>

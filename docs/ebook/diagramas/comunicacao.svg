@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500.15999999999997 452" width="500.15999999999997" height="452" role="img" aria-label="Canais de comunicação e o que passa por eles" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="500.15999999999997" height="452" fill="#FFFFFF"/>
+<path d="M107.6,99.0 L107.6,145.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-start="url(#pt)" marker-end="url(#pt)"/>
+<rect x="113.6" y="106.0" width="148.6" height="32" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="187.9" y="118.0" font-size="11" text-anchor="middle" fill="#3B4250">HTTP + JSON</text>
+<text x="187.9" y="133.0" font-size="11" text-anchor="middle" fill="#3B4250">/api/estado a cada 1 s</text>
+<path d="M107.6,249.0 L107.6,203.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-start="url(#pt)" marker-end="url(#pt)"/>
+<rect x="113.6" y="210.0" width="167.5" height="32" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="197.3" y="222.0" font-size="11" text-anchor="middle" fill="#3B4250">HTTP loopback (127.0.0.1)</text>
+<text x="197.3" y="237.0" font-size="11" text-anchor="middle" fill="#3B4250">CORS: só a origem do BTP</text>
+<path d="M107.6,307.0 L107.6,353.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-start="url(#pt)" marker-end="url(#pt)"/>
+<rect x="113.6" y="314.0" width="110.8" height="32" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="169.0" y="326.0" font-size="11" text-anchor="middle" fill="#3B4250">HTTPS · só GET</text>
+<text x="169.0" y="341.0" font-size="11" text-anchor="middle" fill="#3B4250">cookie da sessão</text>
+<path d="M197.1,174.0 L282.2,174.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="209.4" y="165.5" width="60.4" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="239.6" y="177.5" font-size="11" text-anchor="middle" fill="#3B4250">grava/lê</text>
+<rect x="18.0" y="41.0" width="179.11999999999998" height="58" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="22.0" y="45.0" width="171.11999999999998" height="50" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="107.55999999999999" y="66.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Tela do agente</text>
+<text x="107.55999999999999" y="81.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(navegador do usuário)</text>
+<rect x="18.0" y="145.0" width="179.11999999999998" height="58" rx="7" fill="#FDECEA" stroke="#C8261E" stroke-width="2.6"/>
+<text x="107.55999999999999" y="170.8" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">Programa local</text>
+<text x="107.55999999999999" y="185.8" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">Flask · 127.0.0.1:8767</text>
+<rect x="18.0" y="249.0" width="179.11999999999998" height="58" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="22.0" y="253.0" width="171.11999999999998" height="50" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="107.55999999999999" y="274.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Aba do BTP</text>
+<text x="107.55999999999999" y="289.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(agente_btp.js)</text>
+<rect x="18.0" y="353.0" width="179.11999999999998" height="58" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="22.0" y="357.0" width="171.11999999999998" height="50" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="107.55999999999999" y="378.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Serviço OData</text>
+<text x="107.55999999999999" y="393.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">do Monitor de alertas</text>
+<path d="M282.15999999999997,153.0 L296.15999999999997,145.0 L482.15999999999997,145.0 L482.15999999999997,203.0 L282.15999999999997,203.0 Z" fill="#EEF3F8" stroke="#4A6380" stroke-width="1.6"/>
+<text x="382.15999999999997" y="170.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2A3A">Disco local</text>
+<text x="382.15999999999997" y="185.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2A3A">SQLite · JSON · XLSX</text>
+<rect x="282.15999999999997" y="350.5" width="200.0" height="63" rx="4" fill="#FFFFFF" stroke="#B9BCC2" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="382.15999999999997" y="371.3" font-size="12" font-weight="600" text-anchor="middle" fill="#5F636B">Nenhum dado sai do</text>
+<text x="382.15999999999997" y="386.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5F636B">computador além das</text>
+<text x="382.15999999999997" y="401.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5F636B">consultas feitas pela aba</text>
+</svg>

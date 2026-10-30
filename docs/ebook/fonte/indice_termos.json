@@ -1,0 +1,308 @@
+{
+ "Aba do BTP": [
+  "aba do BTP"
+ ],
+ "AbortController": [
+  "AbortController"
+ ],
+ "Agente (classe)": [
+  "Agente._rodar",
+  "Agente.enviar",
+  "Agente._laco",
+  "_cmd_executar"
+ ],
+ "agente_btp.js": [
+  "agente_btp.js"
+ ],
+ "Amostra (conferência)": [
+  "conferência da amostra",
+  "amostra"
+ ],
+ "API": [
+  "API"
+ ],
+ "ApiConfig": [
+  "ApiConfig"
+ ],
+ "Approuter": [
+  "approuter"
+ ],
+ "Auditoria": [
+  "auditoria",
+  "auditorias"
+ ],
+ "Auditorias independentes": [
+  "auditorias independentes",
+  "auditorias_independentes"
+ ],
+ "auditoria.consolidar": [
+  "consolidar"
+ ],
+ "Base de execução (SQLite)": [
+  "SQLite",
+  "execucoes.sqlite3"
+ ],
+ "CORS": [
+  "CORS"
+ ],
+ "classificar (respostas)": [
+  "classificar"
+ ],
+ "ClienteBTP": [
+  "ClienteBTP"
+ ],
+ "Concorrência": [
+  "concorrencia",
+  "Consultas em paralelo"
+ ],
+ "config/api.json": [
+  "api.json"
+ ],
+ "Cookie": [
+  "cookie",
+  "cookies"
+ ],
+ "Decimal": [
+  "Decimal"
+ ],
+ "Diagnóstico": [
+  "diagnóstico"
+ ],
+ "Divergente": [
+  "divergente",
+  "divergência"
+ ],
+ "Endpoint": [
+  "endpoint"
+ ],
+ "Equivalência (lote)": [
+  "equivalência"
+ ],
+ "ErroConsulta": [
+  "ErroConsulta"
+ ],
+ "Escrita contínua (write-only)": [
+  "write-only",
+  "escrita contínua"
+ ],
+ "Estoque indisponível": [
+  "Estoque indisponível"
+ ],
+ "Evidência": [
+  "evidência"
+ ],
+ "Exceção": [
+  "exceção",
+  "exceções"
+ ],
+ "Extensão do Chrome": [
+  "extensão"
+ ],
+ "exportacao.py": [
+  "exportacao.py"
+ ],
+ "FalhaComunicacao": [
+  "FalhaComunicacao"
+ ],
+ "Favorito": [
+  "favorito"
+ ],
+ "Fetch": [
+  "fetch"
+ ],
+ "Flask": [
+  "Flask"
+ ],
+ "Fonte de dados": [
+  "fonte de dados"
+ ],
+ "Fornecedor SAP": [
+  "Fornecedor SAP",
+  "fornecedor"
+ ],
+ "gerar_planilha": [
+  "gerar_planilha"
+ ],
+ "Git": [
+  "Git"
+ ],
+ "Histórico": [
+  "histórico"
+ ],
+ "HTTP 401/403": [
+  "401",
+  "403"
+ ],
+ "HTTP 404": [
+  "404"
+ ],
+ "HTTP 429": [
+  "429"
+ ],
+ "Incompleto": [
+  "incompleto",
+  "incompleta"
+ ],
+ "JSON": [
+  "JSON"
+ ],
+ "Keep-alive": [
+  "keep-alive"
+ ],
+ "Launchpad": [
+  "launchpad"
+ ],
+ "Leitura em lote": [
+  "leitura em lote",
+  "em lote"
+ ],
+ "Leituras extras": [
+  "leituras extras",
+  "Leitura extra"
+ ],
+ "LinhaMensagem": [
+  "LinhaMensagem"
+ ],
+ "Log": [
+  "log",
+  "agente_btp.log"
+ ],
+ "Long-poll": [
+  "long-poll"
+ ],
+ "Loja": [
+  "Loja"
+ ],
+ "Material SAP": [
+  "Material SAP"
+ ],
+ "Materiais (aba)": [
+  "aba Materiais"
+ ],
+ "Mensagens (janela)": [
+  "janela Mensagens"
+ ],
+ "mensagem_planilha": [
+  "mensagem_planilha"
+ ],
+ "$metadata": [
+  "$metadata"
+ ],
+ "Monitor de Alertas": [
+  "Monitor de Alertas",
+  "Monitor"
+ ],
+ "Motivo (taxonomia)": [
+  "motivo",
+  "taxonomia"
+ ],
+ "Motor": [
+  "Motor"
+ ],
+ "OData": [
+  "OData"
+ ],
+ "openpyxl": [
+  "openpyxl"
+ ],
+ "Pausa por sessão": [
+  "pausado_sessao",
+  "pausa"
+ ],
+ "Playwright": [
+  "Playwright"
+ ],
+ "Ponte (PonteAba)": [
+  "PonteAba",
+  "ponte"
+ ],
+ "Porta 8767": [
+  "8767"
+ ],
+ "Preferências": [
+  "preferências",
+  "Preferencias"
+ ],
+ "processar_grupo": [
+  "processar_grupo"
+ ],
+ "processar_wo": [
+  "processar_wo"
+ ],
+ "pytest": [
+  "pytest"
+ ],
+ "Quantidade ambígua": [
+  "quantidade ambígua",
+  "quantidade_ambigua"
+ ],
+ "Quantidade faltante": [
+  "quantidade faltante"
+ ],
+ "Rastreio (aba)": [
+  "Rastreio"
+ ],
+ "Receita (fonte confirmada)": [
+  "receita_monitor",
+  "receita"
+ ],
+ "Regressão": [
+  "regressão"
+ ],
+ "Retomada": [
+  "retomada",
+  "Retomar"
+ ],
+ "Sessão": [
+  "sessão"
+ ],
+ "SessaoExpirada": [
+  "SessaoExpirada"
+ ],
+ "Sonda": [
+  "sonda"
+ ],
+ "Tabela de valores": [
+  "tabela de valores"
+ ],
+ "TempoEsgotado": [
+  "TempoEsgotado"
+ ],
+ "Testes de ponta a ponta": [
+  "ponta a ponta",
+  "e2e"
+ ],
+ "Thread": [
+  "thread",
+  "threads"
+ ],
+ "Tipo Material": [
+  "Tipo Material"
+ ],
+ "Token": [
+  "token",
+  "tokens"
+ ],
+ "Transação": [
+  "transação"
+ ],
+ "UltimoRetornoView": [
+  "UltimoRetornoView"
+ ],
+ "Validado": [
+  "validado",
+  "validada"
+ ],
+ "VERSAO_CONFIG": [
+  "VERSAO_CONFIG"
+ ],
+ "verificar_planilha": [
+  "verificar_planilha"
+ ],
+ "WO": [
+  "WO"
+ ],
+ "Zeros à esquerda": [
+  "zeros à esquerda"
+ ]
+}

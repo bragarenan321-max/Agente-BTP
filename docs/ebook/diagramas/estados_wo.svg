@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 499.29999999999995 388.59999999999997" width="499.29999999999995" height="388.59999999999997" role="img" aria-label="Estados de uma WO na base (loja.py)" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="499.29999999999995" height="388.59999999999997" fill="#FFFFFF"/>
+<path d="M108.0,182.0 L212.2,182.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="120.4" y="166.0" width="79.3" height="32" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="160.1" y="178.0" font-size="11" text-anchor="middle" fill="#3B4250">trabalhador</text>
+<text x="160.1" y="193.0" font-size="11" text-anchor="middle" fill="#3B4250">pega a WO</text>
+<path d="M321.7,182.0 L353.7,182.0 L353.7,59.0 L385.7,59.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M321.7,182.0 L353.7,182.0 L353.7,141.0 L385.7,141.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M321.7,182.0 L353.7,182.0 L353.7,223.0 L385.7,223.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M321.7,182.0 L353.7,182.0 L353.7,305.0 L385.7,305.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M266.9,156.0 L266.9,104.1 L63.0,104.1 L63.0,156.0" fill="none" stroke="#C21F14" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#pte)"/>
+<rect x="119.0" y="88.1" width="91.9" height="32" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="165.0" y="100.1" font-size="11" text-anchor="middle" fill="#C21F14">sessão caiu /</text>
+<text x="165.0" y="115.1" font-size="11" text-anchor="middle" fill="#C21F14">interrupção</text>
+<path d="M433.5,331.0 L433.5,355.8 L266.9,355.8 L266.9,208.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="323.2" y="347.3" width="54.1" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="350.2" y="359.3" font-size="11" text-anchor="middle" fill="#3B4250">Retomar</text>
+<rect x="18.0" y="156.0" width="90.0" height="52" rx="26.0" fill="#1D2026" stroke="#1D2026" stroke-width="1.6"/>
+<text x="63.0" y="186.3" font-size="12" font-weight="500" text-anchor="middle" fill="#FFFFFF">pendente</text>
+<rect x="212.18" y="156.0" width="109.52" height="52" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="266.94" y="186.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">em_andamento</text>
+<rect x="385.7" y="33.0" width="95.6" height="52" rx="7" fill="#E7F5EE" stroke="#1E8E52" stroke-width="2.6"/>
+<text x="433.5" y="63.3" font-size="12" font-weight="500" text-anchor="middle" fill="#0F4D2C">validada</text>
+<rect x="385.7" y="115.0" width="95.6" height="52" rx="7" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="433.5" y="145.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">divergente</text>
+<rect x="385.7" y="197.0" width="95.6" height="52" rx="7" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="433.5" y="227.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">incompleta</text>
+<rect x="385.7" y="279.0" width="95.6" height="52" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="433.5" y="309.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">falha</text>
+</svg>

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 736.3199999999999 596" width="736.3199999999999" height="596" role="img" aria-label="Extração de uma WO (consulta individual)" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="736.3199999999999" height="596" fill="#FFFFFF"/>
+<path d="M364.6,85.0 L364.6,111.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M475.0,138.0 L560.1,138.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="487.4" y="129.5" width="60.4" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="517.6" y="141.5" font-size="11" text-anchor="middle" fill="#3B4250">resposta</text>
+<path d="M364.6,165.0 L364.6,185.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M254.2,218.0 L190.2,218.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="207.7" y="209.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="222.2" y="221.5" font-size="11" text-anchor="middle" fill="#3B4250">não</text>
+<path d="M364.6,251.0 L364.6,271.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="370.6" y="252.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="385.1" y="264.5" font-size="11" text-anchor="middle" fill="#3B4250">sim</text>
+<path d="M364.6,325.0 L364.6,351.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M475.0,378.0 L560.1,378.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-start="url(#pt)" marker-end="url(#pt)"/>
+<rect x="503.1" y="369.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="517.6" y="381.5" font-size="11" text-anchor="middle" fill="#3B4250">GET</text>
+<path d="M364.6,405.0 L364.6,431.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M364.6,485.0 L364.6,511.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="254.16000000000003" y="31.0" width="220.88" height="54" rx="27.0" fill="#1D2026" stroke="#1D2026" stroke-width="1.6"/>
+<text x="364.6" y="54.8" font-size="12" font-weight="600" text-anchor="middle" fill="#FFFFFF">WO 12345|678901234</text>
+<text x="364.6" y="69.8" font-size="11" font-weight="500" text-anchor="middle" fill="#D0D2D6">(exemplo fictício)</text>
+<rect x="254.16000000000003" y="111.0" width="220.88" height="54" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="364.6" y="134.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Lista: Pendencias</text>
+<text x="364.6" y="149.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">$filter=workOrderID eq &#x27;WO&#x27;</text>
+<path d="M560.0799999999999,119.0 L574.0799999999999,111.0 L718.3199999999999,111.0 L718.3199999999999,165.0 L560.0799999999999,165.0 Z" fill="#EEF3F8" stroke="#4A6380" stroke-width="1.6"/>
+<text x="639.1999999999999" y="134.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2A3A">Linhas do Monitor</text>
+<text x="639.1999999999999" y="149.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(1 por consolidado)</text>
+<polygon points="364.6,185.0 475.04,218.0 364.6,251.0 254.16000000000003,218.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="364.6" y="214.8" font-size="12" font-weight="600" text-anchor="middle" fill="#5A3A00">Alguma linha</text>
+<text x="364.6" y="229.8" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">da própria WO?</text>
+<rect x="18.0" y="191.0" width="172.16" height="54" rx="4" fill="#FFFFFF" stroke="#B9BCC2" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="104.08" y="214.8" font-size="12" font-weight="600" text-anchor="middle" fill="#5F636B">Sem alerta no Monitor</text>
+<text x="104.08" y="229.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(NAO_ENCONTRADA)</text>
+<rect x="254.16000000000003" y="271.0" width="220.88" height="54" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="364.6" y="294.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Junta linhas que levam à</text>
+<text x="364.6" y="309.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">mesma consulta de itens</text>
+<rect x="254.16000000000003" y="351.0" width="220.88" height="54" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="364.6" y="374.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Itens: UltimoRetornoView</text>
+<text x="364.6" y="389.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">consolidID + WO + status &#x27;E&#x27;</text>
+<rect x="560.0799999999999" y="351.0" width="158.23999999999998" height="54" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="564.0799999999999" y="355.0" width="150.23999999999998" height="46" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="639.1999999999999" y="374.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Serviço OData</text>
+<text x="639.1999999999999" y="389.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(JSON V4: value[])</text>
+<rect x="254.16000000000003" y="431.0" width="220.88" height="54" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="364.6" y="454.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">ocorrencia(): campos →</text>
+<text x="364.6" y="469.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">valores + chave do item</text>
+<rect x="254.16000000000003" y="511.0" width="220.88" height="54" rx="7" fill="#E7F5EE" stroke="#1E8E52" stroke-width="2.6"/>
+<text x="364.6" y="534.8" font-size="12" font-weight="600" text-anchor="middle" fill="#0F4D2C">Leitura (itens por chave)</text>
+<text x="364.6" y="549.8" font-size="12" font-weight="500" text-anchor="middle" fill="#0F4D2C">→ auditoria</text>
+</svg>

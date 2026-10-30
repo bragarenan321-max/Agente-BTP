@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 746.252 562" width="746.252" height="562" role="img" aria-label="Decisão da auditoria para cada item" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="746.252" height="562" fill="#FFFFFF"/>
+<path d="M307.4,86.0 L307.4,114.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M307.4,168.0 L307.4,190.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M416.2,223.0 L480.2,223.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="433.8" y="214.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="448.2" y="226.5" font-size="11" text-anchor="middle" fill="#3B4250">sim</text>
+<path d="M604.2,250.0 L604.2,262.8" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<path d="M604.2,347.2 L604.2,392.8" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="610.2" y="361.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="624.7" y="373.5" font-size="11" text-anchor="middle" fill="#3B4250">não</text>
+<path d="M480.2,305.0 L416.2,305.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="433.8" y="296.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="448.2" y="308.5" font-size="11" text-anchor="middle" fill="#3B4250">sim</text>
+<path d="M307.4,256.0 L307.4,272.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="313.4" y="255.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="327.8" y="267.5" font-size="11" text-anchor="middle" fill="#3B4250">não</text>
+<path d="M198.5,305.0 L134.5,305.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="152.0" y="296.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="166.5" y="308.5" font-size="11" text-anchor="middle" fill="#3B4250">sim</text>
+<path d="M307.4,338.0 L307.4,354.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="313.4" y="337.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="327.8" y="349.5" font-size="11" text-anchor="middle" fill="#3B4250">não</text>
+<path d="M198.5,387.0 L134.5,387.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="152.0" y="378.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="166.5" y="390.5" font-size="11" text-anchor="middle" fill="#3B4250">não</text>
+<path d="M307.4,420.0 L307.4,442.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="313.4" y="422.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="327.8" y="434.5" font-size="11" text-anchor="middle" fill="#3B4250">sim</text>
+<rect x="198.48000000000002" y="32.0" width="217.74799999999996" height="54" rx="27.0" fill="#1D2026" stroke="#1D2026" stroke-width="1.6"/>
+<text x="307.354" y="55.8" font-size="12" font-weight="600" text-anchor="middle" fill="#FFFFFF">Leitura 0 (extração)</text>
+<text x="307.354" y="70.8" font-size="12" font-weight="500" text-anchor="middle" fill="#FFFFFF">+ auditorias 1..N</text>
+<rect x="198.48000000000002" y="114.0" width="217.74799999999996" height="54" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="307.354" y="137.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Compara por chave do</text>
+<text x="307.354" y="152.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">item, campo a campo</text>
+<polygon points="307.354,190.0 416.22799999999995,223.0 307.354,256.0 198.48000000000002,223.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="307.354" y="219.8" font-size="12" font-weight="600" text-anchor="middle" fill="#5A3A00">Sumiu, apareceu ou</text>
+<text x="307.354" y="234.8" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">algum campo mudou?</text>
+<rect x="480.2279999999999" y="196.0" width="248.02399999999997" height="54" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="604.2399999999999" y="219.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">+3 leituras extras</text>
+<text x="604.2399999999999" y="234.8" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">individuais</text>
+<polygon points="604.2399999999999,262.775 728.2519999999998,305.0 604.2399999999999,347.225 480.2279999999999,305.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="604.2399999999999" y="294.3" font-size="12" font-weight="600" text-anchor="middle" fill="#5A3A00">BTP registra alteração</text>
+<text x="604.2399999999999" y="309.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">e leituras posteriores</text>
+<text x="604.2399999999999" y="324.3" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">concordam?</text>
+<rect x="480.2279999999999" y="392.8" width="248.02399999999997" height="54" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="604.2399999999999" y="416.6" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">DIVERGENTE: campo &quot;-&quot;</text>
+<text x="604.2399999999999" y="431.6" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">+ &quot;conferir no BTP&quot;</text>
+<polygon points="307.354,272.0 416.22799999999995,305.0 307.354,338.0 198.48000000000002,305.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="307.354" y="301.8" font-size="12" font-weight="600" text-anchor="middle" fill="#5A3A00">Campo vazio ou</text>
+<text x="307.354" y="316.8" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">quantidade ambígua?</text>
+<rect x="18.0" y="278.0" width="116.47999999999999" height="54" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="76.24" y="309.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">INCOMPLETO</text>
+<polygon points="307.354,354.0 416.22799999999995,387.0 307.354,420.0 198.48000000000002,387.0" fill="#FFF7E6" stroke="#B26B00" stroke-width="1.6"/>
+<text x="307.354" y="383.8" font-size="12" font-weight="600" text-anchor="middle" fill="#5A3A00">Todas as auditorias</text>
+<text x="307.354" y="398.8" font-size="12" font-weight="500" text-anchor="middle" fill="#5A3A00">previstas feitas?</text>
+<rect x="18.0" y="360.0" width="116.47999999999999" height="54" rx="6" fill="#FDECEA" stroke="#C21F14" stroke-width="1.6" stroke-dasharray="5 3"/>
+<text x="76.24" y="391.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">NÃO CONCLUÍDO</text>
+<rect x="198.48000000000002" y="442.0" width="217.74799999999996" height="54" rx="7" fill="#E7F5EE" stroke="#1E8E52" stroke-width="2.6"/>
+<text x="307.354" y="473.3" font-size="12" font-weight="500" text-anchor="middle" fill="#0F4D2C">VALIDADO</text>
+<rect x="18" y="518" width="16" height="12" rx="2" fill="#FFF7E6" stroke="#B26B00"/>
+<text x="40" y="528" font-size="11" fill="#5F636B">decisão</text>
+<rect x="94.80000000000001" y="518" width="16" height="12" rx="2" fill="#FDECEA" stroke="#C21F14" stroke-dasharray="4 2"/>
+<text x="116.80000000000001" y="528" font-size="11" fill="#5F636B">caminho de falha</text>
+<rect x="229.20000000000002" y="518" width="16" height="12" rx="2" fill="#E7F5EE" stroke="#1E8E52"/>
+<text x="251.20000000000002" y="528" font-size="11" fill="#5F636B">resultado</text>
+</svg>

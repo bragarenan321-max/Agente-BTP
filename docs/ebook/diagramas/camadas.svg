@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 618.8 456" width="618.8" height="456" role="img" aria-label="Camadas e dependências entre módulos" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="618.8" height="456" fill="#FFFFFF"/>
+<path d="M309.4,78.0 L309.4,98.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="315.4" y="79.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="329.8" y="91.5" font-size="11" text-anchor="middle" fill="#3B4250">usa</text>
+<path d="M309.4,148.0 L309.4,168.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="315.4" y="149.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="329.8" y="161.5" font-size="11" text-anchor="middle" fill="#3B4250">usa</text>
+<path d="M309.4,218.0 L309.4,238.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="315.4" y="219.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="329.8" y="231.5" font-size="11" text-anchor="middle" fill="#3B4250">usa</text>
+<path d="M309.4,288.0 L309.4,308.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="315.4" y="289.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="329.8" y="301.5" font-size="11" text-anchor="middle" fill="#3B4250">usa</text>
+<path d="M309.4,358.0 L309.4,378.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="315.4" y="359.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="329.8" y="371.5" font-size="11" text-anchor="middle" fill="#3B4250">usa</text>
+<rect x="18.0" y="28.0" width="582.8" height="50" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="22.0" y="32.0" width="574.8" height="42" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="309.4" y="57.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Apresentação — web/index.html · servidor.py</text>
+<rect x="18.0" y="98.0" width="582.8" height="50" rx="7" fill="#FDECEA" stroke="#C8261E" stroke-width="2.6"/>
+<text x="309.4" y="127.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">Orquestração — agente.py · motor.py</text>
+<rect x="18.0" y="168.0" width="582.8" height="50" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="309.4" y="197.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Regras do domínio — processador.py · auditoria.py · exportacao.py · materiais.py</text>
+<rect x="18.0" y="238.0" width="582.8" height="50" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="309.4" y="267.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">Acesso aos dados — cliente.py · odata.py · ponte.py · web/agente_btp.js</text>
+<path d="M18.0,316.0 L32.0,308.0 L600.8,308.0 L600.8,358.0 L18.0,358.0 Z" fill="#EEF3F8" stroke="#4A6380" stroke-width="1.6"/>
+<text x="309.4" y="337.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2A3A">Persistência — loja.py · historico.py · config.py · preferencias.py</text>
+<path d="M18.0,386.0 L32.0,378.0 L600.8,378.0 L600.8,428.0 L18.0,428.0 Z" fill="#EEF3F8" stroke="#4A6380" stroke-width="1.6"/>
+<text x="309.4" y="407.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2A3A">Base comum — modelos.py · diagnostico.py · campos.py · entrada.py</text>
+</svg>

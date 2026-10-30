@@ -1,0 +1,136 @@
+/* ============================================================ página */
+@page { size: A4; margin: 21mm 19mm 19mm 19mm; }
+@page :first { margin: 0; }
+:root {
+  --marca: #C8261E; --marca-clara: #FDECEA; --texto: #1F2329; --texto-2: #5B6069; --texto-3: #8B8F96;
+  --linha: #E4E5E8; --fundo-suave: #F6F6F7; --mono: "DejaVu Sans Mono", "Liberation Mono", monospace;
+  --sans: Inter, "DejaVu Sans", sans-serif; --serif: Caladea, "Bitstream Charter", "DejaVu Serif", serif;
+}
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { margin: 0; font-family: var(--serif); font-size: 10.3pt; line-height: 1.52; color: var(--texto);
+       orphans: 3; widows: 3; }
+p { margin: 0 0 6.5pt; }
+a { color: inherit; text-decoration: none; }
+main a[href^="#fig-"], main a[href^="#cap"] { color: var(--marca); }
+main a[href^="http"] { color: #1F4E8C; text-decoration: underline; text-decoration-thickness: .5pt; }
+strong, b { font-weight: 700; }
+ul, ol { margin: 0 0 7pt; padding-left: 17pt; }
+li { margin: 0 0 2.5pt; }
+li > p { margin: 0 0 2pt; }
+hr { border: 0; border-top: .6pt solid var(--linha); margin: 10pt 0; }
+
+/* ============================================================ capa e folha de rosto */
+.capa { height: 297mm; width: 210mm; position: relative; background: #FBFBFB; padding: 52mm 24mm 0; break-after: page;
+        font-family: var(--sans); overflow: hidden; }
+.capa-faixa { position: absolute; left: 0; top: 0; bottom: 0; width: 9mm; background: var(--marca); }
+.capa-logo { margin-bottom: 26mm; }
+.capa-sup { font-size: 10pt; letter-spacing: .18em; text-transform: uppercase; color: var(--marca); font-weight: 700; }
+.capa-tit { font-size: 50pt; font-weight: 800; letter-spacing: -1.5pt; color: #15181D; line-height: 1.02; margin: 6mm 0 3mm; }
+.capa-sub { font-size: 21pt; font-weight: 600; color: #3B4250; margin-bottom: 9mm; }
+.capa-desc { font-size: 12pt; color: var(--texto-2); max-width: 135mm; line-height: 1.5; border-top: 1.2pt solid var(--marca);
+             padding-top: 5mm; }
+.capa-rodape { position: absolute; left: 24mm; bottom: 24mm; font-size: 9pt; color: var(--texto-3); }
+.rosto { break-after: page; padding-top: 18mm; font-size: 9.6pt; }
+.rosto-tit { font-family: var(--sans); font-size: 15pt; font-weight: 700; margin-bottom: 10pt; color: #15181D; }
+.rosto p, .rosto li { color: #3B4250; }
+
+/* ============================================================ sumário */
+.sumario { break-after: page; font-family: var(--sans); }
+.sum-tit { font-size: 24pt; font-weight: 800; letter-spacing: -.6pt; margin: 4mm 0 8mm; color: #15181D; }
+.sumario ol { list-style: none; margin: 0; padding: 0; }
+.sumario li { margin: 0; }
+.sumario a { display: flex; align-items: baseline; gap: 4pt; color: var(--texto); }
+.sumario .st { flex: 0 1 auto; }
+.sumario a::after { content: ""; flex: 1 1 auto; order: 1; border-bottom: .8pt dotted #B9BCC2; transform: translateY(-2.5pt); }
+.sumario .sp { order: 2; flex: none; font-variant-numeric: tabular-nums; min-width: 18pt; text-align: right; }
+.sumario .s1 { font-size: 10.4pt; font-weight: 700; margin-top: 9pt; color: var(--marca); break-after: avoid; }
+.sumario .s1 a { color: var(--marca); }
+.sumario .s2 { font-size: 9.6pt; font-weight: 600; margin-top: 3pt; padding-left: 0; }
+.sumario .s3 { font-size: 8.4pt; color: var(--texto-2); padding-left: 16pt; line-height: 1.45; }
+.sumario .s3 a { color: var(--texto-2); }
+
+/* ============================================================ títulos */
+h1, h2, h3, h4 { font-family: var(--sans); color: #15181D; break-after: avoid; page-break-after: avoid; }
+h1 { break-before: page; font-size: 30pt; font-weight: 800; letter-spacing: -.8pt; line-height: 1.1; margin: 52mm 0 8mm;
+     padding-top: 8mm; border-top: 2.4pt solid var(--marca); }
+h1 + p, h1 ~ .parte-intro { font-size: 11.3pt; color: #3B4250; }
+h2 { break-before: page; font-size: 20pt; font-weight: 750; letter-spacing: -.4pt; line-height: 1.18; margin: 0 0 9pt;
+     padding-bottom: 6pt; border-bottom: .8pt solid var(--linha); }
+h3 { font-size: 12.6pt; font-weight: 700; margin: 15pt 0 5pt; }
+h4 { font-size: 10.6pt; font-weight: 700; margin: 11pt 0 4pt; color: #2B2F36; }
+h2 + p { font-size: 10.8pt; }
+.sem-numero { }
+
+/* ============================================================ código */
+code { font-family: var(--mono); font-size: 8.3pt; background: #F2F2F4; padding: .5pt 2.5pt; border-radius: 2.5pt;
+       color: #2B2F36; word-break: break-word; }
+pre { font-family: var(--mono); font-size: 7.3pt; line-height: 1.42; white-space: pre-wrap; word-break: normal;
+      overflow-wrap: anywhere; margin: 0; }
+pre code { background: none; padding: 0; font-size: inherit; }
+div.sourceCode, pre.sourceCode, main > pre { background: #F7F7F8; border: .6pt solid var(--linha); border-radius: 4pt;
+       padding: 6pt 8pt; margin: 4pt 0 9pt; break-inside: avoid; }
+figure.codigo { margin: 5pt 0 10pt; border: .6pt solid #DADCE0; border-radius: 4pt; overflow: hidden; break-inside: avoid;
+                background: #FBFBFC; }
+.cod-cab { display: flex; justify-content: space-between; gap: 8pt; background: #F0F1F3; border-bottom: .6pt solid #DADCE0;
+           padding: 3.5pt 8pt; font-family: var(--sans); font-size: 7.6pt; color: var(--texto-2); }
+.cod-arq { font-weight: 700; color: #2B2F36; font-family: var(--mono); font-size: 7.4pt; }
+figure.codigo .hl { background: none; }
+figure.codigo pre { padding: 6pt 8pt 7pt; }
+.hl .linenos { color: #A3A7AE; padding-right: 8pt; user-select: none; }
+pre.arvore { background: #F7F7F8; border: .6pt solid var(--linha); border-radius: 4pt; padding: 7pt 10pt; font-size: 7.5pt;
+             line-height: 1.38; break-inside: auto; }
+
+/* ============================================================ figuras */
+figure.figura { margin: 8pt 0 12pt; break-inside: avoid; text-align: center; }
+figure.figura svg { width: 100%; height: auto; max-height: 215mm; }
+figure figcaption { font-family: var(--sans); font-size: 8.3pt; color: var(--texto-2); margin-top: 4pt; }
+figure.figura figcaption b { color: var(--marca); }
+
+/* ============================================================ tabelas */
+table { width: 100%; border-collapse: collapse; margin: 5pt 0 11pt; font-family: var(--sans); font-size: 8.3pt;
+        line-height: 1.38; break-inside: auto; }
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+th { text-align: left; background: #F1F2F4; color: #2B2F36; font-weight: 700; padding: 4.5pt 6pt; border-bottom: 1pt solid #C9CCD1; }
+td { padding: 4pt 6pt; border-bottom: .5pt solid var(--linha); vertical-align: top; }
+td code, th code { font-size: 7.6pt; }
+
+/* ============================================================ blocos editoriais */
+div.conceito, div.nobtp, div.exemplo, div.leitura, div.atencao, div.resumo, div.termo, div.proposta, div.evidencia {
+  margin: 7pt 0 10pt; padding: 7pt 10pt 4pt 11pt; border-left: 3.2pt solid; border-radius: 0 4pt 4pt 0;
+  break-inside: avoid; font-size: 9.9pt; }
+div.conceito::before, div.nobtp::before, div.exemplo::before, div.leitura::before, div.atencao::before,
+div.resumo::before, div.termo::before, div.proposta::before, div.evidencia::before {
+  display: block; font-family: var(--sans); font-size: 7.2pt; font-weight: 800; letter-spacing: .12em; margin-bottom: 3pt; }
+div.conceito { background: #F1F4F8; border-color: #3E5C80; } div.conceito::before { content: "◆ CONCEITO FUNDAMENTAL"; color: #2E4A6B; }
+div.nobtp { background: #FDF1F0; border-color: var(--marca); } div.nobtp::before { content: "▲ COMO FUNCIONA NO BTP"; color: #8E1A14; }
+div.exemplo { background: #EEF7F2; border-color: #1E8E52; } div.exemplo::before { content: "● EXEMPLO PRÁTICO"; color: #146B3D; }
+div.leitura { background: #F4F3F8; border-color: #5B4E8C; } div.leitura::before { content: "‹/› LEITURA DO CÓDIGO"; color: #44396E; }
+div.atencao { background: #FFF6E5; border-color: #C27A00; } div.atencao::before { content: "! ATENÇÃO"; color: #7A4C00; }
+div.resumo { background: #F4F4F5; border-color: #3B4250; } div.resumo::before { content: "≡ RESUMO DO PROCESSO"; color: #2B2F36; }
+div.termo { background: #FFFFFF; border: .6pt solid #D0D3D8; border-left: 3.2pt solid #8B8F96; }
+div.termo::before { content: "Aa TERMO TÉCNICO"; color: #5B6069; }
+div.proposta { background: #FFF9EB; border-color: #B8860B; border-style: dashed; border-left-style: solid; }
+div.proposta::before { content: "+ PROPOSTA DE MELHORIA (não implementada)"; color: #6E5005; }
+div.evidencia { background: #F7F7F8; border-color: #8B8F96; font-family: var(--sans); font-size: 8.4pt; }
+div.evidencia::before { content: "✓ EVIDÊNCIA"; color: #3B4250; }
+div.evidencia code { font-size: 7.6pt; }
+div.conceito > :last-child, div.nobtp > :last-child, div.exemplo > :last-child, div.leitura > :last-child,
+div.atencao > :last-child, div.resumo > :last-child, div.termo > :last-child, div.proposta > :last-child,
+div.evidencia > :last-child { margin-bottom: 4pt; }
+blockquote { margin: 6pt 0 9pt; padding: 2pt 0 2pt 11pt; border-left: 2pt solid var(--linha); color: #3B4250; font-style: italic; }
+
+/* marcas de confiabilidade */
+.confirmado, .interpretacao, .hipotese, .naodet { font-family: var(--sans); font-size: 6.9pt; font-weight: 800;
+  letter-spacing: .06em; padding: .6pt 3.5pt; border-radius: 2.5pt; vertical-align: 1pt; white-space: nowrap; }
+.confirmado { background: #E3F2E9; color: #146B3D; } .interpretacao { background: #E8EEF6; color: #2E4A6B; }
+.hipotese { background: #FFF1D6; color: #7A4C00; } .naodet { background: #EDEDEF; color: #5B6069; }
+
+/* ============================================================ índice remissivo */
+.indice h1 { margin-top: 12mm; }
+.ind-cols { column-count: 2; column-gap: 12mm; font-family: var(--sans); font-size: 8.2pt; line-height: 1.5; }
+.ind-letra { break-inside: avoid-column; margin-bottom: 6pt; }
+.ind-l { font-size: 12pt; font-weight: 800; color: var(--marca); margin: 4pt 0 2pt; }
+.ind-item { display: flex; justify-content: space-between; gap: 6pt; }
+.ind-p { color: var(--texto-2); text-align: right; font-variant-numeric: tabular-nums; }

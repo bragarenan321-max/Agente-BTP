@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 787.52 382" width="787.52" height="382" role="img" aria-label="Contexto do Agente BTP" font-family="Inter, 'DejaVu Sans', sans-serif">
+<defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3B4250"/></marker><marker id="pte" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C21F14"/></marker></defs>
+<rect x="0" y="0" width="787.52" height="382" fill="#FFFFFF"/>
+<path d="M225.0,70.0 L290.9,70.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="243.5" y="61.5" width="28.9" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="257.9" y="73.5" font-size="11" text-anchor="middle" fill="#3B4250">usa</text>
+<path d="M390.9,101.0 L390.9,142.5" fill="none" stroke="#3B4250" stroke-width="1.5" marker-start="url(#pt)" marker-end="url(#pt)"/>
+<rect x="396.9" y="113.2" width="117.1" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="455.4" y="125.2" font-size="11" text-anchor="middle" fill="#3B4250">HTTP local (JSON)</text>
+<path d="M569.5,174.0 L490.9,174.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-start="url(#pt)" marker-end="url(#pt)"/>
+<rect x="503.1" y="165.5" width="54.1" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="530.2" y="177.5" font-size="11" text-anchor="middle" fill="#3B4250">tarefas</text>
+<path d="M669.5,205.5 L669.5,247.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-start="url(#pt)" marker-end="url(#pt)"/>
+<rect x="675.5" y="210.2" width="110.8" height="32" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="730.9" y="222.2" font-size="11" text-anchor="middle" fill="#3B4250">GET com a sessão</text>
+<text x="730.9" y="237.2" font-size="11" text-anchor="middle" fill="#3B4250">do navegador</text>
+<path d="M290.9,174.0 L225.0,174.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="237.2" y="165.5" width="41.5" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="257.9" y="177.5" font-size="11" text-anchor="middle" fill="#3B4250">grava</text>
+<path d="M121.5,205.0 L121.5,247.0" fill="none" stroke="#3B4250" stroke-width="1.5" marker-end="url(#pt)"/>
+<rect x="127.5" y="217.5" width="35.2" height="17" rx="3" fill="#FFFFFF" stroke="#E4E5E8"/>
+<text x="145.1" y="229.5" font-size="11" text-anchor="middle" fill="#3B4250">gera</text>
+<rect x="18.0" y="39.0" width="206.95999999999998" height="62" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="22.0" y="43.0" width="198.95999999999998" height="54" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="121.47999999999999" y="66.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Usuário (operador)</text>
+<text x="121.47999999999999" y="81.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(cola WOs, confere, baixa)</text>
+<rect x="290.86" y="39.0" width="200.0" height="62" rx="7" fill="#FFFFFF" stroke="#3B4250" stroke-width="1.6"/>
+<text x="390.86" y="66.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Tela do agente</text>
+<text x="390.86" y="81.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(index.html no navegador)</text>
+<rect x="290.86" y="142.5" width="200.0" height="63" rx="7" fill="#FDECEA" stroke="#C8261E" stroke-width="2.6"/>
+<text x="390.86" y="163.3" font-size="12" font-weight="600" text-anchor="middle" fill="#7A140D">Programa local</text>
+<text x="390.86" y="178.3" font-size="12" font-weight="500" text-anchor="middle" fill="#7A140D">Python + Flask</text>
+<text x="390.86" y="193.3" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(127.0.0.1:8767)</text>
+<rect x="569.52" y="142.5" width="200.0" height="63" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="573.52" y="146.5" width="192.0" height="55" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="669.52" y="163.3" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Aba do BTP no Chrome</text>
+<text x="669.52" y="178.3" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(sessão já logada</text>
+<text x="669.52" y="193.3" font-size="12" font-weight="500" text-anchor="middle" fill="#1D2026">+ extensão Agente BTP)</text>
+<rect x="569.52" y="247.0" width="200.0" height="62" rx="4" fill="#F1F1F3" stroke="#5F636B" stroke-width="1.6"/>
+<rect x="573.52" y="251.0" width="192.0" height="54" rx="2" fill="none" stroke="#5F636B" stroke-width="0.8"/>
+<text x="669.52" y="274.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2026">Serviço OData do Monitor</text>
+<text x="669.52" y="289.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(SAP BTP · Cloud Foundry)</text>
+<path d="M18.0,151.0 L32.0,143.0 L224.95999999999998,143.0 L224.95999999999998,205.0 L18.0,205.0 Z" fill="#EEF3F8" stroke="#4A6380" stroke-width="1.6"/>
+<text x="121.47999999999999" y="170.8" font-size="12" font-weight="600" text-anchor="middle" fill="#1D2A3A">Disco local</text>
+<text x="121.47999999999999" y="185.8" font-size="11" font-weight="500" text-anchor="middle" fill="#5F636B">(SQLite · JSON · XLSX)</text>
+<rect x="18.0" y="247.0" width="206.95999999999998" height="62" rx="7" fill="#E7F5EE" stroke="#1E8E52" stroke-width="2.6"/>
+<text x="121.47999999999999" y="274.8" font-size="12" font-weight="600" text-anchor="middle" fill="#0F4D2C">Relatório Excel</text>
+<text x="121.47999999999999" y="289.8" font-size="12" font-weight="500" text-anchor="middle" fill="#0F4D2C">Análise N - X WOs.xlsx</text>
+<rect x="18" y="338" width="16" height="12" rx="2" fill="#FFFFFF" stroke="#3B4250"/>
+<text x="40" y="348" font-size="11" fill="#5F636B">etapa do agente</text>
+<rect x="146.0" y="338" width="16" height="12" rx="2" fill="#F1F1F3" stroke="#5F636B"/>
+<text x="168.0" y="348" font-size="11" fill="#5F636B">sistema externo</text>
+<rect x="274.0" y="338" width="16" height="12" rx="2" fill="#EEF3F8" stroke="#4A6380"/>
+<text x="296.0" y="348" font-size="11" fill="#5F636B">dado guardado</text>
+<rect x="389.2" y="338" width="16" height="12" rx="2" fill="#E7F5EE" stroke="#1E8E52"/>
+<text x="411.2" y="348" font-size="11" fill="#5F636B">resultado</text>
+<rect x="478.79999999999995" y="338" width="16" height="12" rx="2" fill="#FDECEA" stroke="#C8261E"/>
+<text x="500.79999999999995" y="348" font-size="11" fill="#5F636B">ponto-chave</text>
+</svg>

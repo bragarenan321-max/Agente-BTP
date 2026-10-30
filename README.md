@@ -1,4 +1,78 @@
 # Agente-BTP
+Automação **somente leitura** do *Monitor de alertas* (BTP): recebe WOs,
+coleta os itens da janela "Mensagens" de cada WO e gera o relatório Excel `Análise N - X WOs.xlsx`.
+
+## Como usar (Windows)
+
+1. Dê duplo clique em **`Abrir Agente BTP.bat`**. Abre a tela do agente (deixe a janela preta aberta).
+2. **Uma vez só:** instale a extensão **Agente BTP** (pasta `extensao/`): `chrome://extensions` →
+   *Modo do desenvolvedor* → *Carregar sem compactação* → escolha a pasta `extensao`.
+3. Abra o BTP normalmente. A extensão conecta sozinha (selo **Agente BTP: conectado** no canto da aba)
+   — mesmo se o programa for aberto depois. Sem extensão (bloqueio da empresa): use o favorito
+   (`FAVORITO - Agente BTP.txt`).
+4. Cole as WOs (ou importe a planilha) → **Executar análise** → acompanhe a barra → **Baixar relatório**.
+
+Não há etapa técnica: na primeira execução o agente se prepara sozinho — primeiro consultando
+direto os dados de cada conjunto pela WO; depois pelo dicionário de dados do BTP (`$metadata`), pelos próprios dados da linha do alerta ou observando as consultas
+da tela do Monitor. Um caminho só é aceito se trouxer de fato os itens da janela "Mensagens"
+(material, fornecedor, quantidade faltante, mensagem) da própria WO. Se, mesmo assim, quase
+todas as WOs voltarem sem itens, a configuração é refeita e, se necessário, o agente pede
+(uma única vez) que a janela "Mensagens" de uma WO seja aberta na aba do BTP.
+
+### Conferência da fonte (uma vez)
+Antes do primeiro lote, o agente mostra uma amostra real (material, fornecedor, quantidade e
+mensagem de uma WO) e pergunta se é o mesmo que a janela **Mensagens** do BTP mostra. Só depois do
+"Sim" o lote roda; a fonte confirmada fica gravada. "Não — procurar outra fonte" descarta aquela
+fonte para sempre; "Não — vou mostrar no BTP" aprende pela tela (abrir a janela Mensagens da WO).
+Se existir a mensagem do alerta (coluna Mensagem do Monitor), você escolhe qual vai para a planilha.
+
+### Auditoria (fidelidade dos dados)
+Cada WO é extraída e depois **conferida N vezes** (padrão 5, ajustável na engrenagem ⚙):
+cada auditoria é uma nova leitura no BTP; com "auditorias independentes", as rodadas pares
+releem cada item pelo seu endereço próprio (outro caminho). Os valores são comparados campo a
+campo. Resultado: **Validado**, **Divergente**, **Incompleto** ou **Não concluído**. Uma
+divergência nunca é aprovada por maioria: sem evidência (registro de alteração do próprio BTP),
+o campo fica vazio e sinalizado para revisão.
+
+### Relatório (Excel)
+`Análise N - X WOs.xlsx`:
+
+| Aba | Conteúdo |
+|---|---|
+| Dados | **Todas** as WOs: WO, Material SAP, Fornecedor SAP, Quantidade faltante, Mensagem e Observação (vazia quando conferido sem diferença; WO sem itens aparece numa linha com o motivo) |
+| Análise | Números da análise, materiais mais recorrentes (com as WOs), mensagens e a situação de cada WO |
+| Rastreio | Oculta: cada leitura feita ao BTP, para investigar uma divergência |
+
+### Configurações (engrenagem)
+Auditoria (quantidade, independência, repetições, conduta diante de divergência), tempos
+(consulta da WO, detalhes, intervalo, máximo por WO e da análise) e execução (intervalo entre
+consultas, WO sem resultado, erros, exportação de não validados). Salvas em
+`config/preferencias.json` (sem credenciais). Relatório técnico da revisão:
+[`docs/relatorio-revisao-auditoria.md`](docs/relatorio-revisao-auditoria.md).
+
+## Arquitetura
+
+| Módulo | Função |
+|---|---|
+| `autoconfig.py` | Preparação automática pelo dicionário de dados do BTP (`$metadata`) |
+| `analisador.py` | Preparação automática observando as consultas reais da tela |
+| `exploracao.py` | Preparação pelos DADOS: consulta cada conjunto pela WO e escolhe o que devolve os itens da janela "Mensagens" (1º caminho tentado) |
+| `sondagem.py` | Preparação pelos dados da linha do alerta (link de navegação, itens embutidos, JSON) |
+| `extensao/` | Extensão do Chrome: conecta a aba do BTP sozinha (endereço do programa fixo, não alterável por páginas) |
+| `ponte.py` + `web/agente_btp.js` | Conexão com a **aba já aberta** (favorito), no modelo do Agente Atlas |
+| `cliente.py` | Cliente OData **somente GET** + classificação de erros |
+| `processador.py` | Fluxo por WO: extração inicial, auditorias, leituras extras, limites de tempo, lote |
+| `auditoria.py` | Comparação campo a campo e estados Validado / Divergente / Incompleto / Não concluído |
+| `preferencias.py` | Configurações da engrenagem, validadas e persistidas |
+| `exportacao.py` | Relatório Excel em 6 abas a partir de uma única estrutura de dados + conferência do arquivo gravado |
+| `servidor.py` / `web/` | Interface web local |
+
+Mapeamento funcional do processo: [`docs/mapeamento-processo.md`](docs/mapeamento-processo.md).
+Testes: `python -m pytest testes`.
+
+---
+
+## Especificação original
 Automação destinada à coleta e análise de informações em um sistema web corporativo, executada a partir de uma interface web local.
 
 Status: Em fase de levantamento e especificação do processo manual.

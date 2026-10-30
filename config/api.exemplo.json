@@ -1,0 +1,15 @@
+{
+  "_comentario": "MODELO ILUSTRATIVO. O config/api.json real é gerado automaticamente pelo botão 'Salvar descoberta'.",
+  "url_lista": "/caminho/servico/odata/AlertasSet?$filter=WO eq '{wo}'",
+  "campo_consolidado_lista": "Consolidado",
+  "url_mensagens": "/caminho/servico/odata/MensagensSet?$filter=Consolidado eq '{linha[Consolidado]}'",
+  "campo_mensagens_expandidas": null,
+  "campos": {
+    "consolidado": "Consolidado",
+    "wo": "WO",
+    "material": "Material",
+    "fornecedor": "Fornecedor",
+    "quantidade_faltante": "QuantidadeFaltante",
+    "mensagem": "Mensagem"
+  }
+}

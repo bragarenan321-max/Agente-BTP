@@ -1,0 +1,1714 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agente BTP</title>
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%2032%2032%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cpath%20d%3D%22M16%203.5%2029%2028h-6.6L16%2015.6%209.6%2028H3z%22%20fill%3D%22%23E3261E%22/%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2224.4%22%20r%3D%222.9%22%20fill%3D%22%23E3261E%22/%3E%3C/svg%3E">
+<script>try { document.documentElement.dataset.tema = localStorage.getItem("agenteBtpTema") || "auto"; }
+        catch (e) { document.documentElement.dataset.tema = "auto"; }</script>
+<style>
+  /* ============================================================ tokens de design */
+  :root {
+    --marca: #E3261E;            /* vermelho da marca: ação principal, foco e identidade */
+    --marca-esc: #C01F18;
+    --marca-suave: #FDECEA;
+    --marca-2: #A51C15;          /* vinho: links e textos de ação */
+    --marca-tinta: #FEF5F4;      /* tom quente bem claro: seleção e realces */
+    --fundo: #F4F4F5;
+    --superficie: #FFFFFF;
+    --superficie-2: #FAFAFA;
+    --texto: #1A1D23;
+    --texto-2: #5F636B;
+    --texto-3: #8B8F96;
+    --borda: #E4E5E8;
+    --borda-forte: #D0D2D6;
+    --ok: #1E8E52;     --ok-suave: #E7F5EE;
+    --atencao: #B26B00; --atencao-suave: #FFF4DE;
+    --erro: #C21F14;   --erro-suave: #FDE9E7;
+    --info: #4B5563;   --info-suave: #EEF0F2;     /* neutro (grafite): só o vermelho é cor de marca */
+    --titulo: #1D2026;  --linha: #F0F1F3;  --neutro: #EEEFF1;  --hover: #FBF8F8;  --selecao: #FCEFEE;
+    --cab: #FFFFFF;  --cab-texto: #1D2026;  --cab-texto-2: #6B7280;  --cab-borda: #E4E5E8;
+    --cab-botao: #F4F4F5;  --cab-botao-hover: #EAEBED;  --escuro: #1D2026;
+    --barra-fundo: #F1E4E3;  --barra: #E3261E;  --campo: #FFFFFF;  --codigo: #3D4047;  --desab: #C9CBCF;  --borda-perigo: #F1B8B3;
+    color-scheme: light;
+    --fonte: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    --mono: Consolas, "Cascadia Mono", "SF Mono", monospace;
+    --t-xs: 12px; --t-sm: 13px; --t-md: 15px; --t-lg: 17px; --t-xl: 20px;
+    --t-pagina: clamp(22px, 0.9rem + 0.7vw, 30px);           /* título da área de trabalho */
+    --t-num: clamp(28px, 1.2rem + 1vw, 40px);               /* valores dos indicadores */
+    --margem: clamp(16px, 2.2vw, 48px);                     /* margem lateral fluida (sem largura máxima) */
+    --topo: 0px;                       /* barra superior só existe no celular (ver @media) */
+    --lat: 236px;                      /* largura do menu lateral; trilho = 68px */
+    --lat-fundo: #FBFBFB; --lat-hover: #F1F1F2;
+    --ctl-h: 36px;                     /* altura única de campos, seletores e botões pequenos */
+    --ctl-num: 132px; --ctl-sel: 268px;
+    --e1: 4px; --e2: 8px; --e3: 12px; --e4: 16px; --e5: 24px; --e6: 32px;
+    --raio: 8px; --raio-g: 12px;
+    --sombra: none;   /* superfícies planas: separação por borda fina, sem sombra */
+    --ease: cubic-bezier(.2, .7, .2, 1);   /* curva única das transições: rápida no início, assenta suave */
+    --sombra-alta: 0 12px 32px rgba(16, 24, 40, .18);
+    --foco: 0 0 0 3px rgba(218, 41, 28, .28);
+  }
+  /* Tema: data-tema="claro" | "escuro" | "auto" (segue o sistema). Escolha em Configurações › Aparência. */
+  :root[data-tema="escuro"] { color-scheme: dark;
+    --fundo: #0F1012; --superficie: #17191C; --superficie-2: #1D2024; --texto: #E8E9EC; --texto-2: #A8ADB5; --texto-3: #7E838C;
+    --borda: #2A2D33; --borda-forte: #3B3F47; --titulo: #F2F3F5; --linha: #222529; --neutro: #272A30;
+    --cab: #0B0C0E; --cab-texto: #F2F3F5; --cab-texto-2: #9CA3AF; --cab-borda: #1F2226;
+    --cab-botao: rgba(255, 255, 255, .06); --cab-botao-hover: rgba(255, 255, 255, .12); --escuro: #2A2D33;
+    --lat-fundo: #121315; --lat-hover: rgba(255, 255, 255, .05);
+    --hover: #1D1A1A; --selecao: #2C1A19; --barra-fundo: #3A1F1D; --barra: #F0443B; --campo: #121417; --codigo: #C9CDD4;
+    --desab: #3A3D43; --borda-perigo: #6B2A26; --marca-suave: #3A1513; --marca-2: #FF8F86; --marca-tinta: #221514;
+    --ok: #4CC38A; --ok-suave: #132A20; --atencao: #E8B04B; --atencao-suave: #2E2412; --erro: #F2685E; --erro-suave: #351816;
+    --info: #B4BAC4; --info-suave: #24272C;
+    --sombra: none; --sombra-alta: 0 12px 32px rgba(0, 0, 0, .6); }
+  @media (prefers-color-scheme: dark) { :root[data-tema="auto"] { color-scheme: dark;
+    --fundo: #0F1012; --superficie: #17191C; --superficie-2: #1D2024; --texto: #E8E9EC; --texto-2: #A8ADB5; --texto-3: #7E838C;
+    --borda: #2A2D33; --borda-forte: #3B3F47; --titulo: #F2F3F5; --linha: #222529; --neutro: #272A30;
+    --cab: #0B0C0E; --cab-texto: #F2F3F5; --cab-texto-2: #9CA3AF; --cab-borda: #1F2226;
+    --cab-botao: rgba(255, 255, 255, .06); --cab-botao-hover: rgba(255, 255, 255, .12); --escuro: #2A2D33;
+    --lat-fundo: #121315; --lat-hover: rgba(255, 255, 255, .05);
+    --hover: #1D1A1A; --selecao: #2C1A19; --barra-fundo: #3A1F1D; --barra: #F0443B; --campo: #121417; --codigo: #C9CDD4;
+    --desab: #3A3D43; --borda-perigo: #6B2A26; --marca-suave: #3A1513; --marca-2: #FF8F86; --marca-tinta: #221514;
+    --ok: #4CC38A; --ok-suave: #132A20; --atencao: #E8B04B; --atencao-suave: #2E2412; --erro: #F2685E; --erro-suave: #351816;
+    --info: #B4BAC4; --info-suave: #24272C;
+    --sombra: none; --sombra-alta: 0 12px 32px rgba(0, 0, 0, .6); } }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; interpolate-size: allow-keywords; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; }
+    *, *::before, *::after, ::details-content { transition: none !important; animation: none !important; } }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font: var(--t-md)/1.5 var(--fonte); }
+  .oculto { display: none !important; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
+  :focus-visible { outline: none; box-shadow: var(--foco); border-radius: 6px; }
+  a { color: var(--marca-2); }
+
+  /* ============================================================ botões */
+  .btn { font: 600 var(--t-md) var(--fonte); border-radius: var(--raio); padding: 9px 16px; cursor: pointer; border: 1px solid transparent;
+         display: inline-flex; align-items: center; justify-content: center; gap: var(--e2); text-decoration: none; line-height: 1.2;
+         transition: background .15s, border-color .15s, color .15s, transform .08s; white-space: nowrap; }
+  .btn:active:not(:disabled) { transform: scale(.98); }
+  .btn-primario { background: var(--marca); color: #fff; }
+  .btn-primario:hover { background: var(--marca-esc); }
+  .btn-sec { background: var(--superficie); color: var(--texto); border-color: var(--borda-forte); }
+  .btn-sec:hover { background: var(--marca-tinta); border-color: color-mix(in srgb, var(--marca) 45%, var(--borda-forte)); }
+  .btn-perigo { background: var(--superficie); color: var(--erro); border-color: var(--borda-perigo); }
+  .btn-perigo:hover { background: var(--erro-suave); }
+  .btn-texto { background: none; border: none; color: var(--marca-2); padding: 4px 6px; font-weight: 600; }
+  .btn-texto:hover { text-decoration: underline; }
+  .btn-largo { width: 100%; padding: 11px 16px; font-size: var(--t-lg); }
+  .btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+  .btn-primario:disabled { background: var(--desab); color: #fff; opacity: 1; }
+  .btn-sm { padding: 0 12px; height: var(--ctl-h); font-size: var(--t-sm); }
+  .ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .btn .ic { width: 16px; height: 16px; }
+
+  /* ============================================================ estrutura: menu lateral + conteúdo */
+  .app { display: grid; grid-template-columns: var(--lat) minmax(0, 1fr); min-height: 100dvh; transition: grid-template-columns .2s var(--ease); }
+  .app.recolhido { --lat: 68px; }
+  .conteudo { min-width: 0; }
+  .lateral { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: var(--e2); padding: var(--e4) var(--e3);
+             background: var(--lat-fundo); border-right: 1px solid var(--borda); z-index: 50; overflow: hidden auto; }
+  .lat-marca { display: flex; align-items: center; gap: 10px; padding: 2px 8px var(--e3); min-width: 0; }
+  .marca-selo { width: 28px; height: 28px; flex: none; display: block; }
+  .marca-selo svg { width: 100%; height: 100%; display: block; }
+  .lat-nome { min-width: 0; white-space: nowrap; }
+  .lat-nome b { display: block; font-size: 16px; line-height: 1.15; letter-spacing: -.3px; color: var(--titulo); }
+  .lat-nome small { display: block; font-size: var(--t-xs); color: var(--texto-3); }
+  .lat-nav { display: grid; gap: 2px; }
+  .lat-grupo { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--texto-3);
+               padding: var(--e4) 10px 6px; white-space: nowrap; }
+  .lat-grupo:first-child { padding-top: 0; }
+  .lat-item { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 0 10px; border: 0;
+              border-radius: var(--raio); background: none; color: var(--texto-2); font: 500 var(--t-md) var(--fonte); text-align: left;
+              cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
+  .lat-item:hover { background: var(--lat-hover); color: var(--texto); }
+  .lat-item.ativa { background: var(--marca-suave); color: var(--marca-2); font-weight: 600; }
+  .lat-item.ativa::before { content: ""; position: absolute; left: calc(-1 * var(--e3)); top: 8px; bottom: 8px; width: 3px;
+                            border-radius: 0 3px 3px 0; background: var(--marca); }
+  .lat-item kbd { margin-left: auto; font: 11px var(--mono); color: var(--texto-3); border: 1px solid var(--borda); border-radius: 4px; padding: 0 5px; }
+  .lat-rodape { margin-top: auto; display: grid; gap: var(--e2); padding-top: var(--e3); border-top: 1px solid var(--borda); }
+  .lat-recolher { color: var(--texto-3); font-size: var(--t-sm); }
+  .conexao { display: flex; align-items: center; gap: var(--e2); font-size: var(--t-sm); color: var(--texto-2); padding: 8px 10px; line-height: 1.3; }
+  .ponto { width: 8px; height: 8px; border-radius: 50%; background: #9CA3AF; flex: none; }
+  .ponto.ok { background: #22A05B; box-shadow: 0 0 0 3px color-mix(in srgb, #22A05B 18%, transparent); }
+  .ponto.esp { background: #E3A008; box-shadow: 0 0 0 3px color-mix(in srgb, #E3A008 18%, transparent); }
+  /* trilho (menu recolhido ou tablet): só ícones, centralizados; o rótulo fica no title */
+  .app.recolhido .lat-nome, .app.recolhido .lat-item .rot, .app.recolhido .lat-item kbd, .app.recolhido #conexao { display: none; }
+  .app.recolhido .lat-grupo { font-size: 0; padding: var(--e3) 0 var(--e1); border-top: 1px solid var(--borda); margin: var(--e2) 6px 0; }
+  .app.recolhido .lat-grupo:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+  .app.recolhido .lat-item, .app.recolhido .conexao, .app.recolhido .lat-marca { justify-content: center; padding-left: 0; padding-right: 0; }
+  .app.recolhido .lat-recolher .ic { transform: scaleX(-1); }
+  @media (max-width: 1099px) and (min-width: 701px) {
+    .app { --lat: 68px; }
+    .lat-nome, .lat-item .rot, .lat-item kbd, #conexao, .lat-recolher { display: none; }
+    .lat-grupo { font-size: 0; padding: var(--e3) 0 var(--e1); border-top: 1px solid var(--borda); margin: var(--e2) 6px 0; }
+    .lat-grupo:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+    .lat-item, .conexao, .lat-marca { justify-content: center; padding-left: 0; padding-right: 0; }
+  }
+  /* celular: o menu vira uma barra superior compacta (ícone + rótulo curto) */
+  @media (max-width: 700px) {
+    :root { --topo: 60px; }
+    .app, .app.recolhido { grid-template-columns: minmax(0, 1fr); }
+    .lateral { height: auto; flex-direction: row; align-items: center; padding: 6px var(--e3); border-right: 0; border-bottom: 1px solid var(--borda);
+               overflow: visible; gap: var(--e2); }
+    .lat-marca { padding: 0; } .lat-nome { display: none; }
+    .lat-nav { display: flex; gap: 2px; flex: 1; justify-content: space-around; }
+    .lat-grupo, .lat-item kbd, .lat-recolher { display: none !important; }
+    .lat-item { flex-direction: column; gap: 2px; min-height: 46px; padding: 4px 6px; font-size: 11px; justify-content: center; width: auto; }
+    .lat-item .rot { display: block !important; }
+    .lat-item.ativa::before { left: 8px; right: 8px; top: auto; bottom: -7px; width: auto; height: 3px; border-radius: 3px 3px 0 0; }
+    .lat-rodape { margin: 0; padding: 0; border: 0; }
+    #conexao { display: none; } .conexao { padding: 6px; }
+  }
+
+  /* ============================================================ página */
+  .pagina { width: 100%; min-height: calc(100dvh - var(--topo)); padding: var(--e5) var(--margem) var(--e6);
+            --margem: clamp(16px, 2.2vw, 40px);
+            display: grid; gap: var(--e4); align-content: start; }
+  .pagina.entrando { animation: pagina .18s var(--ease); }
+  @keyframes pagina { from { opacity: 0; transform: translateY(4px); } }
+  .cartao { background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-g); box-shadow: var(--sombra); padding: var(--e5); }
+  .cartao-cab { display: flex; align-items: center; gap: var(--e2); margin-bottom: var(--e4); }
+  .cartao-cab h2, h2 { margin: 0; font-size: var(--t-lg); font-weight: 700; color: var(--titulo); }
+  .cartao-cab .dir { margin-left: auto; display: flex; gap: var(--e2); align-items: center; }
+  .meta { font-size: var(--t-sm); color: var(--texto-2); margin: 0; }
+  p.meta, .aviso .corpo { max-width: 110ch; }
+  .linha { display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; }
+  /* Área de trabalho: preparação (~35%) | monitoramento (~65%, dominante) | apoio (recentes + diagnóstico).
+     Proporções em fr (nunca larguras fixas): a tela inteira é usada em qualquer largura ou zoom. */
+  .area { display: grid; gap: var(--e4); align-items: start;
+          grid-template-columns: minmax(0, 1fr); grid-template-areas: "prep" "monitor" "apoio"; }
+  .area-prep { grid-area: prep; min-width: 0; }
+  .area-monitor { grid-area: monitor; display: grid; gap: var(--e4); min-width: 0; }
+  .area-apoio { grid-area: apoio; display: grid; gap: var(--e4); min-width: 0; align-items: start;
+                grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); }
+  @media (min-width: 1100px) {
+    .area { grid-template-columns: minmax(0, 35fr) minmax(0, 65fr); grid-template-areas: "prep monitor" "prep apoio";
+            grid-template-rows: auto 1fr; }
+    .area-prep { grid-row: 1 / span 2; }
+  }
+  @media (min-width: 1100px) and (min-height: 700px) { .area-prep { position: sticky; top: var(--e4); } }
+  /* Muito espaço (monitor largo ou zoom 67%/50%): o apoio vira uma 3ª coluna em vez de sobrar tela vazia. */
+  @media (min-width: 2000px) {
+    .area { grid-template-columns: minmax(0, 27fr) minmax(0, 48fr) minmax(0, 25fr); grid-template-areas: "prep monitor apoio"; }
+    .area-prep { grid-row: auto; }
+    .area-apoio { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 640px) { .pagina { padding: var(--e3); } .cartao { padding: var(--e4); } }
+
+  /* cabeçalho da área de trabalho */
+  .pagina-cab { display: flex; align-items: center; gap: var(--e3) var(--e4); flex-wrap: wrap; min-height: 44px; }
+  .pagina-cab h1 { margin: 0; font-size: clamp(22px, .9rem + .6vw, 26px); line-height: 1.2; color: var(--titulo); letter-spacing: -.4px; font-weight: 700; }
+  .pagina-sub { margin: 2px 0 0; font-size: var(--t-sm); color: var(--texto-3); }
+  .pagina-acoes { margin-left: auto; display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; }
+  .pagina-cab.fixo { position: sticky; top: var(--topo); z-index: 20; margin: calc(-1 * var(--e5)) calc(-1 * var(--margem)) 0;
+                     padding: var(--e4) var(--margem); background: color-mix(in srgb, var(--fundo) 92%, transparent);
+                     backdrop-filter: blur(8px); border-bottom: 1px solid var(--borda); }
+  .tabela-cartao { padding: 0; overflow: hidden; }
+  .tabela-cartao .rolagem { border: 0; border-radius: 0; margin: 0; }
+  .resumo { display: flex; gap: var(--e2) var(--e5); flex-wrap: wrap; margin-top: 6px; font-size: var(--t-sm); color: var(--texto-2); }
+  .resumo span { display: inline-flex; align-items: center; gap: 6px; }
+  .resumo b { color: var(--texto); font-weight: 600; }
+  .resumo .alerta-txt { color: var(--atencao); }
+
+  /* estado vazio do monitoramento */
+  .vazio-estado { display: flex; gap: var(--e4); align-items: center; padding: var(--e2) 0 0; }
+  .vazio-estado .icone { width: 40px; height: 40px; border-radius: 10px; background: var(--marca-suave); color: var(--marca);
+                         display: grid; place-items: center; flex: none; }
+  .vazio-estado .icone .ic { width: 22px; height: 22px; }
+  .vazio-estado h3 { margin: 0; font-size: var(--t-lg); color: var(--titulo); }
+  .vazio-estado p { margin: 0; color: var(--texto-2); max-width: 70ch; }
+  .ultima { margin-top: var(--e3); display: flex; flex-wrap: wrap; gap: var(--e2); align-items: center; font-size: var(--t-sm); }
+
+  /* execuções recentes */
+  .recentes { list-style: none; margin: 0; padding: 0; }
+  .recentes li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px var(--e3); align-items: center;
+                 padding: 10px 0; border-top: 1px solid var(--linha); }
+  .recentes li:first-child { border-top: 0; padding-top: 0; }
+  .recentes .n { font: 700 var(--t-sm) var(--fonte); color: var(--marca-2); background: var(--marca-suave); border-radius: 6px; padding: 3px 8px; }
+  .recentes .info { min-width: 0; }
+  .recentes .info b { display: block; font-size: var(--t-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .recentes .info small { color: var(--texto-2); font-size: var(--t-sm); }
+  .recentes .res { grid-column: 2 / 4; }
+  .recentes button.abrir { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; font: inherit; color: inherit; min-width: 0; }
+  .recentes button.abrir:hover b { color: var(--marca-2); text-decoration: underline; }
+
+  /* avisos (nunca escondem alertas críticos) */
+  .aviso { display: flex; gap: var(--e3); align-items: flex-start; padding: var(--e3) var(--e4); border-radius: var(--raio);
+           border: 1px solid var(--borda); background: var(--superficie); font-size: var(--t-md); }
+  .aviso::before { content: ""; flex: none; width: 4px; align-self: stretch; border-radius: 4px; background: var(--atencao); }
+  .aviso.critico::before { background: var(--erro); }
+  .aviso.info::before { background: var(--info); }
+  .aviso .corpo { flex: 1; min-width: 0; }
+  .aviso b.tit { display: block; color: var(--titulo); }
+
+  /* ============================================================ preparação */
+  textarea { width: 100%; height: clamp(180px, calc(100dvh - 500px), 640px); min-height: 160px; resize: vertical; border: 1px solid var(--borda-forte); border-radius: var(--raio);
+             padding: 10px 12px; font: var(--t-md)/1.55 var(--mono); background: var(--superficie-2); color: var(--texto); }
+  textarea:focus { outline: none; border-color: var(--marca); box-shadow: var(--foco); background: var(--campo); }
+  .contagem { display: grid; gap: 2px; margin: 6px 0 var(--e4); font-size: var(--t-sm); color: var(--texto-2); }
+  .contagem b { color: var(--texto); font-variant-numeric: tabular-nums; }
+  .importar { border: 1px solid var(--borda); border-radius: var(--raio); padding: 6px; display: flex; align-items: center;
+              gap: var(--e2) var(--e3); flex-wrap: wrap; margin-bottom: var(--e4); background: var(--superficie-2); }
+  .importar.com-arquivo { border-style: solid; border-color: color-mix(in srgb, var(--ok) 35%, transparent); background: var(--ok-suave); }
+  .importar .arq { flex: 1; min-width: 150px; font-size: var(--t-sm); color: var(--texto-2); overflow-wrap: anywhere; }
+  .importar .arq b { color: var(--texto); }
+  .importar .arq.erro { color: var(--erro); }
+  .importar { transition: background .2s, border-color .2s; }
+  .ok-icone { display: none; width: 18px; height: 18px; color: var(--ok); stroke-width: 2.4; }
+  .importar.com-arquivo .ok-icone { display: block; animation: surge .25s var(--ease); }
+  @keyframes surge { from { opacity: 0; transform: scale(.6); } }
+  #motivoBloqueio { margin-top: var(--e2); min-height: 20px; }
+
+  /* ajuda contextual */
+  .ajuda-ctx { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--borda-forte); background: transparent;
+               color: var(--texto-3); font: 700 11px var(--fonte); cursor: pointer; padding: 0; line-height: 16px; flex: none;
+               transition: color .15s, border-color .15s, opacity .15s; vertical-align: -3px; margin-left: 6px; }
+  .ajuda-ctx:hover, .ajuda-ctx[aria-expanded="true"] { border-color: var(--titulo); color: var(--titulo); }
+  .dica { position: fixed; z-index: 80; max-width: 320px; background: var(--escuro); color: #fff; font-size: var(--t-sm); line-height: 1.45;
+          padding: 10px 12px; border-radius: var(--raio); box-shadow: var(--sombra-alta); animation: entra .14s var(--ease); }
+  .dica b { display: block; margin-bottom: 2px; }
+  .dica-link { display: block; margin-top: 8px; padding: 0; background: none; border: 0; color: #fff; font: 600 var(--t-sm) var(--fonte);
+               text-decoration: underline; text-underline-offset: 3px; cursor: pointer; opacity: .85; }
+  .dica-link:hover { opacity: 1; }
+
+  /* ============================================================ execução */
+  .exec-cab { display: flex; align-items: center; gap: var(--e3); flex-wrap: wrap; margin-bottom: var(--e3); }
+  .exec-cab h2 { font-size: var(--t-xl); }
+  .selo { display: inline-flex; align-items: center; gap: 6px; font: 700 var(--t-xs) var(--fonte); letter-spacing: .3px; text-transform: uppercase;
+          padding: 4px 10px; border-radius: 999px; background: var(--superficie-2); color: var(--texto-2); border: 1px solid var(--borda); }
+  .selo::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .selo.rodando { background: var(--marca-suave); color: var(--marca-2); border-color: color-mix(in srgb, currentColor 30%, transparent); }
+  .selo.pausa { background: var(--atencao-suave); color: var(--atencao); border-color: color-mix(in srgb, currentColor 30%, transparent); }
+  .selo.ok { background: var(--ok-suave); color: var(--ok); border-color: color-mix(in srgb, currentColor 30%, transparent); }
+  .selo.erro { background: var(--erro-suave); color: var(--erro); border-color: color-mix(in srgb, currentColor 30%, transparent); }
+  .exec-cab .acoes { margin-left: auto; display: flex; gap: var(--e2); }
+  .barra { height: 8px; background: var(--barra-fundo); border-radius: 999px; overflow: hidden; }
+  .barra > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--marca-esc), var(--barra)); border-radius: 999px; transition: width .5s var(--ease), background .3s; }
+  .barra.ok > div { background: var(--ok); }
+  .barra.indef > div { background: var(--barra); }
+  .barra.amb > div { background: var(--atencao); }
+  .barra.indef > div { width: 30% !important; animation: vai 1.3s ease-in-out infinite; }
+  @keyframes vai { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+  .numeros { display: flex; justify-content: space-between; gap: var(--e3); flex-wrap: wrap; margin-top: var(--e2); font-size: var(--t-sm); color: var(--texto-2); }
+  .numeros b { color: var(--texto); font-variant-numeric: tabular-nums; }
+  .etapa { font-size: var(--t-sm); color: var(--texto-2); margin: var(--e1) 0 0; min-height: 20px; font-family: var(--mono); overflow-wrap: anywhere; }
+  .vazio-exec { font-size: var(--t-md); color: var(--texto-2); margin: 0; }
+
+  /* Uma linha quando cabe (6 × ~140 px); senão 3 ou 2 por linha, sempre por igual. */
+  .painel { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; margin-top: var(--e5);
+            background: var(--borda); border: 1px solid var(--borda); border-radius: var(--raio); overflow: hidden; }
+  @container monitor (max-width: 900px) { .painel { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @container monitor (max-width: 440px) { .painel { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  #cartaoProgresso { container: monitor / inline-size; }
+  .indicador { padding: 14px 16px; background: var(--superficie); min-width: 0; transition: background .15s;
+               display: flex; flex-direction: column; justify-content: space-between; gap: 6px; min-height: 96px; }
+  .indicador:hover { background: var(--superficie-2); }
+  .indicador .ajuda-ctx { opacity: 0; }
+  .indicador:hover .ajuda-ctx, .indicador .ajuda-ctx:focus-visible, .indicador .ajuda-ctx[aria-expanded="true"] { opacity: 1; }
+  @media (hover: none) { .indicador .ajuda-ctx { opacity: 1; } }
+  .indicador .rot { display: flex; align-items: flex-start; gap: 7px; font-size: var(--t-sm); color: var(--texto-2); font-weight: 600; line-height: 1.3; }
+  .indicador .rot .ic { width: 26px; height: 26px; margin-top: -4px; padding: 5px; border-radius: 50%; stroke-width: 2;
+                        background: var(--neutro); color: var(--texto-2); }
+  .indicador .rot .ajuda-ctx { margin-left: auto; vertical-align: 0; }
+  .indicador b { display: block; font-size: var(--t-num); line-height: 1.1; font-weight: 700; letter-spacing: -.5px;
+                 font-variant-numeric: tabular-nums; color: var(--titulo); }
+  .indicador.ok svg, .indicador.ok b { color: var(--ok); } .indicador.ok svg { background: var(--ok-suave); }
+  .indicador.amb svg, .indicador.amb b { color: var(--atencao); } .indicador.amb svg { background: var(--atencao-suave); }
+  .indicador.err svg, .indicador.err b { color: var(--erro); } .indicador.err svg { background: var(--erro-suave); }
+  .indicador b.mudou { animation: mudou .35s var(--ease); }
+  @keyframes mudou { from { opacity: .4; transform: translateY(-3px); } }
+  .tag.resolvido { background: var(--ok-suave); color: var(--ok); margin-left: 6px; }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: var(--e3); }
+  .chips:empty { display: none; }
+  .chip { border-radius: 999px; padding: 3px 10px; font-size: var(--t-xs); background: var(--neutro); color: var(--texto-2); font-weight: 600; }
+  .chip b { margin-left: 4px; color: var(--texto); }
+  .chip.ok { background: var(--ok-suave); color: var(--ok); } .chip.amb { background: var(--atencao-suave); color: var(--atencao); }
+  .chip.err { background: var(--erro-suave); color: var(--erro); }
+  .ultimo-evento { margin-top: var(--e3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .ultimo-evento:empty { display: none; }
+  .hist-tec { margin-top: var(--e4); border: 1px solid var(--borda); border-radius: var(--raio); overflow: hidden; }
+  .resultado-acoes { display: flex; gap: var(--e2); flex-wrap: wrap; margin-top: var(--e4); }
+  .resultado-acoes:not(:has(> :not(.oculto))) { display: none; }
+
+  /* conferência da amostra */
+  .alerta-cartao { border-left: 4px solid var(--marca); }
+  table { width: 100%; border-collapse: collapse; font-size: var(--t-md); }
+  th { text-align: left; font-size: var(--t-xs); color: var(--texto-2); font-weight: 700; padding: 8px; border-bottom: 1px solid var(--borda);
+       background: var(--superficie-2); position: sticky; top: 0; text-transform: uppercase; letter-spacing: .3px; }
+  td { padding: 9px 8px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+  .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mono { font-family: var(--mono); }
+  .rolagem { max-height: 420px; overflow: auto; border: 1px solid var(--borda); border-radius: var(--raio); margin-top: var(--e3); }
+  .vazio { color: var(--texto-2); text-align: center; padding: var(--e6) 0; }
+
+  /* ============================================================ diagnóstico técnico */
+  .tecnico { padding: 0; overflow: hidden; }
+  .tecnico > .cartao-cab { padding: var(--e4) var(--e5); margin: 0; border-bottom: 1px solid var(--borda); }
+  .secao { border-bottom: 1px solid var(--borda); }
+  .secao:last-child { border-bottom: 0; }
+  .secao > summary { list-style: none; cursor: pointer; padding: var(--e3) var(--e5); display: flex; align-items: center; gap: var(--e2);
+                     font-weight: 600; color: var(--titulo); }
+  .secao > summary::-webkit-details-marker { display: none; }
+  .secao > summary::before { content: "›"; display: inline-block; width: 14px; color: var(--texto-3); font-size: 18px; line-height: 1; transition: transform .15s; }
+  .secao[open] > summary::before { transform: rotate(90deg); }
+  .secao > summary:hover { background: var(--superficie-2); }
+  .secao > summary .sub { font-weight: 400; color: var(--texto-3); font-size: var(--t-sm); }
+  .secao .conteudo { padding: 0 var(--e5) var(--e4) calc(var(--e5) + 22px); }
+  details::details-content { block-size: 0; overflow: clip; transition: block-size .22s var(--ease), content-visibility .22s allow-discrete; }
+  details[open]::details-content { block-size: auto; }
+  .secao.recolhivel { border: 1px solid var(--borda); border-radius: var(--raio); margin-top: var(--e3); }
+  .secao.recolhivel > summary { padding: var(--e2) var(--e3); border-radius: var(--raio); }
+  .secao.recolhivel .conteudo { padding: var(--e1) var(--e3) var(--e3); }
+  #log { background: var(--superficie-2); border: 1px solid var(--borda); border-radius: var(--raio); padding: 10px; max-height: 280px; overflow: auto;
+         font: 12px/1.5 var(--mono); white-space: pre-wrap; color: var(--codigo); margin: 0; }
+  .categoria { border: 1px solid var(--borda); border-radius: var(--raio); padding: 10px 12px; margin-top: 10px; background: var(--superficie-2); }
+  .categoria h3 { margin: 0 0 4px; font-size: var(--t-md); }
+  .categoria .ev { font: 12px var(--mono); color: var(--texto-2); white-space: pre-wrap; word-break: break-all; margin: 6px 0 0; }
+  .rotulo-cat { font-size: 11px; font-weight: 700; letter-spacing: .4px; border-radius: 4px; padding: 1px 6px; margin-right: 6px; }
+  .rotulo-cat.FONTE { background: var(--erro-suave); color: var(--erro); } .rotulo-cat.APP { background: var(--info-suave); color: var(--info); }
+  .rotulo-cat.ENTRADA { background: var(--atencao-suave); color: var(--atencao); }
+  input[type=text], input[type=number], select { font: var(--t-md) var(--fonte); height: var(--ctl-h); padding: 0 10px; border: 1px solid var(--borda-forte);
+       border-radius: var(--raio); background: var(--campo); color: var(--texto); transition: border-color .15s, box-shadow .15s; }
+  input[type=text]:hover, input[type=number]:hover, select:hover { border-color: var(--texto-3); }
+  input:focus, select:focus { outline: none; border-color: var(--marca); box-shadow: var(--foco); }
+  select { appearance: none; padding-right: 32px; cursor: pointer;
+           background-image: linear-gradient(45deg, transparent 50%, var(--texto-2) 50%), linear-gradient(135deg, var(--texto-2) 50%, transparent 50%);
+           background-position: calc(100% - 17px) 52%, calc(100% - 12px) 52%; background-size: 5px 5px; background-repeat: no-repeat; }
+  /* interruptor (é um checkbox de verdade: só o visual muda) */
+  .campo input[type=checkbox] { appearance: none; width: 36px; height: 20px; margin: 0; border-radius: 999px;
+       background: var(--borda-forte); position: relative; cursor: pointer; transition: background .2s var(--ease); flex: none; }
+  .campo input[type=checkbox]::before { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+       background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .2s var(--ease); }
+  .campo input[type=checkbox]:checked { background: var(--marca); }
+  .campo input[type=checkbox]:checked::before { transform: translateX(16px); }
+  .campo input[type=checkbox]:focus-visible { box-shadow: var(--foco); }
+
+  /* ============================================================ histórico */
+  tr.clicavel { cursor: pointer; } tr.clicavel:hover td { background: var(--hover); }
+  tr.selecionada td:first-child { box-shadow: inset 3px 0 0 var(--marca); }
+  tr.selecionada td { background: var(--selecao); }
+  .tag { display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: var(--t-xs); font-weight: 600; white-space: nowrap; background: var(--neutro); color: var(--texto-2); }
+  .tag.ok { background: var(--ok-suave); color: var(--ok); } .tag.amb { background: var(--atencao-suave); color: var(--atencao); }
+  .tag.err { background: var(--erro-suave); color: var(--erro); }
+  .res { display: flex; gap: 4px; flex-wrap: wrap; }
+  .detalhe { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--texto-2); }
+
+  /* ============================================================ configurações
+     Aparência e Tabela (pequenas) à esquerda, Fonte de dados à direita; abaixo, os parâmetros em 2 colunas.
+     Seção = título fora + UM painel com linhas (rótulo à esquerda, controle à direita). Sem cartões dentro de cartões. */
+  .cfg-layout { display: grid; gap: var(--e6); align-items: start;
+                grid-template-columns: minmax(0, 1fr); grid-template-areas: "aparencia" "fonte" "tabela" "parametros"; }
+  @media (min-width: 1000px) {
+    .cfg-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "aparencia fonte" "tabela fonte" "parametros parametros";
+                  grid-template-rows: auto 1fr auto; }
+  }
+  .cfg-parametros { display: grid; gap: var(--e6); grid-template-columns: minmax(0, 1fr); align-items: start; }
+  @media (min-width: 1000px) { .cfg-parametros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .cfg-secao { min-width: 0; }
+  .secao-cab { display: flex; align-items: center; gap: 6px; margin: 0 0 var(--e2); }
+  .secao-cab h2 { margin: 0; font-size: var(--t-md); font-weight: 650; color: var(--titulo); letter-spacing: -.1px; }
+  .secao-cab .ajuda-ctx { margin-left: 2px; vertical-align: 0; }
+  .cfg-painel { background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-g); }
+  .cfg-painel > .importar { margin: 0; border: 0; background: none; padding: 10px var(--e4); }
+  .painel-rodape { display: flex; justify-content: flex-end; padding: 10px var(--e4); border-top: 1px solid var(--linha);
+                   background: var(--superficie-2); border-radius: 0 0 var(--raio-g) var(--raio-g); }
+  .cfg-painel .secao { border-top: 1px solid var(--linha); border-bottom: 0; }
+  .cfg-painel .secao > summary { padding: 12px var(--e4); font-weight: 500; color: var(--texto); }
+  .cfg-painel .secao .conteudo { padding: 0 var(--e4) var(--e4); }
+  .cfg-painel .secao input[type=text] { width: min(230px, 100%); }
+  .campo { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--e2) var(--e4);
+           min-height: 52px; padding: 8px var(--e4); border-top: 1px solid var(--linha); transition: background .15s; }
+  .campo:first-child { border-top: 0; }
+  .campo:hover { background: color-mix(in srgb, var(--superficie-2) 70%, transparent); }
+  .campo .rotulo { display: flex; align-items: center; min-width: 0; color: var(--texto); }
+  .campo label { font-weight: 500; }
+  .campo .entrada { display: flex; align-items: center; justify-content: flex-end; }
+  .campo select, .campo .texto-cfg { width: var(--ctl-sel); }
+  .campo-info { grid-template-columns: auto minmax(0, 1fr); }
+  .campo-info .rotulo { white-space: nowrap; }
+  .campo-info .valor { display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; justify-content: flex-end; text-align: right;
+                       font-size: var(--t-sm); color: var(--texto-2); }
+  .campo-info .valor b { color: var(--texto); font-weight: 600; }
+  /* número com unidade acoplada: todos com a mesma largura total */
+  .num-grupo { display: inline-flex; width: var(--ctl-num); }
+  .num-grupo input { width: 100%; min-width: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  .num-grupo.com-un input { border-radius: var(--raio) 0 0 var(--raio); }
+  .num-grupo .un { display: grid; place-items: center; min-width: 40px; padding: 0 8px; height: var(--ctl-h); border: 1px solid var(--borda-forte);
+                   border-left: 0; border-radius: 0 var(--raio) var(--raio) 0; background: var(--superficie-2); color: var(--texto-2); font-size: var(--t-sm); }
+  /* "?" dos parâmetros: só ao passar o mouse ou focar a linha (toque: sempre visível) */
+  .campo .ajuda-ctx { opacity: 0; }
+  .campo:hover .ajuda-ctx, .campo:focus-within .ajuda-ctx, .campo .ajuda-ctx[aria-expanded="true"] { opacity: 1; }
+  @media (hover: none) { .campo .ajuda-ctx { opacity: 1; } }
+  @media (max-width: 640px) {
+    .campo { grid-template-columns: 1fr; }
+    .campo .entrada, .campo-info .valor { justify-content: flex-start; text-align: left; }
+    .campo select { width: 100%; }
+    .pagina-cab.fixo { margin: calc(-1 * var(--e3)) calc(-1 * var(--e3)) 0; padding: var(--e3); }
+  }
+
+  /* ============================================================ notificação (toast) */
+  .toast { position: fixed; right: var(--e5); bottom: var(--e5); z-index: 90; max-width: 380px; background: var(--escuro); color: #fff;
+           padding: 10px 14px; border-radius: var(--raio); box-shadow: var(--sombra-alta); font-size: var(--t-md);
+           animation: entra .2s var(--ease); }
+  .toast.erro { background: var(--erro); }
+
+  /* ============================================================ tutorial guiado */
+  .tut-bloqueio { position: fixed; inset: 0; z-index: 100; }
+  .tut-foco { position: fixed; z-index: 101; border-radius: 10px; pointer-events: none;
+              box-shadow: 0 0 0 3px var(--marca), 0 0 0 8px rgba(218, 41, 28, .18), 0 0 0 100vmax rgba(14, 20, 33, .58);
+              transition: top .25s ease, left .25s ease, width .25s ease, height .25s ease; }
+  .tut-balao { position: fixed; z-index: 102; width: min(420px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; background: var(--superficie); color: var(--texto);
+               border-radius: var(--raio-g); box-shadow: var(--sombra-alta); padding: var(--e4) var(--e4) var(--e3); border-top: 4px solid var(--marca);
+               animation: entra .2s ease; }
+  @keyframes entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .tut-balao .passo { font-size: var(--t-xs); font-weight: 700; color: var(--marca); letter-spacing: .3px; text-transform: uppercase; }
+  .tut-balao h3 { margin: 4px 0 6px; font-size: var(--t-lg); color: var(--titulo); }
+  .tut-balao p { margin: 0; font-size: var(--t-md); color: var(--texto-2); line-height: 1.55; }
+  .tut-pontos { display: flex; gap: 5px; margin: var(--e3) 0; }
+  .tut-pontos span { height: 4px; flex: 1; border-radius: 4px; background: var(--borda); transition: background .2s; }
+  .tut-pontos span.feito { background: var(--marca); }
+  .tut-acoes { display: flex; align-items: center; gap: var(--e2); }
+  .tut-acoes .dir { margin-left: auto; display: flex; gap: var(--e2); }
+  .tut-dica { font-size: 11px; color: var(--texto-3); margin-top: var(--e2); }
+  @media (max-width: 640px) { .tut-balao { left: 12px !important; right: 12px; top: auto !important; bottom: 12px; width: auto; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-analise" viewBox="0 0 24 24"><path d="M3 12h4l3 7 4-14 3 7h4"/></symbol>
+  <symbol id="i-historico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-config" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="i-ajuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17.2v.1"/></symbol>
+  <symbol id="i-recolher" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m15 10-2 2 2 2"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-soma" viewBox="0 0 24 24"><path d="M17 5H7l6 7-6 7h10"/></symbol>
+  <symbol id="i-relogio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-diverge" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14M15 4 9 20"/></symbol>
+  <symbol id="i-meia" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-lista" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+</svg>
+<div class="app" id="app">
+<aside class="lateral" aria-label="Navegação principal">
+  <div class="lat-marca"><span class="marca-selo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.5 29 28h-6.6L16 15.6 9.6 28H3z" fill="#E3261E"/><circle cx="16" cy="24.4" r="2.9" fill="#E3261E"/></svg></span>
+    <div class="lat-nome"><b>Agente BTP</b><small>Extração e auditoria</small></div></div>
+  <nav class="lat-nav" aria-label="Seções">
+    <span class="lat-grupo">Operação</span>
+    <button class="lat-item ativa" id="abaAnalise" aria-current="page" title="Análise"><svg class="ic" aria-hidden="true"><use href="#i-analise"/></svg><span class="rot">Análise</span></button>
+    <button class="lat-item" id="abaHistorico" title="Histórico"><svg class="ic" aria-hidden="true"><use href="#i-historico"/></svg><span class="rot">Histórico</span></button>
+    <span class="lat-grupo">Sistema</span>
+    <button class="lat-item" id="abaConfig" title="Configurações"><svg class="ic" aria-hidden="true"><use href="#i-config"/></svg><span class="rot">Configurações</span></button>
+    <span class="lat-grupo">Ajuda</span>
+    <button class="lat-item" id="bAjuda" aria-haspopup="dialog" title="Ajuda guiada (F1)"><svg class="ic" aria-hidden="true"><use href="#i-ajuda"/></svg><span class="rot">Ajuda</span><kbd>F1</kbd></button>
+  </nav>
+  <div class="lat-rodape">
+    <span class="conexao" id="pilulaConexao" role="status"><span class="ponto" id="pt"></span><span id="conexao">Aguardando o BTP</span></span>
+    <button class="lat-item lat-recolher" id="bRecolher" aria-expanded="true" title="Recolher menu"><svg class="ic" aria-hidden="true"><use href="#i-recolher"/></svg><span class="rot">Recolher menu</span></button>
+  </div>
+</aside>
+<div class="conteudo">
+
+<!-- ================================================================ NOVA ANÁLISE -->
+<main id="vistaAnalise" class="pagina">
+  <div class="pagina-cab">
+    <div>
+      <h1>Análise</h1>
+      <div class="resumo" id="resumoAgente" aria-live="polite"></div>
+    </div>
+  </div>
+  <div class="aviso critico oculto" id="desatualizado" role="alert"><div class="corpo"><b class="tit">O Agente BTP aberto é de uma versão anterior.</b>
+    Feche a janela preta do Agente BTP e abra o <b>Abrir Agente BTP.bat</b> de novo.</div></div>
+  <div class="aviso oculto" id="aviso" role="status"></div>
+
+  <!-- Só aparece enquanto a aba do BTP não estiver conectada -->
+  <section class="aviso info" id="cartaoConexao" aria-labelledby="tConexao">
+    <div class="corpo">
+      <b class="tit" id="tConexao">Conecte a aba do BTP</b>
+      Com a extensão <b>Agente BTP</b> instalada, basta abrir o BTP já logado: a conexão é automática.
+      <button class="btn-texto" id="bComo" aria-expanded="false" aria-controls="como">Instalar a extensão (uma vez só)</button>
+      <div id="como" class="oculto">
+        <ol>
+          <li>No Chrome, abra <b>chrome://extensions</b> <button class="btn-texto" id="bCopiarExt">(copiar)</button>.</li>
+          <li>Ligue o <b>Modo do desenvolvedor</b> (canto superior direito).</li>
+          <li>Clique em <b>Carregar sem compactação</b> e escolha a pasta <b>extensao</b> do Agente BTP
+            <button class="btn-texto" id="bPastaExt">(abrir a pasta)</button>.</li>
+          <li>Recarregue a aba do BTP (F5). Se o Chrome perguntar sobre <b>acesso à rede local</b>, clique em <b>Permitir</b>.</li>
+        </ol>
+        <p class="meta" id="caminhoExt"></p>
+        <details>
+          <summary class="meta" style="cursor:pointer">A empresa bloqueia extensões? Use o favorito</summary>
+          <ol>
+            <li>Clique em <b>Copiar favorito</b>.</li>
+            <li>No Chrome: <b>Ctrl+Shift+O</b> → menu <b>⋮</b> → <b>Adicionar novo favorito</b>.</li>
+            <li>Nome: <b>Agente BTP</b> · URL: cole (<b>Ctrl+V</b>) · Salvar. Depois, clique nele na aba do BTP.</li>
+          </ol>
+          <div class="linha">
+            <button class="btn btn-sec" id="bCopiarUrl">Copiar favorito</button>
+            <a id="favorito" class="btn btn-sec" href="#" onclick="return false">Agente BTP</a>
+            <button class="btn-texto" id="bCopiarConsole">copiar alternativa para o Console (F12)</button>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="aviso critico oculto" id="cartaoRetomar" aria-labelledby="retTitulo">
+    <div class="corpo">
+      <b class="tit" id="retTitulo">Retomar análise</b>
+      <span id="retTexto"></span>
+      <div class="linha" style="margin-top:8px">
+        <button class="btn btn-primario" id="bRetomarAnalise">Retomar</button>
+        <a class="btn btn-sec" id="retPlanilha" href="#">Baixar planilha parcial</a>
+        <a class="btn-texto" id="retDiag" href="#">Baixar diagnóstico (.json)</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="area">
+    <!-- ======================== preparação -->
+    <section class="cartao area-prep" id="secPreparo" aria-labelledby="tPreparo">
+      <div class="cartao-cab"><h2 id="tPreparo">Nova análise</h2>
+        <button class="ajuda-ctx" data-ajuda="wo" aria-label="O que é uma WO e qual o formato">?</button></div>
+      <label for="texto" class="sr-only">WOs, uma por linha</label>
+      <textarea id="texto" placeholder="Insira as WOs, uma por linha…" spellcheck="false" aria-describedby="contador"></textarea>
+      <div class="contagem"><span id="contador" aria-live="polite"><b>0</b> WOs</span><span id="contadorInvalidas"></span></div>
+      <div class="importar" id="zonaImportar">
+        <label for="arquivo" class="btn btn-sec btn-sm" tabindex="0" id="rotArquivo"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>Importar planilha (.xlsx)</label>
+        <input type="file" id="arquivo" accept=".xlsx" class="sr-only" tabindex="-1">
+        <svg class="ok-icone ic" aria-hidden="true"><use href="#i-check"/></svg><span class="arq" id="nomeArquivo">Nenhuma planilha escolhida</span>
+        <button class="btn-texto oculto" id="bTirarArquivo" aria-label="Remover a planilha escolhida">Remover</button>
+      </div>
+      <button class="btn btn-primario btn-largo" id="bExecutar">Executar análise</button>
+      <p class="meta" id="motivoBloqueio" aria-live="polite"></p>
+    </section>
+
+    <!-- ======================== monitoramento (região dominante) -->
+    <div class="area-monitor">
+      <section class="cartao alerta-cartao oculto" id="cartaoConfirma" aria-labelledby="tConfirma">
+        <div class="cartao-cab"><h2 id="tConfirma">Confira a amostra antes de continuar</h2></div>
+        <p class="meta" id="cfTexto"></p>
+        <div class="rolagem" style="max-height:300px">
+          <table>
+            <thead><tr><th>Material SAP</th><th>Fornecedor SAP</th><th class="num">Qtd. faltante</th>
+              <th>Mensagem do item</th><th id="cfThAlerta">Mensagem do alerta</th></tr></thead>
+            <tbody id="cfTabela"></tbody>
+          </table>
+        </div>
+        <fieldset id="cfEscolha" class="oculto" style="margin-top:12px;border:0;padding:0">
+          <legend style="font-weight:600">Qual mensagem vai para a planilha?</legend>
+          <label><input type="radio" name="cfMsg" value="item" checked> Mensagem do item (janela Mensagens)</label><br>
+          <label><input type="radio" name="cfMsg" value="alerta"> Mensagem do alerta (coluna Mensagem do Monitor)</label><br>
+          <label><input type="radio" name="cfMsg" value="ambas"> As duas (item — Alerta: alerta)</label>
+        </fieldset>
+        <div class="linha" style="margin-top:16px">
+          <button class="btn btn-primario" id="cfSim">Sim, são esses os dados</button>
+          <button class="btn btn-sec" id="cfOutra">Não — procurar outra fonte</button>
+          <button class="btn btn-sec" id="cfMostrar">Não — vou mostrar no BTP</button>
+        </div>
+      </section>
+
+      <section class="cartao" id="cartaoProgresso" aria-labelledby="tituloProg">
+        <div class="exec-cab">
+          <span class="selo" id="seloEstado" role="status">Pronta para iniciar</span>
+          <h2 id="tituloProg">Nenhuma análise em andamento</h2>
+          <div class="acoes">
+            <button class="btn btn-sec oculto" id="bPausar">Pausar</button>
+            <button class="btn btn-primario oculto" id="bContinuar">Retomar</button>
+            <button class="btn btn-perigo oculto" id="bParar">Parar</button>
+          </div>
+        </div>
+        <div id="blocoProgresso">
+          <div class="barra" id="barra" role="progressbar" aria-labelledby="tituloProg" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="barraFill"></div></div>
+          <div class="numeros"><span id="progTxt"></span><span id="etaTxt"></span></div>
+          <p class="etapa" id="etapa"></p>
+        </div>
+        <div class="vazio-estado oculto" id="estadoVazio">
+          <span class="icone" aria-hidden="true"><svg class="ic"><use href="#i-lista"/></svg></span>
+          <div>
+            <h3 id="vazioTitulo">Nenhuma análise em andamento</h3>
+            <div class="ultima oculto" id="vazioUltima"></div>
+          </div>
+        </div>
+        <p class="meta oculto" id="painelLegenda" style="margin-top:var(--e5)"></p>
+        <div class="painel" id="painel">
+          <div class="indicador neutro"><span class="rot"><svg class="ic" aria-hidden="true"><use href="#i-soma"/></svg>Processadas<button class="ajuda-ctx" data-ajuda="processadas" aria-label="O que conta como processada">?</button></span><b id="iProcessadas">—</b></div>
+          <div class="indicador neutro"><span class="rot"><svg class="ic" aria-hidden="true"><use href="#i-relogio"/></svg>Pendentes<button class="ajuda-ctx" data-ajuda="pendentes" aria-label="O que conta como pendente">?</button></span><b id="iPendentes">—</b></div>
+          <div class="indicador ok"><span class="rot"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Validadas<button class="ajuda-ctx" data-ajuda="validadas" aria-label="O que conta como validada">?</button></span><b id="iValidadas">—</b></div>
+          <div class="indicador amb"><span class="rot"><svg class="ic" aria-hidden="true"><use href="#i-diverge"/></svg>Divergência<button class="ajuda-ctx" data-ajuda="divergentes" aria-label="O que é divergência">?</button></span><b id="iDivergentes">—</b></div>
+          <div class="indicador amb"><span class="rot"><svg class="ic" aria-hidden="true"><use href="#i-meia"/></svg>Incompletas<button class="ajuda-ctx" data-ajuda="incompletas" aria-label="O que conta como incompleta">?</button></span><b id="iIncompletas">—</b></div>
+          <div class="indicador err"><span class="rot"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>Falha de extração<button class="ajuda-ctx" data-ajuda="falhas" aria-label="O que conta como falha de extração">?</button></span><b id="iFalhas">—</b></div>
+        </div>
+        <p class="meta oculto" id="prepInfo" style="margin-top:10px">Consultas da aba observadas: <b id="observadas">0</b>
+          · <a href="/api/diagnostico">Baixar diagnóstico da preparação</a></p>
+        <div class="chips" id="chips" aria-label="Situação das WOs no Monitor"></div>
+        <div class="chips" id="errosCat" aria-label="Problemas por origem"></div>
+        <p class="meta ultimo-evento" id="ultimoEvento"></p>
+        <div class="resultado-acoes" id="acoesResultado">
+          <a id="baixar" class="btn btn-primario oculto" href="#">
+            <svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Baixar relatório auditado (.xlsx)</a>
+          <a id="baixarParcial" class="btn btn-sec oculto" href="#">Baixar planilha parcial (.xlsx)</a>
+          <button class="btn btn-sec oculto" id="bVerDiag">Ver diagnóstico desta análise</button>
+          <button class="btn btn-primario oculto" id="bRaioxPronto">Já abri a janela Mensagens</button>
+          <a id="baixarRaiox" class="btn btn-sec oculto" href="#">Baixar Raio-X (.json)</a>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ======================== apoio: execuções recentes + diagnóstico técnico (recolhível) -->
+    <div class="area-apoio">
+      <section class="cartao" id="secRecentes" aria-labelledby="tRecentes">
+        <div class="cartao-cab"><h2 id="tRecentes">Execuções recentes</h2>
+          <div class="dir"><button class="btn-texto" id="bVerHistorico">Ver histórico</button></div></div>
+        <ul class="recentes" id="listaRecentes"><li class="meta">Carregando…</li></ul>
+      </section>
+
+
+    </div>
+  </div>
+
+
+</main>
+
+<!-- ================================================================ HISTÓRICO -->
+<main id="vistaHistorico" class="pagina oculto">
+  <div class="pagina-cab"><div><h1 id="tHist">Histórico</h1></div>
+    <div class="pagina-acoes"><button class="btn btn-perigo" id="bLimpar">Limpar histórico</button></div></div>
+  <section class="cartao tabela-cartao" aria-labelledby="tHist">
+    <div class="rolagem" style="max-height:none">
+      <table>
+        <thead><tr><th class="num">Nº</th><th>Data</th><th>Origem</th><th class="num">WOs</th><th>Resultado</th>
+          <th class="num">Duração</th><th>Situação</th><th>Arquivos</th></tr></thead>
+        <tbody id="tabHist"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="cartao oculto" id="detalheHist" aria-labelledby="detTitulo">
+    <div class="cartao-cab">
+      <h2 id="detTitulo">Detalhamento</h2>
+      <div class="dir">
+        <a id="detBaixar" class="btn btn-primario oculto" href="#">Baixar relatório</a>
+        <button class="btn btn-perigo" id="detApagar">Apagar</button>
+      </div>
+    </div>
+    <p class="meta" id="detResumo"></p>
+    <div class="chips" id="detChips"></div>
+    <div class="hist-tec oculto" id="detTecnico">
+      <details class="secao" id="caixaDiag" open>
+        <summary>Diagnóstico <span class="sub" id="diagResumo"></span></summary>
+        <div class="conteudo">
+          <p class="meta" id="diagAcao"></p><div id="diagConteudo"></div>
+          <p style="margin:12px 0 0"><a class="btn btn-sec" id="diagBaixar" href="#">Baixar diagnóstico (.json)</a></p>
+        </div>
+      </details>
+      <details class="secao" id="caixaLog">
+        <summary>Registro de execução <span class="sub">eventos desta análise</span></summary>
+        <div class="conteudo"><pre id="log" tabindex="0" aria-label="Registro de execução"></pre></div>
+      </details>
+    </div>
+    <div class="linha" style="margin-top:14px">
+      <label class="sr-only" for="detFiltro">Filtrar por situação</label>
+      <select id="detFiltro"><option value="">Todas as situações</option></select>
+      <span class="meta" id="detConta" style="margin-left:auto"></span>
+    </div>
+    <div class="rolagem">
+      <table>
+        <thead><tr><th>WO</th><th>Situação</th><th>Auditoria</th><th class="num">Ocorrências</th><th>Detalhe</th></tr></thead>
+        <tbody id="tabDet"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- ================================================================ CONFIGURAÇÕES -->
+<main id="vistaConfig" class="pagina oculto">
+  <div class="pagina-cab fixo"><div><h1 id="tCfg">Configurações</h1><p class="pagina-sub">Valem a partir da próxima análise.</p></div>
+    <div class="pagina-acoes"><span class="meta" id="cfgStatus" role="status"></span>
+      <button class="btn btn-sec" id="cfgPadrao">Restaurar padrões</button>
+      <button class="btn btn-primario" id="cfgSalvar">Salvar configurações</button></div></div>
+  <div class="cfg-layout">
+    <section class="cfg-secao" style="grid-area:aparencia" aria-labelledby="tAparencia">
+      <div class="secao-cab"><h2 id="tAparencia">Aparência</h2></div>
+      <div class="cfg-painel">
+        <div class="campo"><span class="rotulo"><label for="cfgTema">Tema</label><button class="ajuda-ctx" data-ajuda="tema" aria-label="Sobre o tema">?</button></span>
+          <div class="entrada"><select id="cfgTema"><option value="auto">Automático (segue o sistema)</option>
+            <option value="claro">Claro</option><option value="escuro">Escuro</option></select></div></div>
+      </div>
+    </section>
+    <section class="cfg-secao" style="grid-area:tabela" aria-labelledby="tTabela">
+      <div class="secao-cab"><h2 id="tTabela">Tabela de valores</h2><button class="ajuda-ctx" data-ajuda="tabela" aria-label="Sobre a tabela de valores">?</button></div>
+      <div class="cfg-painel">
+        <div class="importar" id="zonaTabela">
+          <label for="arqTabela" class="btn btn-sec btn-sm" tabindex="0"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>Importar .xlsx</label>
+          <input type="file" id="arqTabela" accept=".xlsx" class="sr-only" tabindex="-1">
+          <svg class="ok-icone ic" aria-hidden="true"><use href="#i-check"/></svg><span class="arq" id="nomeTabela" aria-live="polite">Nenhuma tabela importada</span>
+          <button class="btn-texto oculto" id="bTirarTabela">Remover</button>
+        </div>
+      </div>
+    </section>
+    <section class="cfg-secao" style="grid-area:fonte" aria-labelledby="tFonte">
+      <div class="secao-cab"><h2 id="tFonte">Fonte de dados</h2><button class="ajuda-ctx" data-ajuda="fonte" aria-label="Sobre a fonte de dados">?</button></div>
+      <div class="cfg-painel">
+        <div class="campo campo-info"><span class="rotulo">Tabela do BTP</span><span class="valor" id="fonteDescricao">Ainda não configurada</span></div>
+        <div class="campo"><span class="rotulo"><label for="cfgMensagem">Mensagem na planilha</label><button class="ajuda-ctx" data-ajuda="mensagem" aria-label="Sobre a mensagem na planilha">?</button></span>
+          <div class="entrada"><select id="cfgMensagem"><option value="item">Mensagem do item</option>
+            <option value="alerta">Mensagem do alerta</option><option value="ambas">As duas</option></select></div></div>
+        <details class="secao" id="caixaRaiox">
+          <summary>Raio-X da fonte</summary>
+          <div class="conteudo">
+            <div class="linha">
+              <label class="sr-only" for="rxWo">WO</label>
+              <input type="text" id="rxWo" class="mono" placeholder="WO (ex.: 06201|740923282)">
+              <label class="sr-only" for="rxCons">Consolidado</label>
+              <input type="text" id="rxCons" class="mono" placeholder="Consolidado (opcional)">
+              <button class="btn btn-sec btn-sm" id="bRaiox">Gerar Raio-X</button>
+              <button class="ajuda-ctx" data-ajuda="raiox" aria-label="Sobre o Raio-X">?</button>
+            </div>
+          </div>
+        </details>
+        <div class="painel-rodape"><button class="btn btn-perigo btn-sm" id="cfgRefazer">Refazer a fonte de dados</button></div>
+      </div>
+    </section>
+    <div id="cfgGrupos" class="cfg-parametros" style="grid-area:parametros"></div>
+  </div>
+</main>
+
+</div><!-- /conteudo -->
+</div><!-- /app -->
+
+<div class="dica oculto" id="dica" role="tooltip"></div>
+<div class="toast oculto" id="toast" role="status" aria-live="polite"></div>
+<div class="sr-only" id="anuncio" aria-live="assertive"></div>
+
+<!-- tutorial guiado (componente independente: ver TUTORIAL no fim do script) -->
+<div id="tutorial" class="oculto">
+  <div class="tut-bloqueio"></div>
+  <div class="tut-foco" id="tutFoco"></div>
+  <div class="tut-balao" id="tutBalao" role="dialog" aria-modal="true" aria-labelledby="tutTitulo" aria-describedby="tutTexto">
+    <div class="passo" id="tutPasso"></div>
+    <h3 id="tutTitulo"></h3>
+    <p id="tutTexto"></p>
+    <div class="tut-pontos" id="tutPontos" aria-hidden="true"></div>
+    <div class="tut-acoes">
+      <button class="btn-texto" id="tutSair">Sair da ajuda</button>
+      <div class="dir">
+        <button class="btn btn-sec" id="tutAnterior">Anterior</button>
+        <button class="btn btn-primario" id="tutProximo">Próximo</button>
+      </div>
+    </div>
+    <div class="tut-dica">Teclado: ← → para navegar · Esc para sair</div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const VERSAO_TELA = "__VERSAO_PROGRAMA__";   // preenchido pelo programa ao servir a tela
+const post = (url, body) => fetch(url, { method: "POST", body }).then(r => r.json());
+const PADRAO_WO = /^\s*\d{5}\s*\|\s*\d{9}\s*$/;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = n => (n ?? 0).toLocaleString("pt-BR");
+let favorito = "", consoleCodigo = "", conectado = false, ocupado = false, ultimoEstado = null;
+let conferencia = { auditorias: 2, maximo: 5 };   // vem de /api/configuracoes
+
+// ---------------------------------------------------------------- notificação curta
+let toastTimer = 0;
+function avisar(texto, erro) {
+  const t = $("toast");
+  t.textContent = texto; t.classList.toggle("erro", !!erro); t.classList.remove("oculto");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("oculto"), erro ? 7000 : 3500);
+}
+
+fetch("/api/favorito").then(r => r.json()).then(f => {
+  favorito = f.favorito; consoleCodigo = f.console;
+  $("favorito").setAttribute("href", f.favorito);
+});
+async function copiar(texto, msg) {
+  try { await navigator.clipboard.writeText(texto); }
+  catch (_) { const t = document.createElement("textarea"); t.value = texto; document.body.appendChild(t);
+              t.select(); document.execCommand("copy"); t.remove(); }
+  avisar(msg);
+}
+$("bComo").onclick = () => {
+  const aberto = $("como").classList.toggle("oculto") === false;
+  $("bComo").setAttribute("aria-expanded", aberto);
+};
+$("bCopiarExt").onclick = () => copiar("chrome://extensions", "Copiado. Cole na barra de endereço do Chrome.");
+$("bPastaExt").onclick = async () => {
+  const r = await fetch("/api/extensao/abrir", { method: "POST" }).then(r => r.json());
+  $("caminhoExt").textContent = "Pasta da extensão: " + r.caminho;
+};
+$("bCopiarUrl").onclick = () => copiar(favorito, "Favorito copiado. Crie com Ctrl+Shift+O e cole no campo URL.");
+$("bCopiarConsole").onclick = () => copiar(consoleCodigo, "Copiado. Na aba do BTP: F12 → Console → cole → Enter.");
+
+// ---------------------------------------------------------------- entrada de WOs
+let planilha = null;   // { nome, validas, invalidas, erro }
+function linhasTexto() { return $("texto").value.split(/\r?\n/).map(l => l.trim()).filter(Boolean); }
+function contar() {
+  const linhas = linhasTexto();
+  const validas = linhas.filter(l => PADRAO_WO.test(l)).length, outras = linhas.length - validas;
+  let txt = `<b>${fmt(validas)}</b> WO${validas === 1 ? "" : "s"} no campo`;
+  if (planilha && !planilha.erro) txt += ` + <b>${fmt(planilha.validas)}</b> da planilha`;
+  $("contador").innerHTML = txt;
+  $("contadorInvalidas").textContent = outras ? `${fmt(outras)} linha(s) fora do formato` : "";
+  $("contadorInvalidas").style.color = outras ? "var(--atencao)" : "";
+  atualizarBotaoExecutar();
+}
+function temEntrada() { return linhasTexto().length > 0 || !!(planilha && !planilha.erro); }
+$("texto").addEventListener("input", contar);
+$("rotArquivo").addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); $("arquivo").click(); } });
+$("arquivo").onchange = async () => {
+  const f = $("arquivo").files[0];
+  if (!f) return limparArquivo();
+  planilha = { nome: f.name, validas: 0, invalidas: 0, lendo: true };
+  desenharArquivo();
+  const fd = new FormData(); fd.append("arquivo", f);
+  try {
+    const r = await post("/api/entrada/planilha", fd);
+    planilha = r.ok ? { nome: f.name, validas: r.validas, invalidas: r.invalidas } : { nome: f.name, erro: r.erro };
+  } catch (_) { planilha = { nome: f.name, erro: "Não foi possível ler a planilha (o programa está aberto?)." }; }
+  desenharArquivo(); contar();
+};
+function desenharArquivo() {
+  const z = $("zonaImportar"), n = $("nomeArquivo");
+  z.classList.toggle("com-arquivo", !!planilha && !planilha.erro && !planilha.lendo);
+  n.classList.toggle("erro", !!(planilha && planilha.erro));
+  $("bTirarArquivo").classList.toggle("oculto", !planilha);
+  n.innerHTML = !planilha ? "Nenhuma planilha escolhida"
+    : planilha.lendo ? `<b>${esc(planilha.nome)}</b> · lendo…`
+    : planilha.erro ? `<b>${esc(planilha.nome)}</b> · ${esc(planilha.erro)}`
+    : `<b>${esc(planilha.nome)}</b> · ${fmt(planilha.validas)} WO(s) reconhecida(s)`
+      + (planilha.invalidas ? ` · ${fmt(planilha.invalidas)} fora do formato` : "");
+}
+function limparArquivo() { $("arquivo").value = ""; planilha = null; desenharArquivo(); contar(); }
+$("bTirarArquivo").onclick = limparArquivo;
+
+function atualizarBotaoExecutar() {
+  const motivo = ocupado ? "Há uma análise em andamento."
+    : !conectado ? "Conecte a aba do BTP para executar."
+    : !temEntrada() ? "Informe ao menos uma WO ou importe uma planilha."
+    : planilha && planilha.lendo ? "Lendo a planilha…" : "";
+  $("bExecutar").disabled = !!motivo;
+  $("motivoBloqueio").textContent = motivo;
+}
+$("bExecutar").onclick = async () => {
+  const fd = new FormData();
+  fd.append("texto", $("texto").value);
+  if ($("arquivo").files[0] && planilha && !planilha.erro) fd.append("arquivo", $("arquivo").files[0]);
+  $("bExecutar").disabled = true;
+  const r = await post("/api/executar", fd).catch(() => ({ ok: false, erro: "O programa não respondeu." }));
+  if (!r.ok) { avisar(r.erro, true); atualizarBotaoExecutar(); }
+  else avisar(`Análise iniciada: ${fmt(r.total)} WO(s).`);
+};
+$("bParar").onclick = async () => {
+  if (!confirm("Parar a análise? As WOs já feitas ficam gravadas; as demais ficam pendentes e podem ser retomadas.")) return;
+  await post("/api/parar"); avisar("Parada solicitada: as WOs em andamento são concluídas.");
+};
+$("bPausar").onclick = async () => { await post("/api/pausar"); avisar("Pausa solicitada: as WOs em andamento são concluídas."); };
+$("bContinuar").onclick = async () => { await post("/api/retomar"); avisar("Análise retomada."); };
+let retomavel = null;
+$("bRetomarAnalise").onclick = async () => {
+  if (!retomavel) return;
+  const r = await fetch("/api/executar", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ run_id: retomavel.run_id, modo: retomavel.fonte_descartada ? "refazer" : "retomar" }) }).then(r => r.json());
+  if (!r.ok) avisar(r.erro, true);
+};
+
+// ---------------------------------------------------------------- diagnóstico ("O que deu errado")
+const CATEGORIA = { FONTE: "BTP / sessão", APP: "Agente", ENTRADA: "Entrada" };
+const ROTULO_MOTIVO = { sessao_expirada: "sessão expirada", aba_desconectada: "aba desconectada", http_401: "não autenticado",
+  http_403: "acesso negado", http_404: "endereço não existe", http_429: "BTP pediu calma", http_5xx: "erro do servidor",
+  falha_rede: "falha de rede", aba_sem_resposta: "aba sem resposta", timeout_wo: "tempo esgotado", timeout_lote: "tempo esgotado (lote)",
+  wo_invalida: "número inválido", wo_inexistente: "fora do Monitor", quantidade_ambigua: "quantidade ambígua",
+  auditoria_incompleta: "conferência incompleta", divergencia_persistente: "divergência", parse_falhou: "resposta ilegível",
+  erro_servico: "erro do serviço", consulta_rejeitada: "consulta rejeitada", excecao_app: "erro do programa" };
+const rotuloMotivo = m => m.startsWith("campo_ausente:") ? "campo ausente: " + m.split(":")[1] : (ROTULO_MOTIVO[m] || m);
+const SESSAO = ["sessao_expirada", "http_401", "http_403", "aba_desconectada"];
+let runAtual = null, runHistorico = null, diagEm = 0;
+async function carregarDiagnostico(forcar) {
+  if (!runHistorico || !$("caixaDiag").open || (!forcar && Date.now() - diagEm < 5000)) return;
+  diagEm = Date.now();
+  let d;
+  try { d = await fetch(`/api/diagnostico?run_id=${encodeURIComponent(runHistorico)}&baixar=0`).then(r => r.json()); }
+  catch (_) { return; }
+  $("diagAcao").innerHTML = "<b>Próxima ação:</b> " + esc(d.proxima_acao);
+  const abertos = d.problemas.filter(p => !p.resolvido && p.categoria !== "ENTRADA").length;
+  $("diagResumo").textContent = abertos ? `${abertos} problema(s) em aberto` : "nenhum problema em aberto";
+  const problemas = d.problemas.filter(p => p.categoria !== "ENTRADA" || p.wos_afetadas);
+  $("diagConteudo").innerHTML = problemas.length ? problemas.map(p => {
+    const ev = p.primeira_ocorrencia || {};
+    const origem = ev.origem && ev.origem.modulo ? `${ev.origem.modulo}.${ev.origem.funcao}, linha ${ev.origem.linha}` : "";
+    const evid = [ev.quando && "quando: " + ev.quando, ev.wo && "WO: " + ev.wo, ev.url && "URL: " + ev.url,
+                  ev.status !== undefined && ev.status !== null && "status: " + ev.status,
+                  ev.content_type && "tipo: " + ev.content_type, ev.corpo && "resposta: " + ev.corpo.slice(0, 300),
+                  ev.erro && "erro: " + ev.erro, origem && "no código: " + origem].filter(Boolean).join("\n");
+    return `<div class="categoria"><h3><span class="rotulo-cat ${p.categoria}">${CATEGORIA[p.categoria] || p.categoria}</span>${esc(p.descricao)}${p.resolvido ? '<span class="tag resolvido">resolvido</span>' : ""}</h3>
+      <div class="meta">${SESSAO.includes(p.motivo)
+        ? `${fmt(p.wos_afetadas)} WO(s) em andamento voltaram para a fila (nenhuma virou falha)`
+        : `${fmt(p.wos_afetadas)} WO(s) afetada(s)`} · ${fmt(p.ocorrencias)} ocorrência(s)${p.exemplos_wo.length ? " · ex.: " + esc(p.exemplos_wo.slice(0, 3).join(", ")) : ""}</div>
+      ${p.resolvido ? "" : `<div style="font-size:13px;margin-top:4px"><b>O que fazer:</b> ${esc(p.proxima_acao)}</div>`}
+      ${evid ? `<pre class="ev">${esc(evid)}</pre>` : ""}</div>`;
+  }).join("") : `<p class="meta" style="margin-top:8px">Nenhum problema registrado nesta análise.</p>`;
+}
+$("caixaDiag").addEventListener("toggle", () => carregarDiagnostico(true));
+let registroEm = 0;
+async function carregarRegistro(forcar) {
+  if (!runHistorico || !$("caixaLog").open || (!forcar && Date.now() - registroEm < 3000)) return;
+  registroEm = Date.now();
+  let r;
+  try { r = await fetch(`/api/execucoes/${encodeURIComponent(runHistorico)}/registro`).then(x => x.json()); } catch (_) { return; }
+  const log = $("log"), fim = log.scrollTop + log.clientHeight >= log.scrollHeight - 5, texto = (r.linhas || []).join("\n");
+  if (log.textContent !== texto) { log.textContent = texto; if (fim) log.scrollTop = log.scrollHeight; }
+}
+$("caixaLog").addEventListener("toggle", () => carregarRegistro(true));
+// Análise em andamento aberta no Histórico: diagnóstico e registro acompanham ao vivo.
+setInterval(() => { if (abaAtual === "historico" && detalheAtual && detalheAtual.situacao === "Em andamento") {
+  carregarDiagnostico(false); carregarRegistro(false); } }, 3000);
+
+const GRUPOS = [
+  { rotulo: "Com itens", classe: "ok", status: ["Com itens faltantes", "Processada"] },
+  { rotulo: "Sem itens", classe: "", status: ["Sem itens", "Sem registros"] },
+  { rotulo: "Fora do monitor", classe: "amb", status: ["Não consta no Monitor", "Não encontrada no monitor"] },
+  { rotulo: "Formato inválido", classe: "amb", status: ["Formato inválido", "WO inválida"] },
+  { rotulo: "Falhas", classe: "err", status: ["Erro", "Falha de comunicação", "Sessão expirada", "Tempo esgotado", "Não processada"] },
+];
+
+// ---------------------------------------------------------------- conferência da amostra
+let confirmacaoAtual = "";
+function desenharConfirmacao(e) {
+  const c = e.fase === "confirmando" ? e.confirmacao : null;
+  $("cartaoConfirma").classList.toggle("oculto", !c);
+  if (!c) { confirmacaoAtual = ""; return; }
+  const chave = JSON.stringify(c);
+  if (chave === confirmacaoAtual) return;          // não redesenha (não perde a escolha do usuário)
+  confirmacaoAtual = chave;
+  $("cfTexto").innerHTML = c.wo
+    ? `No BTP, abra a janela <b>Mensagens</b> da WO <b>${esc(c.wo)}</b> e compare com o que o agente leu `
+      + `— ${c.total} item(ns)${c.total > c.itens.length ? `, mostrando ${c.itens.length}` : ""}. `
+      + `A análise só começa depois da sua confirmação; ela fica gravada para as próximas vezes.`
+      + (c.fonte ? `<br><span style="font-size:12px">Tabela do BTP usada: <b>${esc(c.fonte)}</b>.</span>` : "")
+    : `O agente não encontrou itens nas primeiras WOs da lista (${esc((c.lidas || []).join("; "))}). `
+      + `Se essas WOs têm mensagens no BTP, a fonte está errada.`;
+  $("cfThAlerta").classList.toggle("oculto", !c.tem_mensagem_alerta);
+  $("cfTabela").innerHTML = c.itens.map(i => `<tr><td class="mono">${esc(i.material)}</td>
+    <td class="mono">${esc(i.fornecedor)}</td><td class="num">${esc(i.quantidade)}</td>
+    <td>${esc(i.mensagem_item)}</td>${c.tem_mensagem_alerta ? `<td>${esc(i.mensagem_alerta)}</td>` : ""}</tr>`).join("")
+    || `<tr><td colspan="5" class="vazio">Nenhum item lido.</td></tr>`;
+  $("cfEscolha").classList.toggle("oculto", !c.tem_mensagem_alerta);
+  $("cfSim").disabled = !c.itens.length;
+}
+async function responderFonte(resposta) {
+  const m = document.querySelector('input[name="cfMsg"]:checked');
+  await fetch("/api/fonte", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resposta, mensagem: m ? m.value : "item" }) });
+  $("cartaoConfirma").classList.add("oculto"); confirmacaoAtual = "";
+}
+$("bRaiox").onclick = async () => {
+  const r = await fetch("/api/raiox", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ wo: $("rxWo").value, consolidado: $("rxCons").value }) }).then(r => r.json());
+  if (!r.ok) avisar(r.erro, true); else { avisar("Raio-X iniciado: acompanhe no painel de monitoramento."); abrirAba("analise"); }
+};
+$("bRaioxPronto").onclick = () => fetch("/api/raiox/pronto", { method: "POST" });
+$("cfSim").onclick = () => responderFonte("sim");
+$("cfOutra").onclick = () => responderFonte("outra");
+$("cfMostrar").onclick = () => responderFonte("mostrar");
+const tempo = s => s < 60 ? `${Math.max(1, Math.round(s))} s` : s < 3600 ? `${Math.round(s / 60)} min`
+  : `${Math.floor(s / 3600)} h ${Math.round(s % 3600 / 60)} min`;
+
+// ---------------------------------------------------------------- estado da execução (derivado da lógica real)
+function estadoExecucao(e) {
+  const sit = e.situacao || "", ind = e.indicadores || {};
+  if (e.fase === "processando") {
+    if (sit === "pausado_sessao") return ["Pausada", "pausa", "Pausada: a sessão do BTP expirou (nada foi perdido)"];
+    if (sit === "pausado_usuario") return ["Pausada", "pausa", "Análise pausada"];
+    return ["Executando", "rodando", "Extraindo e auditando"];
+  }
+  if (e.fase === "preparando") return ["Preparando", "rodando", "Preparando o acesso aos dados"];
+  if (e.fase === "confirmando") return ["Aguardando você", "pausa", "Confira a amostra para continuar"];
+  if (e.fase === "raiox") return ["Raio-X", "rodando", "Raio-X da fonte em andamento"];
+  if (e.fase === "raiox_ok") return ["Raio-X pronto", "ok", "Raio-X pronto para baixar"];
+  if (e.fase === "falhou") return ["Falha na execução", "erro", "Não foi possível preparar o acesso aos dados"];
+  if (e.fase === "concluido") {
+    const n = e.ultimo_numero ? ` nº ${e.ultimo_numero}` : "";
+    if (sit === "interrompida") return ["Interrompida", "pausa", `Análise${n} interrompida`];
+    if (ind.divergentes) return ["Concluída com divergências", "pausa", `Análise${n} concluída`];
+    if (ind.incompletas || ind.falhas) return ["Concluída com ressalvas", "pausa", `Análise${n} concluída`];
+    return ["Concluída", "ok", `Análise${n} concluída`];
+  }
+  return conectado ? ["Pronta para iniciar", "", "Monitoramento"] : ["Aguardando o BTP", "", "Monitoramento"];
+}
+
+async function atualizar() {
+  let e;
+  try { e = await fetch("/api/estado").then(r => r.json()); }
+  catch (_) { $("conexao").textContent = "Agente fechado"; $("pt").className = "ponto"; return; }
+  ultimoEstado = e;
+
+  // Conexão honesta: "conectado" só com batimento recente da aba E sessão do BTP confirmada.
+  conectado = ["conectado", "aba_conectada"].includes(e.conexao); ocupado = e.ocupado;
+  // Programa antigo servindo a tela nova (janela preta antiga ainda aberta)?
+  $("desatualizado").classList.toggle("oculto", !VERSAO_TELA.startsWith("__") && e.versao === VERSAO_TELA);
+  const ROT = { conectado: "BTP conectado · sessão válida", aba_conectada: "Aba conectada · sessão a verificar",
+                sessao_expirada: "Sessão do BTP expirada — faça login na aba", desconectado: "Aguardando o BTP" };
+  $("conexao").textContent = ROT[e.conexao] || "Aguardando o BTP";
+  $("pilulaConexao").title = e.batimento_seg != null ? `Último contato da aba: há ${e.batimento_seg} s` +
+    (e.sessao_verificada_ha_seg != null ? ` · sessão verificada há ${e.sessao_verificada_ha_seg} s` : "") : "";
+  $("pt").className = "ponto" + (e.conexao === "conectado" ? " ok" : ["aba_conectada", "sessao_expirada"].includes(e.conexao) ? " esp" : "");
+  $("cartaoConexao").classList.toggle("oculto", e.conexao !== "desconectado");
+
+  retomavel = e.retomavel;
+  $("cartaoRetomar").classList.toggle("oculto", !retomavel);
+  if (retomavel && retomavel.fonte_descartada) {
+    $("retTitulo").textContent = `Análise nº ${retomavel.numero}: refazer com a fonte certa`;
+    $("retTexto").textContent = `Esta análise usou uma tabela do BTP que não é a da janela Mensagens; os resultados ` +
+      `dela não valem. Refaça a mesma lista (${fmt(retomavel.total)} WOs) com a fonte certa — não precisa importar de novo.`;
+    $("bRetomarAnalise").textContent = `Refazer as ${fmt(retomavel.total)} WOs`;
+  } else if (retomavel) {
+    $("retTitulo").textContent = `Retomar análise nº ${retomavel.numero}`;
+    $("retTexto").textContent = `${fmt(retomavel.validadas)} de ${fmt(retomavel.total)} já validadas, ${fmt(retomavel.restantes)} restantes. ` +
+      "Só as WOs pendentes ou com falha são consultadas de novo.";
+    $("bRetomarAnalise").textContent = "Retomar";
+  }
+  if (retomavel) {
+    $("retPlanilha").href = `/api/execucoes/${encodeURIComponent(retomavel.run_id)}/planilha`;
+    $("retDiag").href = `/api/diagnostico?run_id=${encodeURIComponent(retomavel.run_id)}`;
+    $("bRetomarAnalise").disabled = !conectado;
+  }
+
+  desenharConfirmacao(e);
+  $("aviso").textContent = e.aviso || "";
+  $("aviso").classList.toggle("oculto", !e.aviso);
+  atualizarBotaoExecutar();
+
+  const sit = e.situacao || "";
+  $("bParar").classList.toggle("oculto", !(ocupado && e.fase !== "ocioso"));
+  $("bPausar").classList.toggle("oculto", !(ocupado && e.fase === "processando" && sit === "em_andamento"));
+  $("bContinuar").classList.toggle("oculto", !(ocupado && sit === "pausado_usuario"));
+
+  const [rotulo, classe, titulo] = estadoExecucao(e);
+  $("seloEstado").textContent = rotulo; $("seloEstado").className = "selo " + classe;
+  $("tituloProg").textContent = titulo;
+  const ativo = e.fase !== "ocioso";
+  const ex = e.execucao || null;
+  const p = e.progresso || { atual: 0, total: 0 }, pct = p.total ? Math.round(100 * p.atual / p.total) : 0;
+  const cheia = e.fase === "concluido" && !ex;
+  $("barra").classList.toggle("indef", ["preparando", "raiox"].includes(e.fase));
+  $("barra").classList.toggle("ok", e.fase === "concluido" && classe === "ok");
+  $("barra").classList.toggle("amb", e.fase === "concluido" && classe === "pausa");   // ressalvas, divergências ou interrompida
+  $("barraFill").style.width = (cheia ? 100 : ativo ? pct : 0) + "%";
+  $("barra").setAttribute("aria-valuenow", cheia ? 100 : pct);
+  $("prepInfo").classList.toggle("oculto", !["preparando", "falhou"].includes(e.fase));
+  $("observadas").textContent = e.observadas;
+  $("progTxt").innerHTML = !ativo ? ""
+    : p.total ? `<b>${fmt(p.atual)}</b> de <b>${fmt(p.total)}</b> WOs · <b>${pct}%</b>` : "";
+  const rodando = ex && e.fase === "processando" && sit === "em_andamento";
+  $("etaTxt").textContent = rodando
+    ? (ex.taxa_wo_s ? `${ex.taxa_wo_s.toLocaleString("pt-BR")} WO/s` : "medindo o ritmo…")
+      + (ex.eta_seg ? ` · faltam ~${tempo(ex.eta_seg)}` : "")
+    : (ex && sit.startsWith("pausado") ? "pausada — o tempo restante volta a ser calculado ao retomar" : "");
+  $("etapa").textContent = ((e.fase === "processando" && !sit.startsWith("pausado")) || e.fase === "raiox") && e.etapa
+    ? "Agora: " + e.etapa : "";
+  const mostrarNumeros = ativo && !["preparando", "falhou", "confirmando", "raiox", "raiox_ok"].includes(e.fase);
+  const daUltima = !ativo && ultimaAnalise && ultimaAnalise.indicadores;
+  const ind = daUltima ? ultimaAnalise.indicadores : e.indicadores || {};
+  [["iProcessadas", "processadas"], ["iPendentes", "pendentes"], ["iValidadas", "validadas"],
+   ["iDivergentes", "divergentes"], ["iIncompletas", "incompletas"], ["iFalhas", "falhas"]]
+    .forEach(([el, k]) => {
+      const novo = mostrarNumeros || daUltima ? fmt(ind[k] ?? 0) : "—", b = $(el);
+      if (b.textContent !== novo) { b.textContent = novo; b.classList.remove("mudou"); void b.offsetWidth; b.classList.add("mudou"); }
+    });
+  $("painelLegenda").classList.toggle("oculto", !daUltima);
+  if (daUltima) $("painelLegenda").innerHTML = `Resultado da <b>última análise — nº ${ultimaAnalise.numero || "—"}</b>, ${dataBR(ultimaAnalise.inicio)} · ${esc(ultimaAnalise.situacao)}`;
+  $("bRaioxPronto").classList.toggle("oculto", e.fase !== "raiox");
+  $("baixarRaiox").classList.toggle("oculto", !(e.fase === "raiox_ok" && e.ultimo_raiox));
+  if (e.ultimo_raiox) $("baixarRaiox").href = "/api/download/" + encodeURIComponent(e.ultimo_raiox);
+  $("chips").innerHTML = mostrarNumeros ? GRUPOS.map(g => {
+    const n = g.status.reduce((s, st) => s + ((e.contagem || {})[st] || 0), 0);
+    return n ? `<span class="chip ${g.classe}">${g.rotulo}<b>${fmt(n)}</b></span>` : "";
+  }).join("") : "";
+  runAtual = ex ? ex.run_id : null;
+  const cats = ex ? ex.erros_por_categoria || {} : {};
+  $("errosCat").innerHTML = Object.entries(cats).map(([cat, m]) =>
+    `<span class="chip ${cat === "ENTRADA" ? "amb" : "err"}">${CATEGORIA[cat] || cat}: ${Object.entries(m).map(([k, n]) => `${esc(rotuloMotivo(k))} ${fmt(n)}`).join(", ")}</span>`).join("");
+  $("bVerDiag").classList.toggle("oculto", !runAtual);
+  const pronto = e.fase === "concluido" && e.ultimo_arquivo;
+  $("baixar").classList.toggle("oculto", !pronto);
+  if (pronto) $("baixar").href = "/api/download/" + encodeURIComponent(e.ultimo_arquivo);
+  $("baixarParcial").classList.toggle("oculto", !(ex && e.fase === "processando"));
+  if (ex) $("baixarParcial").href = `/api/execucoes/${encodeURIComponent(ex.run_id)}/planilha`;
+
+  // Resumo do agente (dados reais: conexão, fonte configurada, política de conferência, análise atual).
+  const partes = [`<span><span class="ponto ${$("pt").className.replace("ponto", "").trim()}"></span><b>${esc(ROT[e.conexao] || "Aguardando o BTP")}</b></span>`];
+  partes.push(e.fonte ? `<span>Fonte: <b>${esc(e.fonte.descricao)}</b>${e.fonte.confirmada ? "" : ' <span class="alerta-txt">· a confirmar</span>'}</span>`
+                      : `<span>Fonte: <b>identificada na primeira análise</b></span>`);
+  partes.push(`<span>Conferência: <b>${conferencia.auditorias}×</b> por WO (até ${conferencia.maximo}×)`
+             + `<button class="ajuda-ctx" data-ajuda="conferencia" aria-label="Como funciona a conferência">?</button></span>`);
+  if (ex && ativo) partes.push(`<span>Análise atual: <b>nº ${esc(ex.numero ?? e.ultimo_numero ?? "—")}</b> · ${fmt(ex.total)} WOs</span>`);
+  const resumo = partes.join("");
+  if ($("resumoAgente").dataset.html !== resumo) { $("resumoAgente").innerHTML = resumo; $("resumoAgente").dataset.html = resumo; }
+  const vazio = !ativo && !window.tutorialAberto;
+  $("estadoVazio").classList.toggle("oculto", ativo);
+  $("painel").classList.toggle("oculto", vazio && !daUltima);
+  $("blocoProgresso").classList.toggle("oculto", vazio);
+  if (e.fase !== faseAnterior) { if (e.fase === "concluido" || faseAnterior === null) carregarRecentes(); faseAnterior = e.fase; }
+
+  // Só o último evento aqui; o registro completo de cada análise fica no Histórico.
+  const ultimo = (e.mensagens || []).slice(-1)[0] || "";
+  $("ultimoEvento").textContent = ultimo ? "Último evento: " + ultimo.replace(/^\d\d:\d\d:\d\d\s+/, "") : "";
+  $("ultimoEvento").title = ultimo;
+  if (abaAtual === "config") desenharFonte(e.fonte);
+}
+let faseAnterior = null, ultimaAnalise = null;
+setInterval(atualizar, 1000); atualizar();
+
+// ---------------------------------------------------------------- execuções recentes (dados do histórico real)
+const SIT_TAG = { "Concluída": "ok", "Interrompida": "amb", "Em andamento": "amb" };
+async function carregarRecentes() {
+  let lista;
+  try { lista = await fetch("/api/historico").then(r => r.json()); } catch (_) { return; }
+  const ultimas = lista.slice(0, 6);
+  $("listaRecentes").innerHTML = ultimas.length ? ultimas.map(a => `
+    <li><span class="n">nº ${a.numero || "—"}</span>
+      <button class="abrir" data-id="${esc(a.id)}" title="Ver o detalhe desta análise"><span class="info">
+        <b>${esc(a.origem)}</b><small>${dataBR(a.inicio)} · ${fmt(a.total)} WOs · ${duracao(a.duracao_seg)}</small></span></button>
+      <span class="tag ${SIT_TAG[a.situacao] || "err"}">${esc(a.situacao)}</span>
+      <span class="res">${resumoHistorico(a)}${a.arquivo ? ` <a class="btn-texto" href="${linkRelatorio(a)}">Excel</a>` : ""}</span></li>`).join("")
+    : `<li class="meta">Nenhuma análise ainda.</li>`;
+  document.querySelectorAll("#listaRecentes button.abrir").forEach(b => b.onclick = () => { abrirAba("historico"); abrirDetalhe(b.dataset.id); });
+  const u = ultimas[0];
+  ultimaAnalise = u || null;
+  $("vazioUltima").classList.toggle("oculto", !u);
+  if (u) $("vazioUltima").innerHTML = `<span>Última análise: <b>nº ${u.numero || "—"}</b> · ${dataBR(u.inicio)} · ${fmt(u.total)} WOs</span>
+    <span class="tag ${SIT_TAG[u.situacao] || "err"}">${esc(u.situacao)}</span> ${resumoHistorico(u)}
+    ${u.arquivo ? `<a class="btn btn-sec" href="${linkRelatorio(u)}">Baixar relatório</a>` : ""}`;
+}
+$("bVerHistorico").onclick = () => abrirAba("historico");
+$("bVerDiag").onclick = async () => { if (!runAtual) return; abrirAba("historico"); await abrirDetalhe(runAtual); };
+setInterval(carregarRecentes, 30000);
+
+// ---------------------------------------------------------------- navegação
+let abaAtual = "analise";
+function abrirAba(nome) {
+  const mudou = abaAtual !== nome;
+  abaAtual = nome;
+  Dica.esconder();
+  [["abaAnalise", "vistaAnalise", "analise"], ["abaHistorico", "vistaHistorico", "historico"],
+   ["abaConfig", "vistaConfig", "config"]].forEach(([aba, vista, n]) => {
+    $(aba).classList.toggle("ativa", nome === n);
+    if (nome === n) $(aba).setAttribute("aria-current", "page"); else $(aba).removeAttribute("aria-current");
+    $(vista).classList.toggle("oculto", nome !== n);
+    if (nome === n && mudou) { $(vista).classList.remove("entrando"); void $(vista).offsetWidth; $(vista).classList.add("entrando"); }
+  });
+  if (nome === "historico") carregarHistorico();
+  if (nome === "config") { carregarConfig(); fonteDesenhada = ""; desenharFonte(ultimoEstado && ultimoEstado.fonte); }
+}
+$("abaAnalise").onclick = () => abrirAba("analise");
+$("abaHistorico").onclick = () => abrirAba("historico");
+$("abaConfig").onclick = () => abrirAba("config");
+function aplicarMenu(recolhido) {
+  $("app").classList.toggle("recolhido", recolhido);
+  $("bRecolher").setAttribute("aria-expanded", String(!recolhido));
+  $("bRecolher").title = recolhido ? "Expandir menu" : "Recolher menu";
+  $("bRecolher").querySelector(".rot").textContent = recolhido ? "Expandir menu" : "Recolher menu";
+}
+try { aplicarMenu(localStorage.getItem("agenteBtpMenu") === "recolhido"); } catch (_) { aplicarMenu(false); }
+$("bRecolher").onclick = () => {
+  const r = !$("app").classList.contains("recolhido");
+  aplicarMenu(r);
+  try { localStorage.setItem("agenteBtpMenu", r ? "recolhido" : "aberto"); } catch (_) {}
+};
+
+// ---------------------------------------------------------------- configurações
+const CONFIG = [
+  { grupo: "Auditoria", descricao: "Conferência dos dados extraídos. Divergências nunca são aprovadas automaticamente.", itens: [
+    { id: "auditorias_por_wo", rotulo: "Auditorias por WO", tipo: "int", min: 0, max: 20, un: "",
+      ajuda: "Quantas vezes cada WO é lida de novo no BTP e comparada campo a campo (padrão 2; com divergência, as leituras extras abaixo elevam para 5). Com 0, nada fica \"Validado\"." },
+    { id: "auditorias_independentes", rotulo: "Auditorias independentes", tipo: "bool",
+      ajuda: "Alterna a nova consulta da WO com a releitura de cada item pelo seu endereço próprio (outro caminho no BTP), quando o serviço permitir." },
+    { id: "repeticoes_falha", rotulo: "Repetições em caso de falha", tipo: "int", min: 0, max: 10, un: "",
+      ajuda: "Tentativas adicionais de uma consulta que falhou por rede ou tempo excedido." },
+    { id: "divergencia", rotulo: "Diante de divergência", tipo: "opcao",
+      opcoes: [["reconsultar", "Reconsultar e sinalizar"], ["revisar", "Só sinalizar para revisão"]],
+      ajuda: "Reconsultar faz leituras extras para tentar esclarecer. Em nenhum caso o valor divergente é aprovado sem evidência." },
+    { id: "consultas_extras_divergencia", rotulo: "Leituras extras por divergência", tipo: "int", min: 0, max: 10, un: "",
+      ajuda: "Leituras individuais extras quando há divergência (padrão 3: 2 + 3 = 5 conferências). Usado quando a opção acima é \"Reconsultar\"." },
+  ]},
+  { grupo: "Tempo", descricao: "Limites reais: ao estourar, a consulta é abortada e a falha fica registrada.", itens: [
+    { id: "tempo_consulta_wo_seg", rotulo: "Tempo máximo — consulta da WO no Monitor", tipo: "num", min: 5, max: 600, un: "s",
+      ajuda: "Equivale a filtrar a WO e esperar a lista carregar." },
+    { id: "tempo_consulta_detalhes_seg", rotulo: "Tempo máximo — detalhes do alerta", tipo: "num", min: 5, max: 600, un: "s",
+      ajuda: "Equivale a abrir a janela Mensagens e esperar os itens." },
+    { id: "intervalo_auditorias_seg", rotulo: "Intervalo entre auditorias", tipo: "num", min: 0, max: 60, un: "s",
+      ajuda: "Pausa fixa entre rodadas (padrão 0: o ritmo se ajusta sozinho se o BTP pedir para ir mais devagar)." },
+    { id: "tempo_max_wo_seg", rotulo: "Tempo máximo por WO", tipo: "num", min: 10, max: 3600, un: "s",
+      ajuda: "Extração + todas as auditorias da WO. Ao estourar, a WO fica \"Não concluído\"." },
+    { id: "tempo_max_lote_min", rotulo: "Tempo máximo da análise completa", tipo: "num", min: 1, max: 1440, un: "min",
+      ajuda: "Ao estourar, as WOs restantes ficam pendentes (dá para Retomar) e o relatório é gerado." },
+  ]},
+  { grupo: "Execução", descricao: "Comportamento do lote.", itens: [
+    { id: "intervalo_consultas_seg", rotulo: "Intervalo entre consultas ao BTP", tipo: "num", min: 0, max: 30, un: "s",
+      ajuda: "Pausa mínima entre duas consultas, para não sobrecarregar o sistema." },
+    { id: "wo_sem_resultado", rotulo: "WO sem resultado", tipo: "opcao",
+      opcoes: [["reconsultar", "Reconsultar uma vez"], ["registrar", "Registrar direto"]],
+      ajuda: "O que fazer quando a WO não aparece no Monitor na primeira leitura." },
+    { id: "em_erro", rotulo: "Diante de erros", tipo: "opcao",
+      opcoes: [["continuar", "Continuar o lote"], ["interromper", "Interromper o lote"]],
+      ajuda: "Erro de consulta, falha de comunicação ou tempo esgotado em uma WO." },
+    { id: "exportar_incompletos", rotulo: "Exportar resultados não validados", tipo: "bool",
+      ajuda: "Inclui no Excel, destacadas em cor, as ocorrências divergentes, incompletas ou não concluídas." },
+    { id: "mensagem_planilha", rotulo: "Mensagem dos itens na planilha", tipo: "texto",
+      ajuda: "Só os itens com esta mensagem (janela Mensagens) viram linha na planilha; os outros itens da WO são lidos e conferidos do mesmo jeito e aparecem na Observação. O Status da WO considera só os itens da planilha. Se a mensagem de um item mudar entre as leituras e uma delas for esta, o item fica na planilha como Divergente (nunca é escondido). Maiúsculas, acentos e espaços não importam. Vazio = todos os itens." },
+  ]},
+  { grupo: "Desempenho", descricao: "Velocidade sem perder a conferência: a consulta em lote é comparada com a individual durante a análise.", itens: [
+    { id: "concorrencia", rotulo: "Consultas em paralelo", tipo: "int", min: 1, max: 8, un: "",
+      ajuda: "Grupos de WOs consultados ao mesmo tempo (padrão 4). Se o BTP pedir para ir mais devagar, o agente reduz o ritmo sozinho." },
+    { id: "tamanho_lote", rotulo: "WOs por consulta em lote", tipo: "int", min: 1, max: 50, un: "",
+      ajuda: "Quantas WOs vão numa mesma consulta (padrão 20; 1 = uma WO por consulta). Se o lote der qualquer diferença, o agente volta a consultar WO a WO." },
+  ]},
+];
+let cfgPadrao = {};
+function textoPadrao(i) {
+  const p = cfgPadrao[i.id];
+  if (p === undefined) return "";
+  if (i.tipo === "texto") return p ? `"${p}"` : "vazio (todos os itens)";
+  return i.tipo === "bool" ? (p ? "ligado" : "desligado")
+    : i.tipo === "opcao" ? (i.opcoes.find(o => o[0] === p) || ["", p])[1] : `${p}${i.un ? " " + i.un : ""}`;
+}
+function desenharConfig(valores) {
+  $("cfgGrupos").innerHTML = CONFIG.map(g => `
+    <section class="cfg-secao"><div class="secao-cab"><h2>${g.grupo}</h2></div><div class="cfg-painel">
+    ${g.itens.map(i => {
+      const v = valores[i.id];
+      const ent = i.tipo === "bool" ? `<input type="checkbox" id="cfg_${i.id}" ${v ? "checked" : ""}>`
+        : i.tipo === "texto" ? `<input type="text" id="cfg_${i.id}" value="${esc(v ?? "")}" maxlength="120" class="texto-cfg" placeholder="(todos os itens)">`
+        : i.tipo === "opcao" ? `<select id="cfg_${i.id}">${i.opcoes.map(([k, t]) =>
+            `<option value="${k}" ${k === v ? "selected" : ""}>${t}</option>`).join("")}</select>`
+        : `<span class="num-grupo${i.un ? " com-un" : ""}"><input type="number" id="cfg_${i.id}" value="${v}" min="${i.min}" max="${i.max}" step="${i.tipo === "int" ? 1 : 0.5}">${i.un ? `<span class="un">${i.un}</span>` : ""}</span>`;
+      return `<div class="campo"><span class="rotulo"><label for="cfg_${i.id}">${i.rotulo}</label>
+          <button class="ajuda-ctx" data-ajuda="cfg_${i.id}" aria-label="Sobre: ${esc(i.rotulo)}">?</button></span>
+        <div class="entrada">${ent}</div></div>`;
+    }).join("")}</div></section>`).join("");
+}
+async function carregarConfig() {
+  const r = await fetch("/api/configuracoes").then(r => r.json());
+  cfgPadrao = r.padrao; desenharConfig(r.valores); $("cfgStatus").textContent = "";
+}
+function lerFormulario() {
+  const dados = {};
+  CONFIG.forEach(g => g.itens.forEach(i => {
+    const el = $("cfg_" + i.id);
+    dados[i.id] = i.tipo === "bool" ? el.checked : i.tipo === "opcao" || i.tipo === "texto" ? el.value : Number(el.value);
+  }));
+  return dados;
+}
+function mostrarConferencia(v) {
+  conferencia = { auditorias: v.auditorias_por_wo,
+                  maximo: v.auditorias_por_wo + (v.divergencia === "reconsultar" ? v.consultas_extras_divergencia : 0) };
+}
+async function salvarConfig(url, corpo) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
+                               body: JSON.stringify(corpo || {}) }).then(r => r.json());
+  if (!r.ok) { $("cfgStatus").textContent = r.erro; return; }
+  desenharConfig(r.valores); mostrarConferencia(r.valores);
+  $("cfgStatus").textContent = r.problemas.length ? "Salvo com ajustes: " + r.problemas.join("; ") : "Configurações salvas.";
+  avisar($("cfgStatus").textContent);
+}
+$("cfgSalvar").onclick = () => salvarConfig("/api/configuracoes", lerFormulario());
+$("cfgRefazer").onclick = async () => {
+  if (!confirm("Apagar a fonte de dados gravada? Na próxima análise o agente procura de novo e pede a conferência.")) return;
+  const r = await fetch("/api/fonte/refazer", { method: "POST" }).then(r => r.json());
+  $("cfgStatus").textContent = r.ok ? "Fonte apagada: a próxima análise pede a conferência." : r.erro;
+};
+$("cfgPadrao").onclick = () => confirm("Restaurar todos os valores padrão?") && salvarConfig("/api/configuracoes/padrao");
+// Tabela de valores (Material SAP -> Tipo Material e valor unitário): gravada neste computador.
+function desenharTabela(t, erro) {
+  const ok = t && t.carregada;
+  $("zonaTabela").classList.toggle("com-arquivo", !!ok && !erro);
+  $("nomeTabela").classList.toggle("erro", !!erro);
+  $("bTirarTabela").classList.toggle("oculto", !ok);
+  $("nomeTabela").innerHTML = erro ? esc(erro)
+    : ok ? `<b>${esc(t.arquivo)}</b> · ${fmt(t.materiais)} materiais · importada em ${new Date(t.importada_em).toLocaleString("pt-BR")}`
+           + (t.sem_valor ? ` · ${fmt(t.sem_valor)} sem valor unitário` : "")
+    : "Nenhuma tabela importada";
+}
+async function carregarTabela() {
+  try { desenharTabela(await fetch("/api/materiais/tabela").then(r => r.json())); }
+  catch (_) { desenharTabela(null, "Não foi possível consultar a tabela (o programa está aberto?)."); }
+}
+$("arqTabela").onchange = async () => {
+  const f = $("arqTabela").files[0];
+  if (!f) return;
+  $("nomeTabela").innerHTML = `<b>${esc(f.name)}</b> · lendo…`;
+  const fd = new FormData(); fd.append("arquivo", f);
+  try {
+    const r = await post("/api/materiais/tabela", fd);
+    if (r.ok) { desenharTabela(r); avisar(`Tabela de valores importada: ${fmt(r.materiais)} materiais.`); }
+    else desenharTabela(null, `${f.name}: ${r.erro}`);
+  } catch (_) { desenharTabela(null, "Não foi possível enviar a tabela (o programa está aberto?)."); }
+  $("arqTabela").value = "";
+};
+$("bTirarTabela").onclick = async () => {
+  if (!confirm("Remover a tabela de valores? As próximas planilhas saem sem Tipo Material e valores.")) return;
+  desenharTabela(await fetch("/api/materiais/tabela", { method: "DELETE" }).then(r => r.json()));
+};
+carregarTabela();
+// Aparência: só deste navegador (preferência visual), aplicada na hora.
+function lerTema() { try { return localStorage.getItem("agenteBtpTema") || "auto"; } catch (_) { return "auto"; } }
+$("cfgTema").value = lerTema();
+$("cfgTema").onchange = () => {
+  const t = $("cfgTema").value;
+  document.documentElement.dataset.tema = t;
+  try { localStorage.setItem("agenteBtpTema", t); } catch (_) {}
+  avisar(`Tema: ${$("cfgTema").selectedOptions[0].textContent}.`);
+};
+let fonteDesenhada = "";
+function desenharFonte(f) {
+  const chave = JSON.stringify(f || null);
+  if (chave === fonteDesenhada) return;
+  fonteDesenhada = chave;
+  $("fonteDescricao").innerHTML = f ? `<b>${esc(f.descricao)}</b><span class="tag ${f.confirmada ? "ok" : "amb"}">${f.confirmada ? "confirmada" : "a confirmar"}</span>`
+                                    : "Ainda não configurada";
+  $("cfgMensagem").value = f ? f.mensagem_origem : "item";
+  $("cfgMensagem").disabled = !f || !f.tem_mensagem_alerta;
+  [...$("cfgMensagem").options].forEach(o => { o.disabled = o.value !== "item" && !(f && f.tem_mensagem_alerta); });
+}
+$("cfgMensagem").onchange = async () => {
+  const r = await fetch("/api/fonte/mensagem", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mensagem: $("cfgMensagem").value }) }).then(x => x.json());
+  if (!r.ok) { avisar(r.erro, true); fonteDesenhada = ""; desenharFonte(ultimoEstado && ultimoEstado.fonte); }
+  else avisar("Mensagem na planilha atualizada (vale a partir da próxima análise).");
+};
+fetch("/api/configuracoes").then(r => r.json()).then(r => { cfgPadrao = r.padrao; mostrarConferencia(r.valores); });
+
+// ---------------------------------------------------------------- histórico
+const dataBR = iso => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+const duracao = s => s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${Math.floor(s / 3600)} h ${Math.round(s % 3600 / 60)} min`;
+const classeSit = s => s === "Concluída" ? "ok" : s === "Interrompida" || s === "Em andamento" ? "amb" : "err";
+const classeStatus = s => ["Com itens faltantes", "Processada"].includes(s) ? "ok"
+  : ["Sem itens", "Sem registros"].includes(s) ? ""
+  : ["Não consta no Monitor", "Formato inválido", "Não encontrada no monitor", "WO inválida"].includes(s) ? "amb" : "err";
+const classeAud = s => s === "Validado" ? "ok" : s === "Divergente" || s === "Incompleto" ? "amb"
+  : s === "Não se aplica" ? "" : "err";
+let selecionada = null, detalheAtual = null;
+
+// Relatório do histórico: gerado de novo a partir da base com as regras atuais da planilha
+// (sem consultar o BTP); sem a análise na base, o servidor entrega o arquivo gravado na época.
+function linkRelatorio(a) {
+  return a.run_id ? `/api/execucoes/${encodeURIComponent(a.run_id)}/relatorio` : "/api/download/" + encodeURIComponent(a.arquivo);
+}
+function resumoHistorico(a) {
+  const i = a.indicadores;
+  if (!i) return "—";
+  const partes = [["ok", "✓", i.validadas, "validadas"], ["amb", "≠", i.divergentes, "com divergência"],
+                  ["amb", "◐", i.incompletas, "incompletas"], ["err", "✕", i.falhas, "com falha"]]
+    .filter(([, , n]) => n).map(([c, g, n, t]) => `<span class="tag ${c}" title="${fmt(n)} ${t}">${g} ${fmt(n)}</span>`);
+  return `<span class="res">${partes.join("") || '<span class="tag">nenhuma WO concluída</span>'}</span>`;
+}
+async function carregarHistorico() {
+  const lista = await fetch("/api/historico").then(r => r.json());
+  $("tabHist").innerHTML = lista.length ? lista.map(a => `
+    <tr class="clicavel ${a.id === selecionada ? "selecionada" : ""}" data-id="${esc(a.id)}" tabindex="0">
+      <td class="num">${a.numero || "—"}</td><td style="white-space:nowrap">${dataBR(a.inicio)}</td><td>${esc(a.origem)}</td>
+      <td class="num">${fmt(a.total)}</td><td>${resumoHistorico(a)}</td>
+      <td class="num">${duracao(a.duracao_seg)}</td>
+      <td><span class="tag ${classeSit(a.situacao)}">${esc(a.situacao)}</span></td>
+      <td style="white-space:nowrap">${a.arquivo ? `<a class="btn-texto" href="${linkRelatorio(a)}" onclick="event.stopPropagation()">Excel</a>` : ""}
+        <button class="btn-texto apagar" data-id="${esc(a.id)}" title="Apagar esta análise" aria-label="Apagar a análise ${a.numero || ""}" style="color:var(--texto-3)">Apagar</button></td>
+    </tr>`).join("") : `<tr><td colspan="8" class="vazio">Nenhuma análise registrada.</td></tr>`;
+  document.querySelectorAll("#tabHist tr.clicavel").forEach(tr => {
+    tr.onclick = () => abrirDetalhe(tr.dataset.id);
+    tr.onkeydown = ev => { if (ev.key === "Enter") abrirDetalhe(tr.dataset.id); };
+  });
+  document.querySelectorAll("#tabHist button.apagar").forEach(b => b.onclick = ev => { ev.stopPropagation(); apagar(b.dataset.id); });
+}
+
+async function abrirDetalhe(id) {
+  selecionada = id;
+  document.querySelectorAll("#tabHist tr").forEach(tr => tr.classList.toggle("selecionada", tr.dataset.id === id));
+  detalheAtual = await fetch("/api/historico/" + encodeURIComponent(id)).then(r => r.json());
+  const a = detalheAtual;
+  a.wos = a.wos || [];
+  $("detalheHist").classList.remove("oculto");
+  $("detTitulo").textContent = a.numero ? `Análise nº ${a.numero} · ${dataBR(a.inicio)}` : `Análise de ${dataBR(a.inicio)}`;
+  $("detResumo").textContent = `${a.origem} · ${fmt(a.total)} WOs · ${fmt(a.linhas_excel)} ocorrência(s) · duração ${duracao(a.duracao_seg)} · ${a.situacao}`;
+  $("detChips").innerHTML = Object.entries(a.contagem || {}).map(([s, n]) =>
+    `<span class="chip ${classeStatus(s)}">${esc(s)}<b>${fmt(n)}</b></span>`).join("");
+  $("detBaixar").classList.toggle("oculto", !a.arquivo);
+  if (a.arquivo) $("detBaixar").href = linkRelatorio(a);
+  $("detFiltro").innerHTML = `<option value="">Todas as situações</option>` +
+    Object.keys(a.contagem || {}).map(s => `<option>${esc(s)}</option>`).join("");
+  desenharDetalhe();
+  runHistorico = a.run_id || null;
+  $("detTecnico").classList.toggle("oculto", !runHistorico);
+  if (runHistorico) {
+    $("diagBaixar").href = `/api/diagnostico?run_id=${encodeURIComponent(runHistorico)}`;
+    $("diagConteudo").innerHTML = ""; $("diagAcao").textContent = "Carregando…"; $("log").textContent = "";
+    carregarDiagnostico(true); carregarRegistro(true);
+  }
+  $("detalheHist").scrollIntoView({ block: "start" });
+}
+
+function desenharDetalhe() {
+  const f = $("detFiltro").value;
+  const wos = detalheAtual.wos.filter(w => !f || w.status === f);
+  $("detConta").textContent = `${fmt(wos.length)} WO(s)`;
+  const mostrar = wos.slice(0, 2000);       // tabela leve mesmo com 13 mil WOs (filtre para ver o resto)
+  $("tabDet").innerHTML = mostrar.length ? mostrar.map(w => `
+    <tr><td class="mono">${esc(w.wo)}</td>
+      <td><span class="tag ${classeStatus(w.status)}">${esc(w.status)}</span></td>
+      <td>${w.auditoria ? `<span class="tag ${classeAud(w.auditoria)}">${esc(w.auditoria)}${w.auditorias ? " · " + esc(w.auditorias) : ""}</span>` : "—"}</td>
+      <td class="num">${w.registros}</td><td><span class="detalhe" title="${esc(w.observacao)}">${esc(w.observacao === "OK" ? "" : w.observacao)}</span></td></tr>`).join("")
+      + (wos.length > mostrar.length ? `<tr><td colspan="5" class="vazio">Mostrando ${fmt(mostrar.length)} de ${fmt(wos.length)} — use o filtro ou baixe o relatório.</td></tr>` : "")
+    : `<tr><td colspan="5" class="vazio">Nenhuma WO processada nesta análise.</td></tr>`;
+}
+$("detFiltro").onchange = desenharDetalhe;
+
+async function apagar(id) {
+  if (!confirm("Apagar esta análise do histórico? A planilha Excel dela também será apagada.")) return;
+  await fetch("/api/historico/" + encodeURIComponent(id), { method: "DELETE" });
+  if (id === selecionada) { selecionada = null; $("detalheHist").classList.add("oculto"); }
+  carregarHistorico(); carregarRecentes();
+}
+$("detApagar").onclick = () => selecionada && apagar(selecionada);
+$("bLimpar").onclick = async () => {
+  if (!confirm("Apagar TODO o histórico e as planilhas geradas? Isso não pode ser desfeito.")) return;
+  const r = await fetch("/api/historico", { method: "DELETE" }).then(r => r.json());
+  if (!r.ok) return avisar(r.erro, true);
+  selecionada = null; $("detalheHist").classList.add("oculto"); carregarHistorico();
+};
+
+// ================================================================ AJUDA CONTEXTUAL
+// Textos conferidos com o código (loja.estado_da_wo, auditoria.consolidar, entrada.ler_wos_*).
+// [título, texto, seção da Ajuda]
+const AJUDA = {
+  wo: ["WO", "Ordem de serviço no formato 00000|000000000 (5 dígitos | 9 dígitos), uma por linha. Espaços ao redor da barra são aceitos; repetidas contam uma vez; linha em outro formato vira \"Número de WO inválido\" no relatório."],
+  conferencia: ["Conferência", "Depois da extração, cada WO é lida de novo no BTP e comparada campo a campo. Se algum valor mudar entre as leituras, são feitas leituras extras; um valor divergente nunca é aprovado sem evidência. Os números vêm da engrenagem (Configurações)."],
+  processadas: ["Processadas", "WOs já concluídas nesta análise: validadas + com divergência + incompletas + com falha. Cada uma fica gravada assim que termina."],
+  pendentes: ["Pendentes", "WOs ainda não consultadas ou em consulta agora. Se a análise for interrompida (sessão, parada, programa fechado), elas continuam pendentes e são feitas ao Retomar."],
+  validadas: ["Validadas", "Todas as leituras da WO concordaram campo a campo. Inclui WOs sem alerta no Monitor quando isso se confirmou em todas as leituras."],
+  divergentes: ["Com divergência", "Algum valor mudou entre as leituras sem registro de alteração no BTP. O campo fica \"-\" na planilha, com a observação \"conferir no BTP\"."],
+  incompletas: ["Incompletas", "O BTP não informou algum campo obrigatório, a quantidade é ambígua (mais de um campo de quantidade) ou as conferências não puderam ser concluídas (tempo ou erro). Veja o motivo em \"Diagnóstico da execução\"."],
+  falhas: ["Falha de extração", "A consulta da WO falhou (rede, tempo esgotado, erro do BTP) ou o número da WO é inválido. Falhas de rede e de sessão são refeitas ao Retomar."],
+  tema: ["Tema", "Automático segue o sistema operacional. Vale só para este navegador e muda na hora.", "aparencia"],
+  fonte: ["Fonte de dados", "A tabela do BTP de onde vêm os itens. Refazer apaga a fonte gravada: a próxima análise pede a conferência da amostra de novo.", "fonte"],
+  mensagem: ["Mensagem na planilha", "Item = janela Mensagens; alerta = coluna Mensagem do Monitor; as duas = \"item — Alerta: alerta\". Vale a partir da próxima análise.", "fonte"],
+  raiox: ["Raio-X da fonte", "Use uma WO cuja janela Mensagens você conhece. O agente consulta tudo o que o serviço do Monitor tem para ela e observa a tela do BTP enquanto você abre a janela Mensagens.", "fonte"],
+  tabela: ["Tabela de valores", "Colunas Material, Texto breve material e Unitário. Preenche o Tipo Material e os valores do relatório, inclusive dos relatórios do Histórico.", "tabela"],
+};
+const SECAO_AJUDA = { wo: "wos", conferencia: "resumo", processadas: "indicadores", pendentes: "indicadores",
+  validadas: "indicadores", divergentes: "indicadores", incompletas: "indicadores", falhas: "indicadores" };
+function textoAjuda(chave) {
+  if (chave.startsWith("cfg_")) {
+    const i = CONFIG.flatMap(g => g.itens).find(x => x.id === chave.slice(4));
+    if (!i) return null;
+    return [i.rotulo, i.ajuda + (textoPadrao(i) ? ` Padrão: ${textoPadrao(i)}.` : ""), "parametros"];
+  }
+  const a = AJUDA[chave];
+  return a ? [a[0], a[1], a[2] || SECAO_AJUDA[chave]] : null;
+}
+
+const Dica = (() => {
+  let atual = null;
+  function mostrar(botao) {
+    const [titulo, texto, secao] = textoAjuda(botao.dataset.ajuda) || ["", "", ""];
+    const d = $("dica");
+    d.innerHTML = `<b>${esc(titulo)}</b>${esc(texto)}`
+      + (secao ? `<button class="dica-link" data-secao="${secao}">Ver na Ajuda guiada</button>` : "");
+    d.classList.remove("oculto");
+    const link = d.querySelector(".dica-link");
+    if (link) link.onclick = ev => { ev.stopPropagation(); esconder(); Tutorial.abrir(link.dataset.secao); };
+    const r = botao.getBoundingClientRect(), w = d.offsetWidth, h = d.offsetHeight;
+    let top = r.bottom + 8, left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
+    if (top + h > innerHeight - 8) top = r.top - h - 8;
+    d.style.top = `${Math.max(8, top)}px`; d.style.left = `${left}px`;
+    if (atual && atual !== botao) atual.setAttribute("aria-expanded", "false");
+    atual = botao; botao.setAttribute("aria-expanded", "true"); botao.setAttribute("aria-describedby", "dica");
+  }
+  function esconder() {
+    $("dica").classList.add("oculto");
+    if (atual) { atual.setAttribute("aria-expanded", "false"); atual.removeAttribute("aria-describedby"); }
+    atual = null;
+  }
+  document.addEventListener("click", ev => {
+    const b = ev.target.closest(".ajuda-ctx");
+    if (b) { ev.preventDefault(); ev.stopPropagation(); return atual === b ? esconder() : mostrar(b); }
+    if (!ev.target.closest("#dica")) esconder();
+  });
+  // Foco pelo TECLADO abre a dica; com o mouse, quem decide é o clique (senão o clique fecharia a dica que o foco abriu).
+  let ultimoPonteiro = 0;
+  document.addEventListener("pointerdown", () => { ultimoPonteiro = Date.now(); }, true);
+  document.addEventListener("focusin", ev => {
+    const b = ev.target.closest && ev.target.closest(".ajuda-ctx");
+    if (b && Date.now() - ultimoPonteiro > 500) mostrar(b);
+  });
+  document.addEventListener("focusout", ev => { if (ev.target.closest && ev.target.closest(".ajuda-ctx, #dica")) setTimeout(() => {
+    const f = document.activeElement; if (!f || !f.closest(".ajuda-ctx, #dica")) esconder(); }, 0); });
+  document.addEventListener("keydown", ev => { if (ev.key === "Escape" && atual) { const b = atual; esconder(); b.focus(); } });
+  addEventListener("scroll", esconder, true); addEventListener("resize", esconder);
+  return { esconder };
+})();
+
+// ================================================================ TUTORIAL GUIADO
+// Para editar o tutorial, mude só este array: alvo (seletor), título, texto e, se preciso,
+// "preparar" (deixa o alvo visível e devolve a função que restaura o estado anterior).
+// Ajuda guiada: percorre o site inteiro (troca de página sozinha). Cada passo: aba, alvo (seletor),
+// alternativa (se o alvo não estiver visível), chave (usada pelo "Ver na Ajuda guiada" dos "?"), título, texto
+// e, se preciso, "preparar" (mostra o alvo e devolve a função que restaura o estado anterior).
+// A ajuda só LÊ: nenhum botão do site é acionado enquanto ela está aberta.
+const PASSOS_TUTORIAL = [
+  { aba: "analise", chave: "conexao", alvo: "#pilulaConexao", titulo: "Conexão com o BTP",
+    texto: "No rodapé do menu: o agente lê o Monitor de alertas pela aba do Chrome em que você já está logado — só consulta, nunca aciona \"Reprocessar\" ou \"Efetuar Baixa\", e não guarda senha. Verde: BTP conectado e sessão válida. Amarelo: aba conectada, sessão a verificar (ou sessão expirada: faça login de novo na aba). Cinza: aguardando o BTP — abra o BTP com a extensão Agente BTP ou use o favorito." },
+  { aba: "analise", chave: "resumo", alvo: "#resumoAgente", titulo: "Resumo do agente",
+    texto: "Mostra a conexão, a tabela do BTP usada como fonte dos dados (\"a confirmar\" até você conferir a amostra), quantas vezes cada WO é conferida (ex.: 2×, até 5× se houver divergência) e, durante uma análise, o número dela e o total de WOs." },
+  { aba: "analise", chave: "wos", alvo: "#texto", titulo: "Campo de WOs",
+    texto: "Cole as WOs, uma por linha, no formato 00000|000000000 (5 dígitos, barra, 9 dígitos). Espaços ao redor da barra são aceitos e WOs repetidas contam uma vez. Logo abaixo, o contador mostra quantas estão no formato certo e quantas linhas estão fora — essas viram \"Número de WO inválido\" no relatório." },
+  { aba: "analise", chave: "planilha", alvo: "#zonaImportar", titulo: "Importar planilha",
+    texto: "Em vez de colar, escolha um arquivo .xlsx. O agente procura a coluna \"WO\" (ou células no formato de WO), mostra o nome do arquivo e quantas WOs reconheceu, com um ✓ quando deu certo. Campo e planilha podem ser usados juntos; \"Remover\" tira a planilha escolhida." },
+  { aba: "analise", chave: "executar", alvo: "#bExecutar", titulo: "Executar análise",
+    texto: "Inicia a extração no BTP. Precisa da aba conectada; se o botão estiver bloqueado, o motivo aparece logo abaixo dele. Na primeira vez (ou depois de refazer a fonte), o agente mostra uma amostra de uma WO para você comparar com a janela Mensagens do BTP antes de continuar. Cada WO fica gravada assim que termina." },
+  { aba: "analise", chave: "estado", alvo: "#cartaoProgresso .exec-cab", titulo: "Estado e controles",
+    texto: "O selo mostra o estado real: Preparando, Aguardando você (conferência), Executando, Pausada, Interrompida ou Concluída (com ressalvas ou divergências, se houver). Pausar e Parar deixam terminar as WOs em andamento. Se a sessão do BTP expirar, a análise pausa sozinha e retoma sozinha depois do login — nada é perdido." },
+  { aba: "analise", chave: "progresso", alvo: "#blocoProgresso", titulo: "Progresso",
+    preparar: () => { const b = $("blocoProgresso"), o = b.classList.contains("oculto"); b.classList.remove("oculto"); return () => o && b.classList.add("oculto"); },
+    texto: "A barra mostra quantas WOs já terminaram (ex.: 120 de 300 · 40%). Quando há medição suficiente, aparecem o ritmo (WO/s) e o tempo restante; pausada, o tempo restante não é estimado. A linha \"Agora:\" diz o que o agente está fazendo naquele momento." },
+  { aba: "analise", chave: "indicadores", alvo: "#painel", titulo: "Indicadores",
+    preparar: () => { $("painel").classList.remove("oculto"); return null; },
+    texto: "Processadas = validadas + divergência + incompletas + falhas. Pendentes ainda vão ser consultadas (e são feitas ao Retomar). Validadas: todas as leituras concordaram. Divergência: um valor mudou entre leituras. Incompletas: faltou campo ou a conferência não terminou. Falha: a consulta falhou. Passe o mouse num indicador e clique no ? para a regra exata." },
+  { aba: "analise", chave: "resultado", alvo: "#acoesResultado", titulo: "Relatório e diagnóstico",
+    preparar: () => { const els = ["baixar", "bVerDiag"].map($).filter(e => e.classList.contains("oculto"));
+                      els.forEach(e => e.classList.remove("oculto")); return () => els.forEach(e => e.classList.add("oculto")); },
+    texto: "Ao concluir, \"Baixar relatório auditado\" entrega o Excel: aba Dados (um item por linha — só os com a mensagem configurada, padrão \"Estoque indisponível\"; os outros itens da WO ficam na Observação —, com Tipo Material; \"-\" onde não há informação; observação amarela = conferir no BTP), aba Materiais (quantidade e valor total por material) e aba Análise. Durante a análise há a planilha parcial; \"Ver diagnóstico\" abre o que deu errado no Histórico." },
+  { aba: "analise", chave: "recentes", alvo: "#secRecentes", titulo: "Execuções recentes",
+    texto: "As últimas análises com número, origem, data, total de WOs, duração, situação e o resumo (✓ validadas, ≠ divergência, ◐ incompletas, ✕ falhas). \"Excel\" gera o relatório de novo a partir da base, com as regras atuais, sem consultar o BTP. Clique numa análise para abrir o detalhe no Histórico." },
+  { aba: "historico", chave: "historico", alvo: "#vistaHistorico .tabela-cartao", titulo: "Histórico",
+    texto: "Todas as análises, inclusive a que está em andamento. Clique numa linha para ver o detalhe: a situação de cada WO (com filtro), o diagnóstico e o registro de execução. \"Excel\" baixa o relatório; \"Apagar\" remove a análise e a planilha dela; \"Limpar histórico\" apaga tudo (pede confirmação)." },
+  { aba: "historico", chave: "diagnostico", alvo: "#detTecnico", alternativa: "#vistaHistorico .tabela-cartao", titulo: "Diagnóstico e registro",
+    texto: "No detalhe de uma análise, o Diagnóstico separa os problemas por origem — BTP / sessão (o BTP ou o caminho até ele não entregou o dado), Agente (o programa falhou ou atingiu um limite) e Entrada (a WO informada não serve) — com a próxima ação e a evidência. O Registro mostra os eventos em ordem; o diagnóstico também sai em .json." },
+  { aba: "config", chave: "fonte", alvo: "[aria-labelledby=tFonte]", titulo: "Fonte de dados",
+    texto: "A tabela do BTP de onde vêm os itens e se você já a confirmou. \"Mensagem na planilha\": do item (janela Mensagens), do alerta (coluna Mensagem do Monitor) ou as duas. O Raio-X investiga uma WO quando os dados não batem com o BTP. \"Refazer a fonte de dados\" apaga a fonte gravada: a próxima análise pede a conferência de novo." },
+  { aba: "config", chave: "tabela", alvo: "[aria-labelledby=tTabela]", titulo: "Tabela de valores",
+    texto: "Importe a planilha de valores (colunas Material, Texto breve material e Unitário). Ela preenche o Tipo Material e os valores do relatório. O material é comparado pelo número (000000000022056365 = 22056365); fora da tabela fica \"-\", com aviso. Valores diferentes para o mesmo material: a importação é recusada. Preços mudaram? Importe de novo." },
+  { aba: "config", chave: "aparencia", alvo: "[aria-labelledby=tAparencia]", titulo: "Aparência",
+    texto: "Tema claro, escuro ou automático (segue o sistema). Vale só para este navegador e muda na hora." },
+  { aba: "config", chave: "parametros", alvo: "#cfgGrupos", titulo: "Parâmetros da análise",
+    texto: "Auditoria (quantas conferências por WO e o que fazer em divergência), Tempo (limites de cada consulta, da WO e da análise inteira), Execução (WO sem resultado, erros, exportar não validados e a mensagem dos itens que vão para a planilha) e Desempenho (consultas em paralelo e WOs por lote). Passe o mouse num parâmetro e clique no ? para ver a regra e o valor padrão." },
+  { aba: "config", chave: "salvar", alvo: "#vistaConfig .pagina-acoes", titulo: "Salvar ou restaurar",
+    texto: "\"Salvar configurações\" grava neste computador (sem senhas ou dados de acesso) e vale a partir da próxima análise. \"Restaurar padrões\" volta todos os parâmetros aos valores originais." },
+  { aba: null, chave: "ajuda", alvo: "#bAjuda", titulo: "Ajuda sempre à mão",
+    texto: "Reabra esta ajuda quando quiser pelo item Ajuda do menu lateral ou pela tecla F1. Para uma dúvida pontual, use o ? ao lado do item: ele explica só aquilo e leva ao passo certo desta ajuda." },
+];
+
+const Tutorial = (() => {
+  let indice = 0, restaurar = null, focoAntes = null, abaAntes = null, quadro = 0, alvos = [];
+  const raiz = $("tutorial"), foco = $("tutFoco"), balao = $("tutBalao");
+
+  function retangulo() {
+    const rs = alvos.map(a => a.getBoundingClientRect()).filter(r => r.width || r.height);
+    if (!rs.length) return null;
+    const top = Math.min(...rs.map(r => r.top)), left = Math.min(...rs.map(r => r.left));
+    return { top, left, right: Math.max(...rs.map(r => r.right)), bottom: Math.max(...rs.map(r => r.bottom)),
+             width: Math.max(...rs.map(r => r.right)) - left, height: Math.max(...rs.map(r => r.bottom)) - top };
+  }
+  function posicionar() {
+    const r = retangulo();
+    if (!r) return;
+    const m = 6;
+    Object.assign(foco.style, { top: `${r.top - m}px`, left: `${r.left - m}px`, width: `${r.width + 2 * m}px`, height: `${r.height + 2 * m}px` });
+    if (innerWidth <= 640) { balao.style.top = ""; balao.style.left = ""; return; }   // CSS fixa o balão embaixo
+    const bw = balao.offsetWidth, bh = balao.offsetHeight, g = 14, vw = innerWidth, vh = innerHeight;
+    const opcoes = [
+      { top: r.bottom + g, left: r.left, cabe: r.bottom + g + bh <= vh - 8 },
+      { top: r.top - g - bh, left: r.left, cabe: r.top - g - bh >= 8 },
+      { top: r.top, left: r.right + g, cabe: r.right + g + bw <= vw - 8 },
+      { top: r.top, left: r.left - g - bw, cabe: r.left - g - bw >= 8 },
+    ];
+    const o = opcoes.find(x => x.cabe) || { top: vh - bh - 12, left: (vw - bw) / 2 };
+    balao.style.top = `${Math.min(Math.max(8, o.top), vh - bh - 8)}px`;
+    balao.style.left = `${Math.min(Math.max(8, o.left), vw - bw - 8)}px`;
+  }
+  function buscarAlvos(passo) {
+    const visiveis = sel => sel ? [...document.querySelectorAll(sel)].filter(a => a.getClientRects().length) : [];
+    const achados = visiveis(passo.alvo);
+    return achados.length ? achados : visiveis(passo.alternativa);
+  }
+  function laco() {                              // acompanha rolagem, redimensionamento e conteúdo que carrega depois
+    if (!alvos.length) { alvos = buscarAlvos(PASSOS_TUTORIAL[indice]); if (alvos.length) { $("tutTexto").textContent = PASSOS_TUTORIAL[indice].texto; centralizar(); } }
+    posicionar(); quadro = requestAnimationFrame(laco);
+  }
+  function centralizar() {
+    const r = retangulo();
+    if (r && (r.top < 70 || r.bottom > innerHeight - 20)) alvos[0].scrollIntoView({ block: r.height > innerHeight - 140 ? "start" : "center" });
+  }
+
+  function mostrar(i) {
+    if (restaurar) { restaurar(); restaurar = null; }
+    indice = i;
+    const passo = PASSOS_TUTORIAL[i];
+    if (passo.aba && abaAtual !== passo.aba) abrirAba(passo.aba);
+    restaurar = passo.preparar ? passo.preparar() : null;
+    alvos = buscarAlvos(passo);
+    $("tutPasso").textContent = `Passo ${i + 1} de ${PASSOS_TUTORIAL.length}`;
+    $("tutTitulo").textContent = passo.titulo;
+    $("tutTexto").textContent = alvos.length ? passo.texto : passo.texto + " (Este elemento não está visível agora.)";
+    $("tutPontos").innerHTML = PASSOS_TUTORIAL.map((_, k) => `<span class="${k <= i ? "feito" : ""}"></span>`).join("");
+    $("tutAnterior").disabled = i === 0;
+    $("tutProximo").textContent = i === PASSOS_TUTORIAL.length - 1 ? "Concluir" : "Próximo";
+    $("anuncio").textContent = `Passo ${i + 1} de ${PASSOS_TUTORIAL.length}: ${passo.titulo}`;
+    balao.style.animation = "none"; void balao.offsetWidth; balao.style.animation = "";
+    centralizar();
+    posicionar();
+    $("tutProximo").focus();
+  }
+  // abrir() começa do início; abrir("chave") começa no passo daquele assunto ("Ver na Ajuda guiada").
+  function abrir(chave) {
+    if (!raiz.classList.contains("oculto")) return;
+    Dica.esconder();
+    focoAntes = document.activeElement; abaAntes = abaAtual;
+    raiz.classList.remove("oculto");
+    document.querySelectorAll(".pagina, .lateral").forEach(el => el.setAttribute("inert", ""));
+    $("bAjuda").classList.add("ativa");
+    window.tutorialAberto = true; atualizar();
+    const inicio = typeof chave === "string" ? PASSOS_TUTORIAL.findIndex(p => p.chave === chave) : 0;
+    mostrar(Math.max(0, inicio));
+    laco();
+  }
+  function fechar() {
+    if (raiz.classList.contains("oculto")) return;
+    cancelAnimationFrame(quadro);
+    if (restaurar) { restaurar(); restaurar = null; }
+    raiz.classList.add("oculto");
+    document.querySelectorAll(".pagina, .lateral").forEach(el => el.removeAttribute("inert"));
+    $("bAjuda").classList.remove("ativa");
+    window.tutorialAberto = false; atualizar();
+    if (abaAntes && abaAtual !== abaAntes) abrirAba(abaAntes);
+    $("anuncio").textContent = "Ajuda encerrada.";
+    (focoAntes && focoAntes.isConnected && focoAntes !== document.body ? focoAntes : $("bAjuda")).focus();
+  }
+  $("tutProximo").onclick = () => indice < PASSOS_TUTORIAL.length - 1 ? mostrar(indice + 1) : fechar();
+  $("tutAnterior").onclick = () => indice > 0 && mostrar(indice - 1);
+  $("tutSair").onclick = fechar;
+  document.addEventListener("keydown", ev => {
+    if (raiz.classList.contains("oculto")) return;
+    if (ev.key === "Escape") { ev.preventDefault(); fechar(); }
+    else if (ev.key === "ArrowRight") { ev.preventDefault(); $("tutProximo").click(); }
+    else if (ev.key === "ArrowLeft") { ev.preventDefault(); $("tutAnterior").click(); }
+    else if (ev.key === "Tab") {                    // foco preso no balão enquanto a ajuda está aberta
+      const f = [...balao.querySelectorAll("button:not(:disabled)")];
+      const i = f.indexOf(document.activeElement);
+      ev.preventDefault();
+      f[(i + (ev.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+    }
+  });
+  $("bAjuda").onclick = () => abrir();
+  document.addEventListener("keydown", ev => { if (ev.key === "F1") { ev.preventDefault(); abrir(); } });
+  return { abrir, fechar, get aberto() { return !raiz.classList.contains("oculto"); }, get passo() { return indice; } };
+})();
+</script>
+</body>
+</html>
