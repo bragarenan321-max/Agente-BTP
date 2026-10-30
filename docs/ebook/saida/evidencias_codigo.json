@@ -230,13 +230,13 @@
  {
   "arquivo": "agente_btp/modelos.py",
   "inicio": 53,
-  "fim": 74,
+  "fim": 77,
   "rotulo": "LinhaMensagem"
  },
  {
   "arquivo": "agente_btp/auditoria.py",
   "inicio": 99,
-  "fim": 153,
+  "fim": 163,
   "rotulo": "consolidar"
  },
  {
@@ -247,26 +247,32 @@
  },
  {
   "arquivo": "agente_btp/loja.py",
-  "inicio": 64,
-  "fim": 72,
+  "inicio": 78,
+  "fim": 87,
   "rotulo": "estado_da_wo"
  },
  {
   "arquivo": "agente_btp/loja.py",
-  "inicio": 325,
-  "fim": 344,
+  "inicio": 66,
+  "fim": 75,
+  "rotulo": "visao_da_planilha"
+ },
+ {
+  "arquivo": "agente_btp/loja.py",
+  "inicio": 342,
+  "fim": 363,
   "rotulo": "Loja.concluir"
  },
  {
   "arquivo": "agente_btp/loja.py",
-  "inicio": 346,
-  "fim": 351,
+  "inicio": 365,
+  "fim": 370,
   "rotulo": "Loja.devolver"
  },
  {
   "arquivo": "agente_btp/exportacao.py",
-  "inicio": 136,
-  "fim": 147,
+  "inicio": 144,
+  "fim": 155,
   "rotulo": "itens_unicos"
  },
  {
@@ -277,38 +283,38 @@
  },
  {
   "arquivo": "agente_btp/exportacao.py",
-  "inicio": 195,
-  "fim": 219,
+  "inicio": 213,
+  "fim": 237,
   "rotulo": "_linhas_dados"
  },
  {
   "arquivo": "agente_btp/exportacao.py",
-  "inicio": 176,
-  "fim": 178,
+  "inicio": 184,
+  "fim": 196,
   "rotulo": "entra_na_planilha"
  },
  {
   "arquivo": "agente_btp/exportacao.py",
-  "inicio": 168,
-  "fim": 173,
+  "inicio": 176,
+  "fim": 181,
   "rotulo": "mensagem_do_item"
  },
  {
   "arquivo": "agente_btp/exportacao.py",
-  "inicio": 243,
-  "fim": 279,
+  "inicio": 261,
+  "fim": 297,
   "rotulo": "linhas_materiais"
  },
  {
   "arquivo": "agente_btp/exportacao.py",
-  "inicio": 503,
-  "fim": 519,
+  "inicio": 527,
+  "fim": 543,
   "rotulo": "_celula"
  },
  {
   "arquivo": "agente_btp/exportacao.py",
-  "inicio": 445,
-  "fim": 468,
+  "inicio": 469,
+  "fim": 492,
   "rotulo": "verificar_planilha"
  },
  {
@@ -319,8 +325,8 @@
  },
  {
   "arquivo": "agente_btp/modelos.py",
-  "inicio": 130,
-  "fim": 158,
+  "inicio": 133,
+  "fim": 161,
   "rotulo": "família de exceções do agente"
  },
  {

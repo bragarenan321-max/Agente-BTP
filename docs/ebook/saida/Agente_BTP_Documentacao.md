@@ -362,7 +362,7 @@ Esta parte conta como o Agente BTP chegou à forma atual e descreve sua estrutur
 
 ## 5. Como o projeto foi iniciado {#cap5}
 
-O histórico Git do repositório tem **39 commits**, de 01/10/2026 a 29/10/2026. Um *commit* é um "ponto de salvamento" do projeto: um conjunto de mudanças registrado com data, autor e uma mensagem descrevendo o que mudou. Lendo os commits em ordem, é possível reconstruir a evolução do projeto com segurança — e, quando a mensagem do commit não explica a motivação, este capítulo diz isso explicitamente.
+O histórico Git do repositório tinha **39 commits**, de 01/10/2026 a 29/10/2026, quando este livro começou a ser escrito (depois vieram os commits do próprio livro e a correção de 30/10). Um *commit* é um "ponto de salvamento" do projeto: um conjunto de mudanças registrado com data, autor e uma mensagem descrevendo o que mudou. Lendo os commits em ordem, é possível reconstruir a evolução do projeto com segurança — e, quando a mensagem do commit não explica a motivação, este capítulo diz isso explicitamente.
 
 
 ![Figura 5.1 — Marcos do desenvolvimento reconstruídos a partir do histórico Git](diagramas/linha_tempo.png)
@@ -417,7 +417,7 @@ O commit `8f69d6f` (22/10) resolve problemas que só apareciam com **13.623 WOs*
 
 Em 27/10, a primeira análise real de 13.623 WOs revelou que todas as WOs ficavam "incompletas". A seção 7 do relatório de correção mostra a causa — a fonte aprendida observando a tela era outra tabela (`RetornoDaBaixa`), com dois campos de quantidade — e a correção (`25ee8e5`): a receita confirmada passa a ter prioridade e configurações antigas são descartadas (`VERSAO_CONFIG = 6` em `agente_btp/config.py`).
 
-Os commits seguintes tratam de uso operacional: retomada em qualquer interrupção (`457e87a`), redesenho da interface com ajuda guiada (`35f0af6`, `4c4973c`, `cc02174`, `080d8de`, `2460ba6`), itens repetidos e células vazias com "-" (`b99c093`), tipo de material e tabela de valores (`b44a9e7`) e, por fim, a regra de listar na planilha apenas os itens "Estoque indisponível" (`1f16b17`, 29/10).
+Os commits seguintes tratam de uso operacional: retomada em qualquer interrupção (`457e87a`), redesenho da interface com ajuda guiada (`35f0af6`, `4c4973c`, `cc02174`, `080d8de`, `2460ba6`), itens repetidos e células vazias com "-" (`b99c093`), tipo de material e tabela de valores (`b44a9e7`) e, por fim, a regra de listar na planilha apenas os itens "Estoque indisponível" (`1f16b17`, 29/10). Em 30/10, depois dos commits deste livro, essa regra foi revisada (`0a39d6c`): o Status passou a considerar só os itens da planilha, e a mensagem do item passou a ser lida em todas as leituras (Cap. 15.5).
 
 ### 5.7 O que o histórico não permite saber
 
@@ -742,7 +742,7 @@ O ponto de partida é um script de lote do Windows. O `__main__.py` também tem 
 | Ferramenta | Tipo | Uso |
 |---|---|---|
 | Git | Controle de versão | Histórico de 39 commits |
-| pytest | Biblioteca de testes | 164 testes automáticos (Capítulo 24) |
+| pytest | Biblioteca de testes | 167 testes automáticos (Capítulo 24) |
 | Playwright + Chromium | Automação de navegador | Somente nos testes de ponta a ponta (`testes/e2e/`) — não é dependência do programa |
 | http.server | Biblioteca padrão | Servidores falsos do BTP nos testes (`testes/e2e/sap_falso.py`) |
 
@@ -2351,7 +2351,7 @@ Uma WO pode ser "Não consta no Monitor" e "Validado" ao mesmo tempo: significa 
 O resultado de cada item é uma `LinhaMensagem`:
 
 
-**Código-fonte — agente_btp/modelos.py · LinhaMensagem · linhas 53–74**
+**Código-fonte — agente_btp/modelos.py · LinhaMensagem · linhas 53–77**
 
 ```python
   53  @dataclass
@@ -2370,12 +2370,15 @@ O resultado de cada item é uma `LinhaMensagem`:
   66      notas: dict = field(default_factory=dict)
   67      # Mensagem do próprio item (janela Mensagens), mesmo quando a planilha usa a do alerta ou as duas.
   68      mensagem_item: str = ""
-  69  
-  70      def como_lista(self) -> list:
-  71          return [self.wo, self.material, self.fornecedor, self.quantidade_faltante, self.mensagem]
+  69      # Mensagens do item vistas em TODAS as leituras (sem repetição): decide se o item vai para a
+  70      # planilha mesmo quando a mensagem mudou entre leituras (ver exportacao.entra_na_planilha).
+  71      mensagens_lidas: list = field(default_factory=list)
   72  
-  73      def valor(self, campo: str):
-  74          return getattr(self, campo)
+  73      def como_lista(self) -> list:
+  74          return [self.wo, self.material, self.fornecedor, self.quantidade_faltante, self.mensagem]
+  75  
+  76      def valor(self, campo: str):
+  77          return getattr(self, campo)
 ```
 
 
@@ -2390,7 +2393,7 @@ A ideia da auditoria é simples: **ler mais de uma vez e só afirmar o que se re
 A decisão é tomada pela função `consolidar`. O coração dela é o laço por item:
 
 
-**Código-fonte — agente_btp/auditoria.py · consolidar · linhas 99–153**
+**Código-fonte — agente_btp/auditoria.py · consolidar · linhas 99–163**
 
 ```python
   99      for chave in chaves:
@@ -2422,32 +2425,42 @@ A decisão é tomada pela função `consolidar`. O coração dela é o laço por
  125                                                                        " Não resolvida: revisar no BTP.")
  126              motivos.append(f"{ROTULO[campo]} divergente ({vistos})"
  127                             + (" — resolvida pelo registro de alteração" if explicacao else ""))
- 128          incompleto = False
- 129          for campo in CAMPOS:
- 130              if campo not in notas and finais[campo] in (None, ""):
- 131                  incompleto = True
- 132                  notas[campo] = "Não obtido no BTP (campo vazio ou inexistente no registro)."
- 133                  motivos.append(f"{ROTULO[campo]} não obtido")
- 134          fonte_qtd = ref.fonte.get("quantidade_faltante", "")
- 135          if ref.outras_quantidades and fonte_qtd and peso_nome("quantidade_faltante", fonte_qtd) <= 0:
- 136              incompleto = True
- 137              alternativas = ", ".join(f"{k}={_texto(v)}" for k, v in ref.outras_quantidades.items())
- 138              notas.setdefault("quantidade_faltante",
- 139                               f"Ambígua: lido de '{fonte_qtd}', mas o registro também tem {alternativas}.")
- 140              motivos.append(f"Quantidade faltante ambígua ('{fonte_qtd}' x {alternativas})")
- 141          if divergente:
- 142              estado = Auditoria.DIVERGENTE
- 143          elif incompleto:
- 144              estado = Auditoria.INCOMPLETO
- 145          elif feitas < previstas or previstas == 0:
- 146              estado = Auditoria.NAO_CONCLUIDO
- 147              motivos.append(f"{feitas} de {previstas} auditorias conferiram esta ocorrência" if previstas else
- 148                             "Auditoria desativada nas configurações: apenas uma leitura")
- 149          else:
- 150              estado = Auditoria.VALIDADO
- 151          if ref.outras_quantidades and estado is Auditoria.VALIDADO:
- 152              motivos.append("Quantidade lida de '" + fonte_qtd + "'; outros campos de quantidade no registro: "
- 153                             + ", ".join(f"{k}={_texto(v)}" for k, v in ref.outras_quantidades.items()))
+ 128          # Mensagem do próprio item (janela Mensagens) em cada leitura. Conta mesmo quando a planilha
+ 129          # mostra a mensagem do alerta: é ela que decide se o item entra na planilha.
+ 130          lidas = list(dict.fromkeys(str(o.valores.get("mensagem_item", o.valores.get("mensagem")) or "")
+ 131                                     for _, o in presentes))
+ 132          if len(lidas) > 1 and "mensagem" not in notas:
+ 133              divergente = True
+ 134              vistos = " / ".join(f"r{l.rodada}={_texto(o.valores.get('mensagem_item', o.valores.get('mensagem')))}"
+ 135                                  for l, o in presentes)
+ 136              notas["mensagem"] = f"Divergente entre leituras (mensagem do item): {vistos}. Não resolvida: revisar no BTP."
+ 137              motivos.append(f"Mensagem do item divergente ({vistos})")
+ 138          incompleto = False
+ 139          for campo in CAMPOS:
+ 140              if campo not in notas and finais[campo] in (None, ""):
+ 141                  incompleto = True
+ 142                  notas[campo] = "Não obtido no BTP (campo vazio ou inexistente no registro)."
+ 143                  motivos.append(f"{ROTULO[campo]} não obtido")
+ 144          fonte_qtd = ref.fonte.get("quantidade_faltante", "")
+ 145          if ref.outras_quantidades and fonte_qtd and peso_nome("quantidade_faltante", fonte_qtd) <= 0:
+ 146              incompleto = True
+ 147              alternativas = ", ".join(f"{k}={_texto(v)}" for k, v in ref.outras_quantidades.items())
+ 148              notas.setdefault("quantidade_faltante",
+ 149                               f"Ambígua: lido de '{fonte_qtd}', mas o registro também tem {alternativas}.")
+ 150              motivos.append(f"Quantidade faltante ambígua ('{fonte_qtd}' x {alternativas})")
+ 151          if divergente:
+ 152              estado = Auditoria.DIVERGENTE
+ 153          elif incompleto:
+ 154              estado = Auditoria.INCOMPLETO
+ 155          elif feitas < previstas or previstas == 0:
+ 156              estado = Auditoria.NAO_CONCLUIDO
+ 157              motivos.append(f"{feitas} de {previstas} auditorias conferiram esta ocorrência" if previstas else
+ 158                             "Auditoria desativada nas configurações: apenas uma leitura")
+ 159          else:
+ 160              estado = Auditoria.VALIDADO
+ 161          if ref.outras_quantidades and estado is Auditoria.VALIDADO:
+ 162              motivos.append("Quantidade lida de '" + fonte_qtd + "'; outros campos de quantidade no registro: "
+ 163                             + ", ".join(f"{k}={_texto(v)}" for k, v in ref.outras_quantidades.items()))
 ```
 
 
@@ -2456,9 +2469,10 @@ A decisão é tomada pela função `consolidar`. O coração dela é o laço por
 - **Linha 106** — conta quantas auditorias realmente conferiram este item (uma releitura por chave que não conseguiu reler o item não conta).
 - **Linhas 108–113** — **item que sumiu ou apareceu** entre leituras: divergência.
 - **Linhas 114–127** — **campo a campo**: se todas as leituras trazem o mesmo valor, ele é o valor final; se não, é divergência, e `_resolver` tenta explicá-la pelo registro de alteração do BTP. Sem explicação, o valor final fica **vazio** e a nota diz "Não resolvida: revisar no BTP".
-- **Linhas 128–133** — **campo vazio**: se algum dos cinco campos não veio do BTP, o item é incompleto.
-- **Linhas 134–140** — **quantidade ambígua**: se o registro tem outros campos de quantidade e o nome do campo usado não indica claramente "faltante", o item é incompleto — o agente se recusa a escolher.
-- **Linhas 141–150** — a ordem de gravidade: divergente vence incompleto, que vence não concluído; só sem nenhum desses o item é **validado**.
+- **Linhas 128–137** — **mensagem do item em todas as leituras**: o agente guarda a mensagem do item (janela Mensagens) vista em cada leitura (`mensagens_lidas`). Se ela mudou entre leituras, o item é divergente — inclusive quando a planilha mostra a mensagem do alerta. É essa lista que decide se o item vai para a planilha (Cap. 15.5).
+- **Linhas 138–143** — **campo vazio**: se algum dos cinco campos não veio do BTP, o item é incompleto.
+- **Linhas 144–150** — **quantidade ambígua**: se o registro tem outros campos de quantidade e o nome do campo usado não indica claramente "faltante", o item é incompleto — o agente se recusa a escolher.
+- **Linhas 151–160** — a ordem de gravidade: divergente vence incompleto, que vence não concluído; só sem nenhum desses o item é **validado**.
 :::
 
 ### 14.6 Quando o BTP explica a mudança
@@ -2506,18 +2520,38 @@ Depois da auditoria, `_concluir` decide a situação da WO olhando **todas** as 
 A base local guarda um estado simplificado por WO, usado pela tela, pela retomada e pela planilha:
 
 
-**Código-fonte — agente_btp/loja.py · estado_da_wo · linhas 64–72**
+**Código-fonte — agente_btp/loja.py · estado_da_wo · linhas 78–87**
 
 ```python
-  64  def estado_da_wo(r: ResultadoWO) -> str:
-  65      """Estado gravado a partir do resultado (a mesma regra vale para a tela e para a planilha)."""
-  66      if r.status is Status.WO_INVALIDA or r.status in STATUS_FALHA:
-  67          return "falha"
-  68      if r.auditoria is Auditoria.VALIDADO:
-  69          return "validada"
-  70      if r.auditoria is Auditoria.DIVERGENTE:
-  71          return "divergente"
-  72      return "incompleta"
+  78  def estado_da_wo(r: ResultadoWO, filtro: str | None = None) -> str:
+  79      """Estado gravado a partir do resultado (a mesma regra vale para a tela e para a planilha)."""
+  80      r = visao_da_planilha(r, filtro)
+  81      if r.status is Status.WO_INVALIDA or r.status in STATUS_FALHA:
+  82          return "falha"
+  83      if r.auditoria is Auditoria.VALIDADO:
+  84          return "validada"
+  85      if r.auditoria is Auditoria.DIVERGENTE:
+  86          return "divergente"
+  87      return "incompleta"
+```
+
+
+Antes de decidir, `estado_da_wo` aplica `visao_da_planilha`: com o filtro de mensagem ligado (padrão "Estoque indisponível"), só os itens que vão para a planilha contam. Uma divergência num item de outra mensagem — que só aparece na Observação — não torna a WO divergente. O motor passa o filtro ao gravar cada WO (`Loja.concluir`), e a coluna Status da planilha usa a mesma função; por isso tela, histórico e planilha mostram o mesmo estado (teste `test_status_da_planilha_ignora_divergencia_em_item_de_outra_mensagem`).
+
+
+**Código-fonte — agente_btp/loja.py · visao_da_planilha · linhas 66–75**
+
+```python
+  66  def visao_da_planilha(r: ResultadoWO, filtro: str | None) -> ResultadoWO:
+  67      """O resultado como a planilha o vê: só os itens com a mensagem do filtro (padrão "Estoque
+  68      indisponível") contam para o estado. Divergência num item de outra mensagem (que só aparece na
+  69      Observação) não torna a WO divergente. Sem filtro, falha ou sem itens: o próprio resultado."""
+  70      if not filtro or not r.linhas or r.status is Status.WO_INVALIDA or r.status in STATUS_FALHA:
+  71          return r
+  72      from .exportacao import entra_na_planilha
+  73      itens = [l for l in r.linhas if entra_na_planilha(l, filtro)]
+  74      pior = max(itens, key=lambda l: GRAVIDADE[l.auditoria]).auditoria if itens else Auditoria.VALIDADO
+  75      return replace(r, linhas=itens, auditoria=pior)
 ```
 
 
@@ -2530,50 +2564,52 @@ Toda WO não validada recebe também um **motivo** da taxonomia do diagnóstico 
 ### 14.10 Gravação transacional
 
 
-**Código-fonte — agente_btp/loja.py · Loja.concluir · linhas 325–344**
+**Código-fonte — agente_btp/loja.py · Loja.concluir · linhas 342–363**
 
 ```python
- 325      def concluir(self, run_id: str, r: ResultadoWO, origem_dado: str = "", texto_log: str = "") -> bool:
- 326          """Grava o resultado de UMA WO e a linha de registro correspondente, juntos.
- 327          Só grava WO que está em andamento (nunca sobrescreve uma concluída sem reprocessamento)."""
- 328          estado = estado_da_wo(r)
- 329          motivo = motivo_da_wo(r)
- 330          payload = zlib.compress(json.dumps(serializar(r), ensure_ascii=False).encode("utf-8"))
- 331          agora = time.time()
- 332          with self._trava:
- 333              atual = self._q("SELECT status FROM wos WHERE run_id=? AND wo=?", (run_id, r.wo))
- 334              if not atual or atual[0]["status"] != "em_andamento":
- 335                  return False
- 336              self._transacao([
- 337                  ("UPDATE wos SET status=?, situacao=?, motivo=?, payload=?, hash_auditorias=?, origem_dado=?, "
- 338                   "concluido_em=? WHERE run_id=? AND wo=? AND status='em_andamento'",
- 339                   (estado, r.status.value, motivo, payload, hash_auditorias(r), origem_dado, agora, run_id, r.wo)),
- 340                  ("INSERT INTO eventos(run_id, quando, tipo, texto, wo, status, motivo, categoria) "
- 341                   "VALUES (?,?,?,?,?,?,?,?)",
- 342                   (run_id, agora, "wo", texto_log, r.wo, estado, motivo, categoria(motivo) if motivo else "")),
- 343              ])
- 344          return True
+ 342      def concluir(self, run_id: str, r: ResultadoWO, origem_dado: str = "", texto_log: str = "",
+ 343                   filtro: str | None = None) -> bool:
+ 344          """Grava o resultado de UMA WO e a linha de registro correspondente, juntos.
+ 345          Só grava WO que está em andamento (nunca sobrescreve uma concluída sem reprocessamento).
+ 346          `filtro`: mensagem dos itens da planilha — o estado gravado é o mesmo da coluna Status."""
+ 347          estado = estado_da_wo(r, filtro)
+ 348          motivo = motivo_da_wo(r, filtro)
+ 349          payload = zlib.compress(json.dumps(serializar(r), ensure_ascii=False).encode("utf-8"))
+ 350          agora = time.time()
+ 351          with self._trava:
+ 352              atual = self._q("SELECT status FROM wos WHERE run_id=? AND wo=?", (run_id, r.wo))
+ 353              if not atual or atual[0]["status"] != "em_andamento":
+ 354                  return False
+ 355              self._transacao([
+ 356                  ("UPDATE wos SET status=?, situacao=?, motivo=?, payload=?, hash_auditorias=?, origem_dado=?, "
+ 357                   "concluido_em=? WHERE run_id=? AND wo=? AND status='em_andamento'",
+ 358                   (estado, r.status.value, motivo, payload, hash_auditorias(r), origem_dado, agora, run_id, r.wo)),
+ 359                  ("INSERT INTO eventos(run_id, quando, tipo, texto, wo, status, motivo, categoria) "
+ 360                   "VALUES (?,?,?,?,?,?,?,?)",
+ 361                   (run_id, agora, "wo", texto_log, r.wo, estado, motivo, categoria(motivo) if motivo else "")),
+ 362              ])
+ 363          return True
 ```
 
 
 ::: leitura
-- **Linha 330** — o resultado completo da WO é serializado em JSON e comprimido (`zlib`) antes de ir para a base: a planilha pode ser gerada depois sem consultar o BTP de novo.
-- **Linhas 333–335** — só grava se a WO estiver **em andamento**. Uma WO já concluída nunca é sobrescrita por engano (por exemplo, por um trabalhador atrasado).
-- **Linhas 336–343** — o resultado e a linha do registro de eventos são gravados **na mesma transação**: ou os dois entram, ou nenhum. Por isso contadores, registro e planilha nunca discordam (teste `test_r6_contadores_registro_e_planilha_concordam`).
+- **Linha 349** — o resultado completo da WO é serializado em JSON e comprimido (`zlib`) antes de ir para a base: a planilha pode ser gerada depois sem consultar o BTP de novo.
+- **Linhas 352–354** — só grava se a WO estiver **em andamento**. Uma WO já concluída nunca é sobrescrita por engano (por exemplo, por um trabalhador atrasado).
+- **Linhas 355–362** — o resultado e a linha do registro de eventos são gravados **na mesma transação**: ou os dois entram, ou nenhum. Por isso contadores, registro e planilha nunca discordam (teste `test_r6_contadores_registro_e_planilha_concordam`).
 :::
 
 Quando a sessão cai, as WOs em andamento voltam a "pendente", nunca a "falha":
 
 
-**Código-fonte — agente_btp/loja.py · Loja.devolver · linhas 346–351**
+**Código-fonte — agente_btp/loja.py · Loja.devolver · linhas 365–370**
 
 ```python
- 346      def devolver(self, run_id: str, wos: list[str], motivo: str) -> int:
- 347          """Sessão caiu / interrupção: WOs EM ANDAMENTO voltam para pendente (não viram falha)."""
- 348          passos = [("UPDATE wos SET status='pendente', motivo=? WHERE run_id=? AND wo=? AND status='em_andamento'",
- 349                     (motivo, run_id, w)) for w in wos]
- 350          self._transacao(passos)
- 351          return len(passos)
+ 365      def devolver(self, run_id: str, wos: list[str], motivo: str) -> int:
+ 366          """Sessão caiu / interrupção: WOs EM ANDAMENTO voltam para pendente (não viram falha)."""
+ 367          passos = [("UPDATE wos SET status='pendente', motivo=? WHERE run_id=? AND wo=? AND status='em_andamento'",
+ 368                     (motivo, run_id, w)) for w in wos]
+ 369          self._transacao(passos)
+ 370          return len(passos)
 ```
 
 
@@ -2585,21 +2621,21 @@ Antes de virar linha, os itens de cada WO passam por duas organizações:
 2. **Filtro da mensagem** (`exportacao.entra_na_planilha`): só itens cuja mensagem do item seja a configurada (padrão "Estoque indisponível") viram linha; os demais vão para a Observação da WO. O Capítulo 15 detalha.
 
 
-**Código-fonte — agente_btp/exportacao.py · itens_unicos · linhas 136–147**
+**Código-fonte — agente_btp/exportacao.py · itens_unicos · linhas 144–155**
 
 ```python
- 136  def itens_unicos(linhas: list[LinhaMensagem]) -> list[tuple[LinhaMensagem, int]]:
- 137      """Itens da WO sem repetição: o MESMO item (material, fornecedor, quantidade, mensagem e
- 138      conferência idênticos) que o BTP devolve mais de uma vez vira UMA linha, com a contagem.
- 139      Nada é somado nem escolhido: as cópias são iguais em tudo que vai para a planilha."""
- 140      vistos: dict[tuple, list] = OrderedDict()
- 141      for l in linhas:
- 142          chave = (l.wo, l.material, l.fornecedor, _txt(l.quantidade_faltante), l.mensagem, observacao_item(l))
- 143          if chave in vistos:
- 144              vistos[chave][1] += 1
- 145          else:
- 146              vistos[chave] = [l, 1]
- 147      return [(l, n) for l, n in vistos.values()]
+ 144  def itens_unicos(linhas: list[LinhaMensagem]) -> list[tuple[LinhaMensagem, int]]:
+ 145      """Itens da WO sem repetição: o MESMO item (material, fornecedor, quantidade, mensagem e
+ 146      conferência idênticos) que o BTP devolve mais de uma vez vira UMA linha, com a contagem.
+ 147      Nada é somado nem escolhido: as cópias são iguais em tudo que vai para a planilha."""
+ 148      vistos: dict[tuple, list] = OrderedDict()
+ 149      for l in linhas:
+ 150          chave = (l.wo, l.material, l.fornecedor, _txt(l.quantidade_faltante), l.mensagem, observacao_item(l))
+ 151          if chave in vistos:
+ 152              vistos[chave][1] += 1
+ 153          else:
+ 154              vistos[chave] = [l, 1]
+ 155      return [(l, n) for l, n in vistos.values()]
 ```
 
 
@@ -2682,72 +2718,88 @@ O resultado é uma planilha Excel que precisa ser, ao mesmo tempo, **fácil de u
 ### 15.4 As regras de preenchimento da aba Dados
 
 
-**Código-fonte — agente_btp/exportacao.py · _linhas_dados · linhas 195–219**
+**Código-fonte — agente_btp/exportacao.py · _linhas_dados · linhas 213–237**
 
 ```python
- 195  def _linhas_dados(resultados, exportar_incompletos=True, tabela=None, filtro=FILTRO_PADRAO):
- 196      """[(linha, destacar)]: destaca a Observação só quando há algo a conferir no BTP."""
- 197      saida = []
- 198      for r in resultados:
- 199          estado = estado_rotulo(r)
- 200          planilha, outros = _itens_da_wo(r, exportar_incompletos, filtro)
- 201          extra = nota_outros(outros, filtro) if outros else ""
- 202          for i, (l, n) in enumerate(planilha):
- 203              conferir = observacao_item(l)
- 204              obs = "; ".join(o for o in (conferir, NOTA_REPETIDO.format(n=n) if n > 1 else "",
- 205                                          extra if i == 0 else "") if o)
- 206              saida.append((_preencher([l.wo, l.material, _tipo(tabela, l.material), l.fornecedor,
- 207                                        l.quantidade_faltante, l.mensagem, obs, estado]), bool(conferir)))
- 208          if not planilha:
- 209              obs = SITUACAO[r.status]
- 210              if outros:
- 211                  obs = f"Nenhum item com \"{filtro}\". " + extra
- 212              elif r.linhas:   # havia itens, mas não validados e a exportação deles está desligada
- 213                  obs = f"{len(r.linhas)} item(ns) com divergência omitido(s): conferir no BTP"
- 214              elif r.status is Status.NAO_PROCESSADA:
- 215                  obs = r.observacao or obs
- 216              elif r.status in STATUS_FALHA and r.observacao and r.observacao != "OK":
- 217                  obs = f"{obs} ({r.observacao})"
- 218              saida.append((_preencher([r.wo, None, None, None, None, None, obs, estado]), False))
- 219      return saida
+ 213  def _linhas_dados(resultados, exportar_incompletos=True, tabela=None, filtro=FILTRO_PADRAO):
+ 214      """[(linha, destacar)]: destaca a Observação só quando há algo a conferir no BTP."""
+ 215      saida = []
+ 216      for r in resultados:
+ 217          estado = estado_rotulo(r, filtro)
+ 218          planilha, outros = _itens_da_wo(r, exportar_incompletos, filtro)
+ 219          extra = nota_outros(outros, filtro) if outros else ""
+ 220          for i, (l, n) in enumerate(planilha):
+ 221              conferir = observacao_item(l)
+ 222              obs = "; ".join(o for o in (conferir, NOTA_REPETIDO.format(n=n) if n > 1 else "",
+ 223                                          extra if i == 0 else "") if o)
+ 224              saida.append((_preencher([l.wo, l.material, _tipo(tabela, l.material), l.fornecedor,
+ 225                                        l.quantidade_faltante, l.mensagem, obs, estado]), bool(conferir)))
+ 226          if not planilha:
+ 227              obs = SITUACAO[r.status]
+ 228              if outros:
+ 229                  obs = f"Nenhum item com \"{filtro}\". " + extra
+ 230              elif r.linhas:   # havia itens, mas não validados e a exportação deles está desligada
+ 231                  obs = f"{len(r.linhas)} item(ns) com divergência omitido(s): conferir no BTP"
+ 232              elif r.status is Status.NAO_PROCESSADA:
+ 233                  obs = r.observacao or obs
+ 234              elif r.status in STATUS_FALHA and r.observacao and r.observacao != "OK":
+ 235                  obs = f"{obs} ({r.observacao})"
+ 236              saida.append((_preencher([r.wo, None, None, None, None, None, obs, estado]), False))
+ 237      return saida
 ```
 
 
 ::: leitura
-- **Linha 200** — separa os itens da WO em "vão para a planilha" e "outros" (`_itens_da_wo`), já sem as cópias idênticas.
-- **Linha 201** — os "outros" viram uma nota: "Outros itens no BTP, fora da planilha (mensagem diferente de "Estoque indisponível"): <material> (qtd N): <mensagem>; ...".
-- **Linhas 202–207** — cada item vira uma linha. A Observação junta, nesta ordem: o que precisa ser conferido no BTP (`observacao_item`), a nota de repetição e — só na primeira linha da WO — a nota dos outros itens. O segundo valor da tupla (`bool(conferir)`) diz se a célula de Observação deve ser destacada em amarelo: só quando há algo a conferir.
-- **Linhas 208–218** — WO sem nenhum item na planilha: uma linha com "-" nas colunas de item e a explicação (sem alerta no Monitor; nenhum item com a mensagem do filtro; falha de consulta com o motivo; pendente...).
+- **Linha 218** — separa os itens da WO em "vão para a planilha" e "outros" (`_itens_da_wo`), já sem as cópias idênticas.
+- **Linha 219** — os "outros" viram uma nota: "Outros itens no BTP, fora da planilha (mensagem diferente de "Estoque indisponível"): <material> (qtd N): <mensagem>; ...".
+- **Linhas 220–225** — cada item vira uma linha. A Observação junta, nesta ordem: o que precisa ser conferido no BTP (`observacao_item`), a nota de repetição e — só na primeira linha da WO — a nota dos outros itens. O segundo valor da tupla (`bool(conferir)`) diz se a célula de Observação deve ser destacada em amarelo: só quando há algo a conferir.
+- **Linhas 226–236** — WO sem nenhum item na planilha: uma linha com "-" nas colunas de item e a explicação (sem alerta no Monitor; nenhum item com a mensagem do filtro; falha de consulta com o motivo; pendente...).
 - `_preencher` troca todo valor vazio por "-": nenhuma célula da aba Dados fica em branco.
 :::
 
 ### 15.5 O filtro "Estoque indisponível"
 
 
-**Código-fonte — agente_btp/exportacao.py · entra_na_planilha · linhas 176–178**
+**Código-fonte — agente_btp/exportacao.py · entra_na_planilha · linhas 184–196**
 
 ```python
- 176  def entra_na_planilha(l: LinhaMensagem, filtro: str | None) -> bool:
- 177      """Só itens com a mensagem configurada viram linha (comparação sem maiúsculas, acentos e espaços)."""
- 178      return not filtro or _normalizar(mensagem_do_item(l)) == _normalizar(filtro)
+ 184  def entra_na_planilha(l: LinhaMensagem, filtro: str | None) -> bool:
+ 185      """Só itens com a mensagem configurada viram linha (comparação sem maiúsculas, acentos e espaços).
+ 186  
+ 187      Vale a mensagem do item em QUALQUER leitura: se ela mudou entre leituras e uma delas foi a do
+ 188      filtro, o item fica na planilha (sinalizado como divergente), nunca escondido na Observação.
+ 189      Mensagem que o BTP não informou (campo ausente) também fica: não dá para saber que não é."""
+ 190      if not filtro:
+ 191          return True
+ 192      alvo = _normalizar(filtro)
+ 193      lidas = l.mensagens_lidas or [mensagem_do_item(l)]
+ 194      if any(_normalizar(m) == alvo for m in lidas):
+ 195          return True
+ 196      return not any(lidas) and l.notas.get("mensagem", "").startswith("Não obtido")
 ```
 
 
 
-**Código-fonte — agente_btp/exportacao.py · mensagem_do_item · linhas 168–173**
+**Código-fonte — agente_btp/exportacao.py · mensagem_do_item · linhas 176–181**
 
 ```python
- 168  def mensagem_do_item(l: LinhaMensagem) -> str:
- 169      """Mensagem do próprio item (janela Mensagens). Análises antigas não guardavam esse campo:
- 170      no modo "item" ela é a mensagem gravada; no modo "as duas", o trecho antes de " — Alerta: "."""
- 171      if l.mensagem_item:
- 172          return l.mensagem_item
- 173      return (l.mensagem or "").split(SEPARADOR_ALERTA, 1)[0]
+ 176  def mensagem_do_item(l: LinhaMensagem) -> str:
+ 177      """Mensagem do próprio item (janela Mensagens). Análises antigas não guardavam esse campo:
+ 178      no modo "item" ela é a mensagem gravada; no modo "as duas", o trecho antes de " — Alerta: "."""
+ 179      if l.mensagem_item:
+ 180          return l.mensagem_item
+ 181      return (l.mensagem or "").split(SEPARADOR_ALERTA, 1)[0]
 ```
 
 
 ::: nobtp
-A comparação é feita com a **mensagem do item** (a da janela Mensagens), mesmo quando a planilha mostra a mensagem do alerta ou as duas. A normalização (`_normalizar`) remove acentos, maiúsculas, espaços extras e pontuação final — "ESTOQUE INDISPONIVEL " entra; "Estoque insuficiente" não. A mensagem configurada vem da preferência `mensagem_planilha` (Configurações → Execução); vazia, todos os itens entram. Para análises antigas, que não guardavam a mensagem do item separadamente, `mensagem_do_item` recupera o trecho anterior a " — Alerta: " (formato usado quando a opção era "as duas").
+A comparação é feita com a **mensagem do item** (a da janela Mensagens), mesmo quando a planilha mostra a mensagem do alerta ou as duas — e com a mensagem de **todas** as leituras (`mensagens_lidas`, Cap. 14.5). Três situações:
+
+- alguma leitura trouxe a mensagem do filtro → o item **entra**; se a mensagem mudou entre leituras, entra como **Divergente**, com a Observação "Mensagem diferente entre consultas (...): conferir no BTP". Um item de estoque nunca é escondido na Observação;
+- o BTP não informou o campo de mensagem → o item **entra**, sinalizado: não há como saber que não é "Estoque indisponível";
+- todas as leituras trouxeram outra mensagem, ou o item não tem mensagem própria → o item vai para a **Observação**.
+
+A normalização (`_normalizar`) remove acentos, maiúsculas, espaços extras e pontuação final — "ESTOQUE INDISPONIVEL " entra; "Estoque insuficiente" não. A mensagem configurada vem da preferência `mensagem_planilha` (Configurações → Execução); vazia, todos os itens entram. Para análises antigas, que não guardavam as mensagens de cada leitura, vale a mensagem gravada; e as que nem guardavam a mensagem do item separadamente usam `mensagem_do_item`, que recupera o trecho anterior a " — Alerta: " (formato usado quando a opção era "as duas").
 :::
 
 ::: exemplo
@@ -2757,56 +2809,56 @@ Medição feita sobre as linhas da planilha real de 13.623 WOs enviada pelo usu�
 ### 15.6 A aba Materiais e a tabela de valores
 
 
-**Código-fonte — agente_btp/exportacao.py · linhas_materiais · linhas 243–279**
+**Código-fonte — agente_btp/exportacao.py · linhas_materiais · linhas 261–297**
 
 ```python
- 243  def linhas_materiais(itens: list[LinhaMensagem], tabela: TabelaMateriais | None) -> tuple[list[list], list]:
- 244      """Aba Materiais: um material SAP por linha (todas as WOs juntas) e a linha de total.
- 245  
- 246      Quantidade total = soma da quantidade faltante dos itens CONFERIDOS (os mesmos da aba Dados,
- 247      sem as cópias). Item não conferido ou sem quantidade fica fora da soma e é avisado.
- 248      Valor total = quantidade total × valor unitário da tabela. Sem valor na tabela: "-"."""
- 249      grupos: dict[str, list[LinhaMensagem]] = OrderedDict()
- 250      for l in itens:
- 251          if l.material:
- 252              grupos.setdefault(chave_material(l.material), []).append(l)
- 253      linhas = []
- 254      for ls in grupos.values():
- 255          somados = [l for l in ls if l.auditoria is Auditoria.VALIDADO and l.quantidade_faltante is not None]
- 256          quantidade = sum((_decimal(l.quantidade_faltante) for l in somados), Decimal(0)) if somados else None
- 257          achado = tabela.buscar(ls[0].material) if tabela else None
- 258          unitario = achado.unitario if achado else None
- 259          total = quantidade * unitario if quantidade is not None and unitario is not None else None
- 260          obs = []
- 261          if tabela is None:
- 262              obs.append("Tabela de valores não importada (Configurações)")
- 263          elif achado is None:
- 264              obs.append("Material fora da tabela de valores")
- 265          elif unitario is None:
- 266              obs.append("Sem valor unitário na tabela de valores")
- 267          fora = len(ls) - len(somados)
- 268          if fora:
- 269              obs.append(f"{fora} item(ns) não conferido(s) fora da soma: conferir no BTP")
- 270          linhas.append(_preencher([ls[0].material, achado.tipo if achado else None,
- 271                                    None if quantidade is None else _numero(quantidade),
- 272                                    None if total is None else _numero(total),
- 273                                    None if unitario is None else _numero(unitario), "; ".join(obs) + ("." if obs else "")]))
- 274      linhas.sort(key=lambda l: (l[3] == SEM_INFO, -(l[3] if l[3] != SEM_INFO else 0), l[0]))
- 275      sem_valor = sum(1 for l in linhas if l[3] == SEM_INFO)
- 276      soma = sum((_decimal(l[3]) for l in linhas if l[3] != SEM_INFO), Decimal(0))
- 277      total = _preencher(["Total", None, None, _numero(soma) if len(linhas) > sem_valor else None, None,
- 278                          f"{sem_valor} material(is) sem valor ficaram fora do total." if sem_valor else None])
- 279      return linhas, total
+ 261  def linhas_materiais(itens: list[LinhaMensagem], tabela: TabelaMateriais | None) -> tuple[list[list], list]:
+ 262      """Aba Materiais: um material SAP por linha (todas as WOs juntas) e a linha de total.
+ 263  
+ 264      Quantidade total = soma da quantidade faltante dos itens CONFERIDOS (os mesmos da aba Dados,
+ 265      sem as cópias). Item não conferido ou sem quantidade fica fora da soma e é avisado.
+ 266      Valor total = quantidade total × valor unitário da tabela. Sem valor na tabela: "-"."""
+ 267      grupos: dict[str, list[LinhaMensagem]] = OrderedDict()
+ 268      for l in itens:
+ 269          if l.material:
+ 270              grupos.setdefault(chave_material(l.material), []).append(l)
+ 271      linhas = []
+ 272      for ls in grupos.values():
+ 273          somados = [l for l in ls if l.auditoria is Auditoria.VALIDADO and l.quantidade_faltante is not None]
+ 274          quantidade = sum((_decimal(l.quantidade_faltante) for l in somados), Decimal(0)) if somados else None
+ 275          achado = tabela.buscar(ls[0].material) if tabela else None
+ 276          unitario = achado.unitario if achado else None
+ 277          total = quantidade * unitario if quantidade is not None and unitario is not None else None
+ 278          obs = []
+ 279          if tabela is None:
+ 280              obs.append("Tabela de valores não importada (Configurações)")
+ 281          elif achado is None:
+ 282              obs.append("Material fora da tabela de valores")
+ 283          elif unitario is None:
+ 284              obs.append("Sem valor unitário na tabela de valores")
+ 285          fora = len(ls) - len(somados)
+ 286          if fora:
+ 287              obs.append(f"{fora} item(ns) não conferido(s) fora da soma: conferir no BTP")
+ 288          linhas.append(_preencher([ls[0].material, achado.tipo if achado else None,
+ 289                                    None if quantidade is None else _numero(quantidade),
+ 290                                    None if total is None else _numero(total),
+ 291                                    None if unitario is None else _numero(unitario), "; ".join(obs) + ("." if obs else "")]))
+ 292      linhas.sort(key=lambda l: (l[3] == SEM_INFO, -(l[3] if l[3] != SEM_INFO else 0), l[0]))
+ 293      sem_valor = sum(1 for l in linhas if l[3] == SEM_INFO)
+ 294      soma = sum((_decimal(l[3]) for l in linhas if l[3] != SEM_INFO), Decimal(0))
+ 295      total = _preencher(["Total", None, None, _numero(soma) if len(linhas) > sem_valor else None, None,
+ 296                          f"{sem_valor} material(is) sem valor ficaram fora do total." if sem_valor else None])
+ 297      return linhas, total
 ```
 
 
 ::: leitura
-- **Linhas 249–252** — agrupa os itens pelo **número** do material (`chave_material`: `000000000022056365` e `22056365` são o mesmo material).
-- **Linhas 255–256** — a quantidade total soma só os itens **validados** e com quantidade. Item não conferido fica fora da soma, e a Observação avisa ("1 item(ns) não conferido(s) fora da soma: conferir no BTP").
-- **Linhas 257–259** — o valor unitário vem da tabela importada; o valor total é quantidade × unitário, calculado com `Decimal` (exato).
-- **Linhas 261–266** — material fora da tabela, ou sem preço, ou tabela não importada: "-" e o motivo.
-- **Linha 274** — ordena pelo maior valor total; materiais sem valor ficam no fim.
-- **Linhas 275–278** — a linha Total soma os valores conhecidos e informa quantos materiais ficaram fora.
+- **Linhas 267–270** — agrupa os itens pelo **número** do material (`chave_material`: `000000000022056365` e `22056365` são o mesmo material).
+- **Linhas 273–274** — a quantidade total soma só os itens **validados** e com quantidade. Item não conferido fica fora da soma, e a Observação avisa ("1 item(ns) não conferido(s) fora da soma: conferir no BTP").
+- **Linhas 275–277** — o valor unitário vem da tabela importada; o valor total é quantidade × unitário, calculado com `Decimal` (exato).
+- **Linhas 279–284** — material fora da tabela, ou sem preço, ou tabela não importada: "-" e o motivo.
+- **Linha 292** — ordena pelo maior valor total; materiais sem valor ficam no fim.
+- **Linhas 293–296** — a linha Total soma os valores conhecidos e informa quantos materiais ficaram fora.
 :::
 
 A tabela de valores é importada em Configurações (rota `POST /api/materiais/tabela`). O módulo `materiais.py` procura no cabeçalho as colunas **Material**, **Texto breve material** (vira o Tipo Material) e **Unitário**, recusa a importação se o mesmo material aparecer com tipo ou valor diferentes e guarda o resultado em `config/tabela_materiais.json`, gravado de forma atômica (arquivo temporário + substituição).
@@ -2814,32 +2866,32 @@ A tabela de valores é importada em Configurações (rota `POST /api/materiais/t
 ### 15.7 Gravar sem interpretar
 
 
-**Código-fonte — agente_btp/exportacao.py · _celula · linhas 503–519**
+**Código-fonte — agente_btp/exportacao.py · _celula · linhas 527–543**
 
 ```python
- 503  def _celula(ws, valor, fonte=None, fundo=None, alinhamento=None, borda=None, formato=None) -> WriteOnlyCell:
- 504      """Uma célula gravada SEM interpretar nada: texto que começa com "=" fica texto (nunca
- 505      fórmula); caracteres de controle que o .xlsx não aceita são removidos."""
- 506      c = WriteOnlyCell(ws, value=_limpar(valor))
- 507      if isinstance(c.value, str) and c.data_type == "f":
- 508          c.data_type = "s"
- 509      if fonte:
- 510          c.font = fonte
- 511      if fundo:
- 512          c.fill = fundo
- 513      if alinhamento:
- 514          c.alignment = alinhamento
- 515      if borda:
- 516          c.border = borda
- 517      if formato:
- 518          c.number_format = formato
- 519      return c
+ 527  def _celula(ws, valor, fonte=None, fundo=None, alinhamento=None, borda=None, formato=None) -> WriteOnlyCell:
+ 528      """Uma célula gravada SEM interpretar nada: texto que começa com "=" fica texto (nunca
+ 529      fórmula); caracteres de controle que o .xlsx não aceita são removidos."""
+ 530      c = WriteOnlyCell(ws, value=_limpar(valor))
+ 531      if isinstance(c.value, str) and c.data_type == "f":
+ 532          c.data_type = "s"
+ 533      if fonte:
+ 534          c.font = fonte
+ 535      if fundo:
+ 536          c.fill = fundo
+ 537      if alinhamento:
+ 538          c.alignment = alinhamento
+ 539      if borda:
+ 540          c.border = borda
+ 541      if formato:
+ 542          c.number_format = formato
+ 543      return c
 ```
 
 
 Duas proteções em poucas linhas:
 
-1. Um texto que começa com `=` seria interpretado pelo Excel como **fórmula**. A linha 507 detecta esse caso e força o tipo "texto". O teste `test_texto_com_igual_e_controle_nao_vira_formula_nem_quebra` verifica com a mensagem `"=> Saldo insuficiente (-2)"`.
+1. Um texto que começa com `=` seria interpretado pelo Excel como **fórmula**. A linha 531 detecta esse caso e força o tipo "texto". O teste `test_texto_com_igual_e_controle_nao_vira_formula_nem_quebra` verifica com a mensagem `"=> Saldo insuficiente (-2)"`.
 2. Caracteres de controle que o formato `.xlsx` não aceita (por exemplo, uma tabulação vertical vinda do BTP) derrubariam a gravação. `_limpar` os remove.
 
 Além disso, as colunas de identificadores recebem o formato de célula `@` (texto), para que o Excel nunca converta o material num número.
@@ -2851,37 +2903,37 @@ A planilha é gravada no modo *write-only* do openpyxl: cada linha vai direto pa
 ### 15.9 A conferência depois de gravar
 
 
-**Código-fonte — agente_btp/exportacao.py · verificar_planilha · linhas 445–468**
+**Código-fonte — agente_btp/exportacao.py · verificar_planilha · linhas 469–492**
 
 ```python
- 445  def verificar_planilha(destino: str | Path, resultados: list[ResultadoWO],
- 446                         exportar_incompletos: bool = True, tabela: TabelaMateriais | None = None,
- 447                         filtro: str | None = FILTRO_PADRAO) -> list[str]:
- 448      """Reabre o arquivo gravado e confere as abas Dados e Materiais, célula a célula."""
- 449      esperadas = linhas_dados(resultados, exportar_incompletos, tabela, filtro)
- 450      itens = itens_planilha(resultados, exportar_incompletos, filtro)
- 451      mats, total = linhas_materiais(itens, tabela)
- 452      # Somente leitura: lê célula a célula sem montar a planilha inteira na memória (13 mil WOs:
- 453      # 3 MB em vez de ~840 MB) e ainda informa o TIPO de cada célula (fórmula = "f").
- 454      wb = load_workbook(destino, read_only=True)
- 455      try:
- 456          if wb.sheetnames != ABAS:
- 457              return [f"Abas fora da ordem esperada: {wb.sheetnames}"]
- 458          problemas: list[str] = []
- 459          dados = _ler_aba(wb[ABAS[0]], len(COLUNAS_DADOS), problemas)
- 460          materiais = _ler_aba(wb[ABAS[1]], len(COLUNAS_MATERIAIS), problemas)
- 461          tabela_gravada = _ler_aba(wb[ABAS[4]], len(COLUNAS_TABELA), problemas)
- 462      finally:
- 463          wb.close()
- 464      problemas += _comparar("Dados", COLUNAS_DADOS, dados, esperadas)
- 465      problemas += _comparar("Materiais", COLUNAS_MATERIAIS, materiais,
- 466                             mats + ([[None] * len(COLUNAS_MATERIAIS), total]))
- 467      problemas += _comparar("Tabela de valores", COLUNAS_TABELA, tabela_gravada, linhas_tabela(tabela))
- 468      return problemas
+ 469  def verificar_planilha(destino: str | Path, resultados: list[ResultadoWO],
+ 470                         exportar_incompletos: bool = True, tabela: TabelaMateriais | None = None,
+ 471                         filtro: str | None = FILTRO_PADRAO) -> list[str]:
+ 472      """Reabre o arquivo gravado e confere as abas Dados e Materiais, célula a célula."""
+ 473      esperadas = linhas_dados(resultados, exportar_incompletos, tabela, filtro)
+ 474      itens = itens_planilha(resultados, exportar_incompletos, filtro)
+ 475      mats, total = linhas_materiais(itens, tabela)
+ 476      # Somente leitura: lê célula a célula sem montar a planilha inteira na memória (13 mil WOs:
+ 477      # 3 MB em vez de ~840 MB) e ainda informa o TIPO de cada célula (fórmula = "f").
+ 478      wb = load_workbook(destino, read_only=True)
+ 479      try:
+ 480          if wb.sheetnames != ABAS:
+ 481              return [f"Abas fora da ordem esperada: {wb.sheetnames}"]
+ 482          problemas: list[str] = []
+ 483          dados = _ler_aba(wb[ABAS[0]], len(COLUNAS_DADOS), problemas)
+ 484          materiais = _ler_aba(wb[ABAS[1]], len(COLUNAS_MATERIAIS), problemas)
+ 485          tabela_gravada = _ler_aba(wb[ABAS[4]], len(COLUNAS_TABELA), problemas)
+ 486      finally:
+ 487          wb.close()
+ 488      problemas += _comparar("Dados", COLUNAS_DADOS, dados, esperadas)
+ 489      problemas += _comparar("Materiais", COLUNAS_MATERIAIS, materiais,
+ 490                             mats + ([[None] * len(COLUNAS_MATERIAIS), total]))
+ 491      problemas += _comparar("Tabela de valores", COLUNAS_TABELA, tabela_gravada, linhas_tabela(tabela))
+ 492      return problemas
 ```
 
 
-A conferência recalcula, a partir dos mesmos resultados, o que **deveria** estar no arquivo e compara com o que **está** gravado, célula a célula, nas abas Dados, Materiais e Tabela de valores. Também acusa qualquer célula gravada como fórmula. O arquivo é aberto em modo somente leitura, que, segundo o comentário das linhas 452–453, reduziu a memória da conferência de cerca de 840 MB para 3 MB com 13 mil WOs. O teste `test_verificacao_detecta_excel_adulterado` altera uma célula do arquivo e confirma que a conferência acusa a diferença.
+A conferência recalcula, a partir dos mesmos resultados, o que **deveria** estar no arquivo e compara com o que **está** gravado, célula a célula, nas abas Dados, Materiais e Tabela de valores. Também acusa qualquer célula gravada como fórmula. O arquivo é aberto em modo somente leitura, que, segundo o comentário das linhas 476–477, reduziu a memória da conferência de cerca de 840 MB para 3 MB com 13 mil WOs. O teste `test_verificacao_detecta_excel_adulterado` altera uma célula do arquivo e confirma que a conferência acusa a diferença.
 
 ### 15.10 Como o usuário sabe que terminou e onde está o arquivo
 
@@ -3129,7 +3181,7 @@ No Agente BTP, as constantes concentram os números que governam o comportamento
 | `LIMITE_TRABALHADORES_ABA` | `ponte.py`, linha 29 | 6 | Consultas simultâneas máximas dentro da aba |
 | `VERSAO_CONFIG` | `config.py` | 6 | Versão mínima aceita da fonte gravada |
 | `LIMITE` | `historico.py`, linha 17 | 300 | Análises guardadas no histórico |
-| `FILTRO_PADRAO` | `exportacao.py`, linha 159 | "Estoque indisponível" | Mensagem padrão dos itens da planilha |
+| `FILTRO_PADRAO` | `exportacao.py`, linha 167 | "Estoque indisponível" | Mensagem padrão dos itens da planilha |
 
 ::: atencao
 Mudar uma constante parece inofensivo, mas muitas delas estão amarradas a testes e a decisões documentadas. Por exemplo, aumentar `LIMITE_TRABALHADORES_ABA` faz a aba disparar mais consultas simultâneas ao BTP, o que pode provocar respostas HTTP 429 ("reduza o ritmo"). Antes de alterar, procure onde a constante é usada (Capítulo 21).
@@ -3154,7 +3206,7 @@ O código usa **anotações de tipo**, que não mudam o comportamento, mas docum
 
 ### 18.3 Condições
 
-Uma **condição** escolhe um caminho conforme uma pergunta de sim ou não. É o `if` (se), `elif` (senão, se) e `else` (senão). O exemplo mais importante do projeto é a decisão do estado de um item na auditoria (`auditoria.py`, linhas 141–150, mostrado no Capítulo 14):
+Uma **condição** escolhe um caminho conforme uma pergunta de sim ou não. É o `if` (se), `elif` (senão, se) e `else` (senão). O exemplo mais importante do projeto é a decisão do estado de um item na auditoria (`auditoria.py`, linhas 151–160, mostrado no Capítulo 14):
 
 ```python
 if divergente:
@@ -3176,7 +3228,7 @@ Uma **repetição** (laço) executa o mesmo bloco várias vezes. Em Python há d
 - `for item in colecao:` — percorre cada elemento. Ex.: `for campo in CAMPOS:` compara os cinco campos de um item, um de cada vez (`auditoria.py`, linha 115).
 - `while condição:` — repete enquanto a condição for verdadeira. Ex.: `while not self._parar.is_set():` mantém a espera da sessão até o usuário parar (`motor.py`, linha 300).
 
-Há também a **compreensão de lista**, uma forma compacta de montar uma lista a partir de outra. Em `_preencher` (`exportacao.py`, linha 151):
+Há também a **compreensão de lista**, uma forma compacta de montar uma lista a partir de outra. Em `_preencher` (`exportacao.py`, linha 159):
 
 ```python
 return [SEM_INFO if v is None or v == "" else v for v in valores]
@@ -3231,43 +3283,43 @@ Uma **classe** é um molde; um **objeto** é algo construído a partir do molde.
 Uma **exceção** é a forma de um trecho de código avisar "não consegui continuar" — ela interrompe o caminho normal e sobe até alguém que a trate com `try`/`except`. O agente define sua própria família de exceções:
 
 
-**Código-fonte — agente_btp/modelos.py · família de exceções do agente · linhas 130–158**
+**Código-fonte — agente_btp/modelos.py · família de exceções do agente · linhas 133–161**
 
 ```python
- 130  class _ComMotivo(Exception):
- 131      """Exceção com MOTIVO classificado (taxonomia do diagnóstico) e EVIDÊNCIA da 1ª observação
- 132      (URL, status HTTP, tipo e trecho do corpo da resposta — sem cookies nem tokens)."""
- 133      motivo_padrao = "excecao_app"
- 134  
- 135      def __init__(self, mensagem: str = "", motivo: str | None = None, evidencia: dict | None = None):
- 136          super().__init__(mensagem)
- 137          self.motivo = motivo or self.motivo_padrao
- 138          self.evidencia = dict(evidencia or {})
- 139  
- 140  
- 141  class SessaoExpirada(_ComMotivo):
- 142      """A sessão autenticada não é mais válida (redirecionou ao SSO, 401, 403, HTML de login)."""
- 143      motivo_padrao = "sessao_expirada"
- 144  
- 145  
- 146  class FalhaComunicacao(_ComMotivo):
- 147      """Timeout de uma consulta, erro de rede, HTTP 429 ou 5xx (pode ser repetida)."""
- 148      motivo_padrao = "falha_rede"
- 149  
- 150  
- 151  class ErroConsulta(_ComMotivo):
- 152      """Resposta inesperada do serviço (HTTP 4xx, JSON inválido etc.)."""
- 153      motivo_padrao = "consulta_rejeitada"
- 154  
- 155  
- 156  class TempoEsgotado(_ComMotivo):
- 157      """O tempo máximo da WO (ou do lote) acabou; não adianta repetir."""
- 158      motivo_padrao = "timeout_wo"
+ 133  class _ComMotivo(Exception):
+ 134      """Exceção com MOTIVO classificado (taxonomia do diagnóstico) e EVIDÊNCIA da 1ª observação
+ 135      (URL, status HTTP, tipo e trecho do corpo da resposta — sem cookies nem tokens)."""
+ 136      motivo_padrao = "excecao_app"
+ 137  
+ 138      def __init__(self, mensagem: str = "", motivo: str | None = None, evidencia: dict | None = None):
+ 139          super().__init__(mensagem)
+ 140          self.motivo = motivo or self.motivo_padrao
+ 141          self.evidencia = dict(evidencia or {})
+ 142  
+ 143  
+ 144  class SessaoExpirada(_ComMotivo):
+ 145      """A sessão autenticada não é mais válida (redirecionou ao SSO, 401, 403, HTML de login)."""
+ 146      motivo_padrao = "sessao_expirada"
+ 147  
+ 148  
+ 149  class FalhaComunicacao(_ComMotivo):
+ 150      """Timeout de uma consulta, erro de rede, HTTP 429 ou 5xx (pode ser repetida)."""
+ 151      motivo_padrao = "falha_rede"
+ 152  
+ 153  
+ 154  class ErroConsulta(_ComMotivo):
+ 155      """Resposta inesperada do serviço (HTTP 4xx, JSON inválido etc.)."""
+ 156      motivo_padrao = "consulta_rejeitada"
+ 157  
+ 158  
+ 159  class TempoEsgotado(_ComMotivo):
+ 160      """O tempo máximo da WO (ou do lote) acabou; não adianta repetir."""
+ 161      motivo_padrao = "timeout_wo"
 ```
 
 
 ::: leitura
-- `_ComMotivo` (linhas 130–138) é a "mãe": toda exceção do agente carrega um **motivo** (um código da taxonomia do diagnóstico, como `http_403`) e uma **evidência** (URL, situação HTTP, trecho da resposta, já sem segredos).
+- `_ComMotivo` (linhas 133–141) é a "mãe": toda exceção do agente carrega um **motivo** (um código da taxonomia do diagnóstico, como `http_403`) e uma **evidência** (URL, situação HTTP, trecho da resposta, já sem segredos).
 - As quatro filhas dizem **o que fazer** com o problema: `SessaoExpirada` pausa a análise; `FalhaComunicacao` pode ser repetida; `ErroConsulta` não adianta repetir; `TempoEsgotado` encerra a WO.
 - Herança (`class SessaoExpirada(_ComMotivo)`) significa "é um tipo de". Um `except _ComMotivo` captura todas as quatro.
 :::
@@ -3276,10 +3328,10 @@ Uma **exceção** é a forma de um trecho de código avisar "não consegui conti
 
 | Estrutura | Arquivo | Representa |
 |---|---|---|
-| `Ocorrencia` | `modelos.py`, 78–86 | Um item lido numa leitura (valores + registro bruto) |
-| `Leitura` | `modelos.py`, 90–103 | Uma rodada de leitura de uma WO (extração, auditoria, extra) |
-| `LinhaMensagem` | `modelos.py`, 54–74 | Um item com os valores **finais** após a auditoria |
-| `ResultadoWO` | `modelos.py`, 107–127 | Tudo sobre uma WO: situação, auditoria, linhas, leituras, motivo |
+| `Ocorrencia` | `modelos.py`, 81–89 | Um item lido numa leitura (valores + registro bruto) |
+| `Leitura` | `modelos.py`, 93–106 | Uma rodada de leitura de uma WO (extração, auditoria, extra) |
+| `LinhaMensagem` | `modelos.py`, 54–77 | Um item com os valores **finais** após a auditoria |
+| `ResultadoWO` | `modelos.py`, 110–130 | Tudo sobre uma WO: situação, auditoria, linhas, leituras, motivo |
 | `Resposta` | `cliente.py`, 29–34 | Uma resposta HTTP trazida pela aba |
 | `ApiConfig` | `config.py`, 34–53 | A fonte de dados confirmada (URLs-modelo e nomes de campos) |
 
@@ -3626,7 +3678,7 @@ Este capítulo usa um exemplo **proposto**, que **não está implementado** no p
 | Passo | No exemplo |
 |---|---|
 | 1. Comportamento desejado | Item cuja mensagem do item seja **qualquer uma** das listadas vira linha; os demais continuam na Observação |
-| 2. Componente responsável | `exportacao.entra_na_planilha` (linhas 176–178) decide se o item entra |
+| 2. Componente responsável | `exportacao.entra_na_planilha` (linhas 184–196) decide se o item entra |
 | 3. Dependências | `_itens_da_wo`, `nota_outros` (texto "mensagem diferente de ..."), `_linhas_dados` (texto "Nenhum item com ..."), `verificar_planilha` (recalcula com o mesmo filtro), a tela (`index.html`, campo `mensagem_planilha`, linha 1265) |
 | 4. Informações necessárias | O texto da preferência; nenhuma informação nova do BTP |
 | 5. Comportamento esperado | Separar por `;`, ignorar partes vazias, comparar cada parte normalizada (sem acento, maiúsculas, espaços) |
@@ -3651,13 +3703,18 @@ def _filtros(filtro: str | None) -> set[str]:
 
 def entra_na_planilha(l: LinhaMensagem, filtro: str | None) -> bool:
     alvos = _filtros(filtro)
-    return not alvos or _normalizar(mensagem_do_item(l)) in alvos
+    if not alvos:
+        return True
+    lidas = l.mensagens_lidas or [mensagem_do_item(l)]          # todas as leituras (Cap. 15.5)
+    if any(_normalizar(m) in alvos for m in lidas):
+        return True
+    return not any(lidas) and l.notas.get("mensagem", "").startswith("Não obtido")
 ```
 
 Note três escolhas:
 
 1. **Compatibilidade:** um texto sem `;` produz um conjunto com um só elemento — o comportamento atual é preservado.
-2. **Vazio continua significando "todos"**, como hoje.
+2. **Vazio continua significando "todos"**, e as duas proteções atuais são mantidas: vale a mensagem de qualquer leitura, e mensagem não informada pelo BTP entra sinalizada.
 3. **A normalização é a mesma** (`_normalizar`), então "ESTOQUE INDISPONIVEL" continua sendo aceito.
 
 ### 20.3 Os testes propostos
@@ -3700,7 +3757,7 @@ O esqueleto acima está em **pseudocódigo** (as reticências indicam o que aind
 **Cenário hipotético** (não implementado): o usuário pede que "Tipo Material" fique depois de "Fornecedor SAP" na aba Dados.
 :::
 
-**O que existe hoje** <span class="confirmado">CONFIRMADO</span>: a ordem das colunas está em `COLUNAS_DADOS` (`exportacao.py`, linhas 40–41), e a linha de cada item é montada em `_linhas_dados` (linhas 206–207) na mesma ordem. A gravação aplica formato de texto às colunas `(1, 2, 3, 4, 6, 7, 8)` e quebra de linha às colunas `(6, 7)` pelo **número** da coluna (linhas 307–308), e as larguras são uma lista posicional `[18, 22, 34, 16, 12, 55, 55, 13]` (linha 301).
+**O que existe hoje** <span class="confirmado">CONFIRMADO</span>: a ordem das colunas está em `COLUNAS_DADOS` (`exportacao.py`, linhas 40–41), e a linha de cada item é montada em `_linhas_dados` (linhas 224–225) na mesma ordem. A gravação aplica formato de texto às colunas `(1, 2, 3, 4, 6, 7, 8)` e quebra de linha às colunas `(6, 7)` pelo **número** da coluna (linhas 325–326), e as larguras são uma lista posicional `[18, 22, 34, 16, 12, 55, 55, 13]` (linha 319).
 
 **Onde a mudança se propaga:**
 
@@ -3708,8 +3765,8 @@ O esqueleto acima está em **pseudocódigo** (as reticências indicam o que aind
 |---|---|---|
 | `COLUNAS_DADOS` | Ordem dos nomes | Cabeçalho errado |
 | `_linhas_dados` (duas listas) | Ordem dos valores | Valor sob o cabeçalho errado |
-| Larguras (linha 301) | Ordem das larguras | Só aparência |
-| Formatos por número (linhas 307–308) | Números das colunas de texto e de quebra | A coluna de quantidade poderia virar texto, e o Excel deixaria de somá-la |
+| Larguras (linha 319) | Ordem das larguras | Só aparência |
+| Formatos por número (linhas 325–326) | Números das colunas de texto e de quebra | A coluna de quantidade poderia virar texto, e o Excel deixaria de somá-la |
 | `_COL_OBS` | Calculado pelo nome, não muda | — |
 | `verificar_planilha` | Usa as mesmas funções, acompanha sozinho | — |
 | Testes | `test_estrutura_completa_do_excel` e `test_coluna_tipo_aba_materiais_e_tabela_oculta` conferem cabeçalhos | O teste falharia — e é bom que falhe, porque avisa |
@@ -3902,7 +3959,7 @@ Os passos abaixo valem para o computador do usuário (Windows), com o navegador 
 
 | Arquivo | Funções de teste | Foco |
 |---|---|---|
-| `test_auditoria.py` | 46 | Auditoria, conversões, planilha, preferências |
+| `test_auditoria.py` | 49 | Auditoria, conversões, planilha, preferências |
 | `test_execucao.py` | 33 | Motor, sessão, retomada, lote, tempos |
 | `test_preparo.py` | 21 | Descoberta e confirmação da fonte |
 | `test_agente.py` | 20 | Cliente, classificação de respostas, paginação |
@@ -3910,16 +3967,16 @@ Os passos abaixo valem para o computador do usuário (Windows), com o navegador 
 | `test_analisador.py` | 12 | Interpretação de consultas observadas |
 | `test_materiais.py` | 10 | Tabela de valores, aba Materiais |
 | `test_historico.py` | 4 | Histórico e numeração |
-| **Total** | **159 funções** | O pytest conta **164** casos, porque alguns testes são parametrizados (rodam com vários dados) |
+| **Total** | **162 funções** | O pytest conta **167** casos, porque alguns testes são parametrizados (rodam com vários dados) |
 
 ### 24.3 Resultado da execução feita para este livro
 
 ::: evidencia
-Executado em 29/10/2026, sobre o commit em que este livro foi gerado, no ambiente Linux de produção do e-book (não no computador do usuário):
+Executado em 30/10/2026, sobre o commit `0a39d6c` (correção da regra "Estoque indisponível"), no ambiente Linux de produção do e-book (não no computador do usuário):
 
-- `python3 -m pytest -q testes` → **164 passed in 33.85s**.
+- `python3 -m pytest -q testes` → **167 passed in 35.58s**.
 - `testes/e2e/rodar_tela.py` (cópia limpa do projeto) → **136 verificações ok, 0 falharam**.
-- `testes/e2e/rodar_sessao.py` → **RESULTADO: OK** — a sessão caiu com 60 de 500 WOs validadas; 80 WOs em andamento voltaram para a fila e nenhuma virou falha; após o novo login a análise terminou com 500 validadas em 8,8 s.
+- `testes/e2e/rodar_sessao.py` → **RESULTADO: OK** — a sessão caiu com 60 de 500 WOs validadas; 80 WOs em andamento voltaram para a fila e nenhuma virou falha; após o novo login a análise terminou com 500 validadas em 9,4 s.
 - `testes/e2e/rodar_aba.py` → terminou sem erro (código de saída 0), incluindo a preparação pela aba e o apagamento de uma análise do histórico.
 - `testes/e2e/rodar_extensao.py` → terminou sem erro; selo "conectado" na aba sem clique.
 - `testes/e2e/rodar_combinacoes.py` **não** foi executado: exige como argumentos duas pastas de versões diferentes (programa e extensão).
@@ -3972,7 +4029,7 @@ Uma análise **concluída** é aquela em que todas as WOs passaram pelo motor. U
 | Pergunta | Como o agente verifica | Onde |
 |---|---|---|
 | Os registros esperados foram encontrados? | Cada WO tem uma situação: com itens, sem itens, não consta no Monitor; uma WO "não consta" só é validada se **todas** as leituras concordarem | `processador._concluir`, `auditoria.consolidar` |
-| Os campos foram preenchidos? | Campo vazio → item **Incompleto**, nota "Não obtido no BTP" | `consolidar`, linhas 128–133 |
+| Os campos foram preenchidos? | Campo vazio → item **Incompleto**, nota "Não obtido no BTP" | `consolidar`, linhas 138–143 |
 | As relações estão corretas (item na WO certa)? | Linhas de outra WO numa resposta são descartadas e avisadas; a leitura em lote é comparada com a individual | `ClienteBTP`, `processar_grupo` (equivalência) |
 | Há duplicações indevidas? | Cópias idênticas viram uma linha com a contagem; não somam na aba Materiais | `itens_unicos` |
 | Os valores correspondem à fonte? | Leitura repetida (extração + 2 auditorias); divergência nunca é aprovada sem evidência do BTP | `consolidar`, `_resolver` |
@@ -4238,7 +4295,7 @@ A defesa já existente é a **re-preparação**: descartar a fonte ("Refazer a f
 
 ### 29.4 Versões e registro de modificações
 
-O projeto usa Git (41 commits de código e documentação entre 01/10/2026 e 29/10/2026, antes dos commits deste livro). Cada rodada de correção é documentada em `docs/relatorio-correcao-raiz.md`, com o diagnóstico, o que mudou, os testes e as limitações. Esse hábito deve ser mantido. A tela exibe uma "versão" que é uma **impressão digital** de todos os arquivos do programa (`servidor.py`: os 10 primeiros caracteres de um *hash* SHA-1), o que permite saber, pela tela, se dois computadores rodam exatamente o mesmo código.
+O projeto usa Git (39 commits de código e documentação entre 01/10/2026 e 29/10/2026, antes dos commits deste livro, mais a correção de 30/10). Cada rodada de correção é documentada em `docs/relatorio-correcao-raiz.md`, com o diagnóstico, o que mudou, os testes e as limitações. Esse hábito deve ser mantido. A tela exibe uma "versão" que é uma **impressão digital** de todos os arquivos do programa (`servidor.py`: os 10 primeiros caracteres de um *hash* SHA-1), o que permite saber, pela tela, se dois computadores rodam exatamente o mesmo código.
 
 ### 29.5 Regressão e versão estável
 
@@ -4397,7 +4454,7 @@ O diagrama resume o roteiro seguro já detalhado nos Capítulos 20 e 21. As seç
 ### 32.2 Um campo relevante muda de nome ou de significado
 
 - **Exemplo:** a quantidade passa a vir em `quantidadePendente`.
-- **Examinar:** `campos.py` (pesos dos nomes de campo, `peso_nome`), `auditoria.consolidar` (regra de quantidade ambígua, linhas 134–140), `config/api.json` (campo `quantidade_faltante`).
+- **Examinar:** `campos.py` (pesos dos nomes de campo, `peso_nome`), `auditoria.consolidar` (regra de quantidade ambígua, linhas 144–150), `config/api.json` (campo `quantidade_faltante`).
 - **Risco:** se o nome novo não indicar "faltante", os itens ficam **Incompletos** por ambiguidade — o comportamento seguro, mas que bloqueia a validação até o ajuste.
 - **Testar:** `test_quantidade_ambigua_nao_e_validada` e os testes de mapeamento de campos.
 
@@ -4443,7 +4500,7 @@ Ver o exemplo completo do Capítulo 21.2. Pontos de atenção: `COLUNAS_DADOS`, 
 | Validação | Auditoria por item, transação por WO, conferência célula a célula do arquivo | Caps. 14, 25 |
 | Execução | `.bat` → tela → conectar aba → WOs → amostra → acompanhar → baixar | Cap. 23 |
 | Diagnóstico | Taxonomia de 24 motivos em três categorias, com evidência sem segredos e próxima ação | Caps. 26–27 |
-| Manutenção | Testes (164 casos + roteiros de navegador), relatório de rodadas, Git, `VERSAO_CONFIG` | Caps. 24, 29 |
+| Manutenção | Testes (167 casos + roteiros de navegador), relatório de rodadas, Git, `VERSAO_CONFIG` | Caps. 24, 29 |
 
 ::: resumo
 O Agente BTP não "raspa" a tela: ele pede ao próprio navegador logado que faça consultas somente leitura ao serviço de dados por trás do Monitor de Alertas. Lê cada WO mais de uma vez, só afirma o que se repetiu, grava cada resultado assim que termina e entrega uma planilha que ele mesmo confere depois de gravar. Quando algo dá errado, ele diz de quem é o problema e o que fazer.
@@ -4528,7 +4585,7 @@ Tabela gerada a partir do dicionário `TAXONOMIA` de `agente_btp/diagnostico.py`
 | Fonte | Uso neste livro |
 |---|---|
 | Código-fonte em `agente_btp/` (25 módulos Python), `agente_btp/web/` e `extensao/` | Fonte principal de todas as descrições de funcionamento; cada trecho citado foi extraído automaticamente do arquivo, com as linhas indicadas |
-| `testes/` e `testes/e2e/` | Comportamentos garantidos; resultados da execução de 29/10/2026 (Cap. 24.3) |
+| `testes/` e `testes/e2e/` | Comportamentos garantidos; resultados da execução de 30/10/2026 (Cap. 24.3) |
 | Histórico Git do repositório | Cronologia (Cap. 5) |
 | `docs/relatorio-correcao-raiz.md` | Medições de desempenho e memória, números das análises reais citadas |
 | `README.md`, `config/api.exemplo.json` | Documentação anterior (parcialmente desatualizada, ver Cap. 30) |

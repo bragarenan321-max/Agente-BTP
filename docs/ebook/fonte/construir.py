@@ -254,7 +254,7 @@ def capa() -> str:
 <section class="rosto">
   <div class="rosto-tit">{TITULO} — {SUBTITULO}</div>
   <p>Documento produzido a partir da leitura do código-fonte, dos arquivos de configuração, dos testes
-  automatizados, do histórico Git (39 commits, de 01/10/2026 a 29/10/2026) e dos relatórios técnicos existentes
+  automatizados, do histórico Git (de 01/10/2026 a 30/10/2026) e dos relatórios técnicos existentes
   no repositório. Todo trecho de código reproduzido indica o arquivo e as linhas reais de onde foi retirado,
   na versão <b>{commit}</b>.</p>
   <p><b>Como ler as marcações de confiabilidade.</b> Ao longo do texto, quando a distinção importa:</p>

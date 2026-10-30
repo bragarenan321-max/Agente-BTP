@@ -61,16 +61,17 @@ A ideia da auditoria é simples: **ler mais de uma vez e só afirmar o que se re
 
 A decisão é tomada pela função `consolidar`. O coração dela é o laço por item:
 
-@@codigo agente_btp/auditoria.py consolidar 99-153
+@@codigo agente_btp/auditoria.py consolidar 99-163
 
 ::: leitura
 - **Linhas 99–104** — para cada chave de item (de todas as leituras), reúne as observações; a primeira leitura em que o item aparece é a **referência**.
 - **Linha 106** — conta quantas auditorias realmente conferiram este item (uma releitura por chave que não conseguiu reler o item não conta).
 - **Linhas 108–113** — **item que sumiu ou apareceu** entre leituras: divergência.
 - **Linhas 114–127** — **campo a campo**: se todas as leituras trazem o mesmo valor, ele é o valor final; se não, é divergência, e `_resolver` tenta explicá-la pelo registro de alteração do BTP. Sem explicação, o valor final fica **vazio** e a nota diz "Não resolvida: revisar no BTP".
-- **Linhas 128–133** — **campo vazio**: se algum dos cinco campos não veio do BTP, o item é incompleto.
-- **Linhas 134–140** — **quantidade ambígua**: se o registro tem outros campos de quantidade e o nome do campo usado não indica claramente "faltante", o item é incompleto — o agente se recusa a escolher.
-- **Linhas 141–150** — a ordem de gravidade: divergente vence incompleto, que vence não concluído; só sem nenhum desses o item é **validado**.
+- **Linhas 128–137** — **mensagem do item em todas as leituras**: o agente guarda a mensagem do item (janela Mensagens) vista em cada leitura (`mensagens_lidas`). Se ela mudou entre leituras, o item é divergente — inclusive quando a planilha mostra a mensagem do alerta. É essa lista que decide se o item vai para a planilha (Cap. 15.5).
+- **Linhas 138–143** — **campo vazio**: se algum dos cinco campos não veio do BTP, o item é incompleto.
+- **Linhas 144–150** — **quantidade ambígua**: se o registro tem outros campos de quantidade e o nome do campo usado não indica claramente "faltante", o item é incompleto — o agente se recusa a escolher.
+- **Linhas 151–160** — a ordem de gravidade: divergente vence incompleto, que vence não concluído; só sem nenhum desses o item é **validado**.
 :::
 
 ### 14.6 Quando o BTP explica a mudança
@@ -93,6 +94,10 @@ A base local guarda um estado simplificado por WO, usado pela tela, pela retomad
 
 @@codigo agente_btp/loja.py estado_da_wo
 
+Antes de decidir, `estado_da_wo` aplica `visao_da_planilha`: com o filtro de mensagem ligado (padrão "Estoque indisponível"), só os itens que vão para a planilha contam. Uma divergência num item de outra mensagem — que só aparece na Observação — não torna a WO divergente. O motor passa o filtro ao gravar cada WO (`Loja.concluir`), e a coluna Status da planilha usa a mesma função; por isso tela, histórico e planilha mostram o mesmo estado (teste `test_status_da_planilha_ignora_divergencia_em_item_de_outra_mensagem`).
+
+@@codigo agente_btp/loja.py visao_da_planilha
+
 @@figura estados_wo
 
 Toda WO não validada recebe também um **motivo** da taxonomia do diagnóstico (`loja.motivo_da_wo`): por exemplo, `campo_ausente:fornecedor`, `quantidade_ambigua`, `divergencia_persistente`, `timeout_wo`. O teste `test_toda_wo_nao_validada_tem_motivo_no_diagnostico` garante que nenhuma WO fica sem explicação.
@@ -102,9 +107,9 @@ Toda WO não validada recebe também um **motivo** da taxonomia do diagnóstico 
 @@codigo agente_btp/loja.py Loja.concluir
 
 ::: leitura
-- **Linha 330** — o resultado completo da WO é serializado em JSON e comprimido (`zlib`) antes de ir para a base: a planilha pode ser gerada depois sem consultar o BTP de novo.
-- **Linhas 333–335** — só grava se a WO estiver **em andamento**. Uma WO já concluída nunca é sobrescrita por engano (por exemplo, por um trabalhador atrasado).
-- **Linhas 336–343** — o resultado e a linha do registro de eventos são gravados **na mesma transação**: ou os dois entram, ou nenhum. Por isso contadores, registro e planilha nunca discordam (teste `test_r6_contadores_registro_e_planilha_concordam`).
+- **Linha 349** — o resultado completo da WO é serializado em JSON e comprimido (`zlib`) antes de ir para a base: a planilha pode ser gerada depois sem consultar o BTP de novo.
+- **Linhas 352–354** — só grava se a WO estiver **em andamento**. Uma WO já concluída nunca é sobrescrita por engano (por exemplo, por um trabalhador atrasado).
+- **Linhas 355–362** — o resultado e a linha do registro de eventos são gravados **na mesma transação**: ou os dois entram, ou nenhum. Por isso contadores, registro e planilha nunca discordam (teste `test_r6_contadores_registro_e_planilha_concordam`).
 :::
 
 Quando a sessão cai, as WOs em andamento voltam a "pendente", nunca a "falha":
@@ -164,10 +169,10 @@ O resultado é uma planilha Excel que precisa ser, ao mesmo tempo, **fácil de u
 @@codigo agente_btp/exportacao.py _linhas_dados
 
 ::: leitura
-- **Linha 200** — separa os itens da WO em "vão para a planilha" e "outros" (`_itens_da_wo`), já sem as cópias idênticas.
-- **Linha 201** — os "outros" viram uma nota: "Outros itens no BTP, fora da planilha (mensagem diferente de "Estoque indisponível"): <material> (qtd N): <mensagem>; ...".
-- **Linhas 202–207** — cada item vira uma linha. A Observação junta, nesta ordem: o que precisa ser conferido no BTP (`observacao_item`), a nota de repetição e — só na primeira linha da WO — a nota dos outros itens. O segundo valor da tupla (`bool(conferir)`) diz se a célula de Observação deve ser destacada em amarelo: só quando há algo a conferir.
-- **Linhas 208–218** — WO sem nenhum item na planilha: uma linha com "-" nas colunas de item e a explicação (sem alerta no Monitor; nenhum item com a mensagem do filtro; falha de consulta com o motivo; pendente...).
+- **Linha 218** — separa os itens da WO em "vão para a planilha" e "outros" (`_itens_da_wo`), já sem as cópias idênticas.
+- **Linha 219** — os "outros" viram uma nota: "Outros itens no BTP, fora da planilha (mensagem diferente de "Estoque indisponível"): <material> (qtd N): <mensagem>; ...".
+- **Linhas 220–225** — cada item vira uma linha. A Observação junta, nesta ordem: o que precisa ser conferido no BTP (`observacao_item`), a nota de repetição e — só na primeira linha da WO — a nota dos outros itens. O segundo valor da tupla (`bool(conferir)`) diz se a célula de Observação deve ser destacada em amarelo: só quando há algo a conferir.
+- **Linhas 226–236** — WO sem nenhum item na planilha: uma linha com "-" nas colunas de item e a explicação (sem alerta no Monitor; nenhum item com a mensagem do filtro; falha de consulta com o motivo; pendente...).
 - `_preencher` troca todo valor vazio por "-": nenhuma célula da aba Dados fica em branco.
 :::
 
@@ -178,7 +183,13 @@ O resultado é uma planilha Excel que precisa ser, ao mesmo tempo, **fácil de u
 @@codigo agente_btp/exportacao.py mensagem_do_item
 
 ::: nobtp
-A comparação é feita com a **mensagem do item** (a da janela Mensagens), mesmo quando a planilha mostra a mensagem do alerta ou as duas. A normalização (`_normalizar`) remove acentos, maiúsculas, espaços extras e pontuação final — "ESTOQUE INDISPONIVEL " entra; "Estoque insuficiente" não. A mensagem configurada vem da preferência `mensagem_planilha` (Configurações → Execução); vazia, todos os itens entram. Para análises antigas, que não guardavam a mensagem do item separadamente, `mensagem_do_item` recupera o trecho anterior a " — Alerta: " (formato usado quando a opção era "as duas").
+A comparação é feita com a **mensagem do item** (a da janela Mensagens), mesmo quando a planilha mostra a mensagem do alerta ou as duas — e com a mensagem de **todas** as leituras (`mensagens_lidas`, Cap. 14.5). Três situações:
+
+- alguma leitura trouxe a mensagem do filtro → o item **entra**; se a mensagem mudou entre leituras, entra como **Divergente**, com a Observação "Mensagem diferente entre consultas (...): conferir no BTP". Um item de estoque nunca é escondido na Observação;
+- o BTP não informou o campo de mensagem → o item **entra**, sinalizado: não há como saber que não é "Estoque indisponível";
+- todas as leituras trouxeram outra mensagem, ou o item não tem mensagem própria → o item vai para a **Observação**.
+
+A normalização (`_normalizar`) remove acentos, maiúsculas, espaços extras e pontuação final — "ESTOQUE INDISPONIVEL " entra; "Estoque insuficiente" não. A mensagem configurada vem da preferência `mensagem_planilha` (Configurações → Execução); vazia, todos os itens entram. Para análises antigas, que não guardavam as mensagens de cada leitura, vale a mensagem gravada; e as que nem guardavam a mensagem do item separadamente usam `mensagem_do_item`, que recupera o trecho anterior a " — Alerta: " (formato usado quando a opção era "as duas").
 :::
 
 ::: exemplo
@@ -190,12 +201,12 @@ Medição feita sobre as linhas da planilha real de 13.623 WOs enviada pelo usu�
 @@codigo agente_btp/exportacao.py linhas_materiais
 
 ::: leitura
-- **Linhas 249–252** — agrupa os itens pelo **número** do material (`chave_material`: `000000000022056365` e `22056365` são o mesmo material).
-- **Linhas 255–256** — a quantidade total soma só os itens **validados** e com quantidade. Item não conferido fica fora da soma, e a Observação avisa ("1 item(ns) não conferido(s) fora da soma: conferir no BTP").
-- **Linhas 257–259** — o valor unitário vem da tabela importada; o valor total é quantidade × unitário, calculado com `Decimal` (exato).
-- **Linhas 261–266** — material fora da tabela, ou sem preço, ou tabela não importada: "-" e o motivo.
-- **Linha 274** — ordena pelo maior valor total; materiais sem valor ficam no fim.
-- **Linhas 275–278** — a linha Total soma os valores conhecidos e informa quantos materiais ficaram fora.
+- **Linhas 267–270** — agrupa os itens pelo **número** do material (`chave_material`: `000000000022056365` e `22056365` são o mesmo material).
+- **Linhas 273–274** — a quantidade total soma só os itens **validados** e com quantidade. Item não conferido fica fora da soma, e a Observação avisa ("1 item(ns) não conferido(s) fora da soma: conferir no BTP").
+- **Linhas 275–277** — o valor unitário vem da tabela importada; o valor total é quantidade × unitário, calculado com `Decimal` (exato).
+- **Linhas 279–284** — material fora da tabela, ou sem preço, ou tabela não importada: "-" e o motivo.
+- **Linha 292** — ordena pelo maior valor total; materiais sem valor ficam no fim.
+- **Linhas 293–296** — a linha Total soma os valores conhecidos e informa quantos materiais ficaram fora.
 :::
 
 A tabela de valores é importada em Configurações (rota `POST /api/materiais/tabela`). O módulo `materiais.py` procura no cabeçalho as colunas **Material**, **Texto breve material** (vira o Tipo Material) e **Unitário**, recusa a importação se o mesmo material aparecer com tipo ou valor diferentes e guarda o resultado em `config/tabela_materiais.json`, gravado de forma atômica (arquivo temporário + substituição).
@@ -206,7 +217,7 @@ A tabela de valores é importada em Configurações (rota `POST /api/materiais/t
 
 Duas proteções em poucas linhas:
 
-1. Um texto que começa com `=` seria interpretado pelo Excel como **fórmula**. A linha 507 detecta esse caso e força o tipo "texto". O teste `test_texto_com_igual_e_controle_nao_vira_formula_nem_quebra` verifica com a mensagem `"=> Saldo insuficiente (-2)"`.
+1. Um texto que começa com `=` seria interpretado pelo Excel como **fórmula**. A linha 531 detecta esse caso e força o tipo "texto". O teste `test_texto_com_igual_e_controle_nao_vira_formula_nem_quebra` verifica com a mensagem `"=> Saldo insuficiente (-2)"`.
 2. Caracteres de controle que o formato `.xlsx` não aceita (por exemplo, uma tabulação vertical vinda do BTP) derrubariam a gravação. `_limpar` os remove.
 
 Além disso, as colunas de identificadores recebem o formato de célula `@` (texto), para que o Excel nunca converta o material num número.
@@ -219,7 +230,7 @@ A planilha é gravada no modo *write-only* do openpyxl: cada linha vai direto pa
 
 @@codigo agente_btp/exportacao.py verificar_planilha
 
-A conferência recalcula, a partir dos mesmos resultados, o que **deveria** estar no arquivo e compara com o que **está** gravado, célula a célula, nas abas Dados, Materiais e Tabela de valores. Também acusa qualquer célula gravada como fórmula. O arquivo é aberto em modo somente leitura, que, segundo o comentário das linhas 452–453, reduziu a memória da conferência de cerca de 840 MB para 3 MB com 13 mil WOs. O teste `test_verificacao_detecta_excel_adulterado` altera uma célula do arquivo e confirma que a conferência acusa a diferença.
+A conferência recalcula, a partir dos mesmos resultados, o que **deveria** estar no arquivo e compara com o que **está** gravado, célula a célula, nas abas Dados, Materiais e Tabela de valores. Também acusa qualquer célula gravada como fórmula. O arquivo é aberto em modo somente leitura, que, segundo o comentário das linhas 476–477, reduziu a memória da conferência de cerca de 840 MB para 3 MB com 13 mil WOs. O teste `test_verificacao_detecta_excel_adulterado` altera uma célula do arquivo e confirma que a conferência acusa a diferença.
 
 ### 15.10 Como o usuário sabe que terminou e onde está o arquivo
 

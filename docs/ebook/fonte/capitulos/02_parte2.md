@@ -4,7 +4,7 @@ Esta parte conta como o Agente BTP chegou à forma atual e descreve sua estrutur
 
 ## 5. Como o projeto foi iniciado {#cap5}
 
-O histórico Git do repositório tem **39 commits**, de 01/10/2026 a 29/10/2026. Um *commit* é um "ponto de salvamento" do projeto: um conjunto de mudanças registrado com data, autor e uma mensagem descrevendo o que mudou. Lendo os commits em ordem, é possível reconstruir a evolução do projeto com segurança — e, quando a mensagem do commit não explica a motivação, este capítulo diz isso explicitamente.
+O histórico Git do repositório tinha **39 commits**, de 01/10/2026 a 29/10/2026, quando este livro começou a ser escrito (depois vieram os commits do próprio livro e a correção de 30/10). Um *commit* é um "ponto de salvamento" do projeto: um conjunto de mudanças registrado com data, autor e uma mensagem descrevendo o que mudou. Lendo os commits em ordem, é possível reconstruir a evolução do projeto com segurança — e, quando a mensagem do commit não explica a motivação, este capítulo diz isso explicitamente.
 
 @@figura linha_tempo
 
@@ -57,7 +57,7 @@ O commit `8f69d6f` (22/10) resolve problemas que só apareciam com **13.623 WOs*
 
 Em 27/10, a primeira análise real de 13.623 WOs revelou que todas as WOs ficavam "incompletas". A seção 7 do relatório de correção mostra a causa — a fonte aprendida observando a tela era outra tabela (`RetornoDaBaixa`), com dois campos de quantidade — e a correção (`25ee8e5`): a receita confirmada passa a ter prioridade e configurações antigas são descartadas (`VERSAO_CONFIG = 6` em `agente_btp/config.py`).
 
-Os commits seguintes tratam de uso operacional: retomada em qualquer interrupção (`457e87a`), redesenho da interface com ajuda guiada (`35f0af6`, `4c4973c`, `cc02174`, `080d8de`, `2460ba6`), itens repetidos e células vazias com "-" (`b99c093`), tipo de material e tabela de valores (`b44a9e7`) e, por fim, a regra de listar na planilha apenas os itens "Estoque indisponível" (`1f16b17`, 29/10).
+Os commits seguintes tratam de uso operacional: retomada em qualquer interrupção (`457e87a`), redesenho da interface com ajuda guiada (`35f0af6`, `4c4973c`, `cc02174`, `080d8de`, `2460ba6`), itens repetidos e células vazias com "-" (`b99c093`), tipo de material e tabela de valores (`b44a9e7`) e, por fim, a regra de listar na planilha apenas os itens "Estoque indisponível" (`1f16b17`, 29/10). Em 30/10, depois dos commits deste livro, essa regra foi revisada (`0a39d6c`): o Status passou a considerar só os itens da planilha, e a mensagem do item passou a ser lida em todas as leituras (Cap. 15.5).
 
 ### 5.7 O que o histórico não permite saber
 
@@ -303,7 +303,7 @@ O ponto de partida é um script de lote do Windows. O `__main__.py` também tem 
 | Ferramenta | Tipo | Uso |
 |---|---|---|
 | Git | Controle de versão | Histórico de 39 commits |
-| pytest | Biblioteca de testes | 164 testes automáticos (Capítulo 24) |
+| pytest | Biblioteca de testes | 167 testes automáticos (Capítulo 24) |
 | Playwright + Chromium | Automação de navegador | Somente nos testes de ponta a ponta (`testes/e2e/`) — não é dependência do programa |
 | http.server | Biblioteca padrão | Servidores falsos do BTP nos testes (`testes/e2e/sap_falso.py`) |
 

@@ -106,7 +106,7 @@ O diagrama resume o roteiro seguro já detalhado nos Capítulos 20 e 21. As seç
 ### 32.2 Um campo relevante muda de nome ou de significado
 
 - **Exemplo:** a quantidade passa a vir em `quantidadePendente`.
-- **Examinar:** `campos.py` (pesos dos nomes de campo, `peso_nome`), `auditoria.consolidar` (regra de quantidade ambígua, linhas 134–140), `config/api.json` (campo `quantidade_faltante`).
+- **Examinar:** `campos.py` (pesos dos nomes de campo, `peso_nome`), `auditoria.consolidar` (regra de quantidade ambígua, linhas 144–150), `config/api.json` (campo `quantidade_faltante`).
 - **Risco:** se o nome novo não indicar "faltante", os itens ficam **Incompletos** por ambiguidade — o comportamento seguro, mas que bloqueia a validação até o ajuste.
 - **Testar:** `test_quantidade_ambigua_nao_e_validada` e os testes de mapeamento de campos.
 
@@ -150,7 +150,7 @@ Ver o exemplo completo do Capítulo 21.2. Pontos de atenção: `COLUNAS_DADOS`, 
 | Validação | Auditoria por item, transação por WO, conferência célula a célula do arquivo | Caps. 14, 25 |
 | Execução | `.bat` → tela → conectar aba → WOs → amostra → acompanhar → baixar | Cap. 23 |
 | Diagnóstico | Taxonomia de 24 motivos em três categorias, com evidência sem segredos e próxima ação | Caps. 26–27 |
-| Manutenção | Testes (164 casos + roteiros de navegador), relatório de rodadas, Git, `VERSAO_CONFIG` | Caps. 24, 29 |
+| Manutenção | Testes (167 casos + roteiros de navegador), relatório de rodadas, Git, `VERSAO_CONFIG` | Caps. 24, 29 |
 
 ::: resumo
 O Agente BTP não "raspa" a tela: ele pede ao próprio navegador logado que faça consultas somente leitura ao serviço de dados por trás do Monitor de Alertas. Lê cada WO mais de uma vez, só afirma o que se repetiu, grava cada resultado assim que termina e entrega uma planilha que ele mesmo confere depois de gravar. Quando algo dá errado, ele diz de quem é o problema e o que fazer.
@@ -235,7 +235,7 @@ Tabela gerada a partir do dicionário `TAXONOMIA` de `agente_btp/diagnostico.py`
 | Fonte | Uso neste livro |
 |---|---|
 | Código-fonte em `agente_btp/` (25 módulos Python), `agente_btp/web/` e `extensao/` | Fonte principal de todas as descrições de funcionamento; cada trecho citado foi extraído automaticamente do arquivo, com as linhas indicadas |
-| `testes/` e `testes/e2e/` | Comportamentos garantidos; resultados da execução de 29/10/2026 (Cap. 24.3) |
+| `testes/` e `testes/e2e/` | Comportamentos garantidos; resultados da execução de 30/10/2026 (Cap. 24.3) |
 | Histórico Git do repositório | Cronologia (Cap. 5) |
 | `docs/relatorio-correcao-raiz.md` | Medições de desempenho e memória, números das análises reais citadas |
 | `README.md`, `config/api.exemplo.json` | Documentação anterior (parcialmente desatualizada, ver Cap. 30) |

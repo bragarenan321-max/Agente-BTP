@@ -24,7 +24,7 @@ No Agente BTP, as constantes concentram os números que governam o comportamento
 | `LIMITE_TRABALHADORES_ABA` | `ponte.py`, linha 29 | 6 | Consultas simultâneas máximas dentro da aba |
 | `VERSAO_CONFIG` | `config.py` | 6 | Versão mínima aceita da fonte gravada |
 | `LIMITE` | `historico.py`, linha 17 | 300 | Análises guardadas no histórico |
-| `FILTRO_PADRAO` | `exportacao.py`, linha 159 | "Estoque indisponível" | Mensagem padrão dos itens da planilha |
+| `FILTRO_PADRAO` | `exportacao.py`, linha 167 | "Estoque indisponível" | Mensagem padrão dos itens da planilha |
 
 ::: atencao
 Mudar uma constante parece inofensivo, mas muitas delas estão amarradas a testes e a decisões documentadas. Por exemplo, aumentar `LIMITE_TRABALHADORES_ABA` faz a aba disparar mais consultas simultâneas ao BTP, o que pode provocar respostas HTTP 429 ("reduza o ritmo"). Antes de alterar, procure onde a constante é usada (Capítulo 21).
@@ -49,7 +49,7 @@ O código usa **anotações de tipo**, que não mudam o comportamento, mas docum
 
 ### 18.3 Condições
 
-Uma **condição** escolhe um caminho conforme uma pergunta de sim ou não. É o `if` (se), `elif` (senão, se) e `else` (senão). O exemplo mais importante do projeto é a decisão do estado de um item na auditoria (`auditoria.py`, linhas 141–150, mostrado no Capítulo 14):
+Uma **condição** escolhe um caminho conforme uma pergunta de sim ou não. É o `if` (se), `elif` (senão, se) e `else` (senão). O exemplo mais importante do projeto é a decisão do estado de um item na auditoria (`auditoria.py`, linhas 151–160, mostrado no Capítulo 14):
 
 ```python
 if divergente:
@@ -71,7 +71,7 @@ Uma **repetição** (laço) executa o mesmo bloco várias vezes. Em Python há d
 - `for item in colecao:` — percorre cada elemento. Ex.: `for campo in CAMPOS:` compara os cinco campos de um item, um de cada vez (`auditoria.py`, linha 115).
 - `while condição:` — repete enquanto a condição for verdadeira. Ex.: `while not self._parar.is_set():` mantém a espera da sessão até o usuário parar (`motor.py`, linha 300).
 
-Há também a **compreensão de lista**, uma forma compacta de montar uma lista a partir de outra. Em `_preencher` (`exportacao.py`, linha 151):
+Há também a **compreensão de lista**, uma forma compacta de montar uma lista a partir de outra. Em `_preencher` (`exportacao.py`, linha 159):
 
 ```python
 return [SEM_INFO if v is None or v == "" else v for v in valores]
@@ -113,10 +113,10 @@ Uma **classe** é um molde; um **objeto** é algo construído a partir do molde.
 
 Uma **exceção** é a forma de um trecho de código avisar "não consegui continuar" — ela interrompe o caminho normal e sobe até alguém que a trate com `try`/`except`. O agente define sua própria família de exceções:
 
-@@trecho agente_btp/modelos.py 130 158 "família de exceções do agente"
+@@trecho agente_btp/modelos.py 133 161 "família de exceções do agente"
 
 ::: leitura
-- `_ComMotivo` (linhas 130–138) é a "mãe": toda exceção do agente carrega um **motivo** (um código da taxonomia do diagnóstico, como `http_403`) e uma **evidência** (URL, situação HTTP, trecho da resposta, já sem segredos).
+- `_ComMotivo` (linhas 133–141) é a "mãe": toda exceção do agente carrega um **motivo** (um código da taxonomia do diagnóstico, como `http_403`) e uma **evidência** (URL, situação HTTP, trecho da resposta, já sem segredos).
 - As quatro filhas dizem **o que fazer** com o problema: `SessaoExpirada` pausa a análise; `FalhaComunicacao` pode ser repetida; `ErroConsulta` não adianta repetir; `TempoEsgotado` encerra a WO.
 - Herança (`class SessaoExpirada(_ComMotivo)`) significa "é um tipo de". Um `except _ComMotivo` captura todas as quatro.
 :::
@@ -125,10 +125,10 @@ Uma **exceção** é a forma de um trecho de código avisar "não consegui conti
 
 | Estrutura | Arquivo | Representa |
 |---|---|---|
-| `Ocorrencia` | `modelos.py`, 78–86 | Um item lido numa leitura (valores + registro bruto) |
-| `Leitura` | `modelos.py`, 90–103 | Uma rodada de leitura de uma WO (extração, auditoria, extra) |
-| `LinhaMensagem` | `modelos.py`, 54–74 | Um item com os valores **finais** após a auditoria |
-| `ResultadoWO` | `modelos.py`, 107–127 | Tudo sobre uma WO: situação, auditoria, linhas, leituras, motivo |
+| `Ocorrencia` | `modelos.py`, 81–89 | Um item lido numa leitura (valores + registro bruto) |
+| `Leitura` | `modelos.py`, 93–106 | Uma rodada de leitura de uma WO (extração, auditoria, extra) |
+| `LinhaMensagem` | `modelos.py`, 54–77 | Um item com os valores **finais** após a auditoria |
+| `ResultadoWO` | `modelos.py`, 110–130 | Tudo sobre uma WO: situação, auditoria, linhas, leituras, motivo |
 | `Resposta` | `cliente.py`, 29–34 | Uma resposta HTTP trazida pela aba |
 | `ApiConfig` | `config.py`, 34–53 | A fonte de dados confirmada (URLs-modelo e nomes de campos) |
 
@@ -282,7 +282,7 @@ Este capítulo usa um exemplo **proposto**, que **não está implementado** no p
 | Passo | No exemplo |
 |---|---|
 | 1. Comportamento desejado | Item cuja mensagem do item seja **qualquer uma** das listadas vira linha; os demais continuam na Observação |
-| 2. Componente responsável | `exportacao.entra_na_planilha` (linhas 176–178) decide se o item entra |
+| 2. Componente responsável | `exportacao.entra_na_planilha` (linhas 184–196) decide se o item entra |
 | 3. Dependências | `_itens_da_wo`, `nota_outros` (texto "mensagem diferente de ..."), `_linhas_dados` (texto "Nenhum item com ..."), `verificar_planilha` (recalcula com o mesmo filtro), a tela (`index.html`, campo `mensagem_planilha`, linha 1265) |
 | 4. Informações necessárias | O texto da preferência; nenhuma informação nova do BTP |
 | 5. Comportamento esperado | Separar por `;`, ignorar partes vazias, comparar cada parte normalizada (sem acento, maiúsculas, espaços) |
@@ -307,13 +307,18 @@ def _filtros(filtro: str | None) -> set[str]:
 
 def entra_na_planilha(l: LinhaMensagem, filtro: str | None) -> bool:
     alvos = _filtros(filtro)
-    return not alvos or _normalizar(mensagem_do_item(l)) in alvos
+    if not alvos:
+        return True
+    lidas = l.mensagens_lidas or [mensagem_do_item(l)]          # todas as leituras (Cap. 15.5)
+    if any(_normalizar(m) in alvos for m in lidas):
+        return True
+    return not any(lidas) and l.notas.get("mensagem", "").startswith("Não obtido")
 ```
 
 Note três escolhas:
 
 1. **Compatibilidade:** um texto sem `;` produz um conjunto com um só elemento — o comportamento atual é preservado.
-2. **Vazio continua significando "todos"**, como hoje.
+2. **Vazio continua significando "todos"**, e as duas proteções atuais são mantidas: vale a mensagem de qualquer leitura, e mensagem não informada pelo BTP entra sinalizada.
 3. **A normalização é a mesma** (`_normalizar`), então "ESTOQUE INDISPONIVEL" continua sendo aceito.
 
 ### 20.3 Os testes propostos
@@ -356,7 +361,7 @@ O esqueleto acima está em **pseudocódigo** (as reticências indicam o que aind
 **Cenário hipotético** (não implementado): o usuário pede que "Tipo Material" fique depois de "Fornecedor SAP" na aba Dados.
 :::
 
-**O que existe hoje** <span class="confirmado">CONFIRMADO</span>: a ordem das colunas está em `COLUNAS_DADOS` (`exportacao.py`, linhas 40–41), e a linha de cada item é montada em `_linhas_dados` (linhas 206–207) na mesma ordem. A gravação aplica formato de texto às colunas `(1, 2, 3, 4, 6, 7, 8)` e quebra de linha às colunas `(6, 7)` pelo **número** da coluna (linhas 307–308), e as larguras são uma lista posicional `[18, 22, 34, 16, 12, 55, 55, 13]` (linha 301).
+**O que existe hoje** <span class="confirmado">CONFIRMADO</span>: a ordem das colunas está em `COLUNAS_DADOS` (`exportacao.py`, linhas 40–41), e a linha de cada item é montada em `_linhas_dados` (linhas 224–225) na mesma ordem. A gravação aplica formato de texto às colunas `(1, 2, 3, 4, 6, 7, 8)` e quebra de linha às colunas `(6, 7)` pelo **número** da coluna (linhas 325–326), e as larguras são uma lista posicional `[18, 22, 34, 16, 12, 55, 55, 13]` (linha 319).
 
 **Onde a mudança se propaga:**
 
@@ -364,8 +369,8 @@ O esqueleto acima está em **pseudocódigo** (as reticências indicam o que aind
 |---|---|---|
 | `COLUNAS_DADOS` | Ordem dos nomes | Cabeçalho errado |
 | `_linhas_dados` (duas listas) | Ordem dos valores | Valor sob o cabeçalho errado |
-| Larguras (linha 301) | Ordem das larguras | Só aparência |
-| Formatos por número (linhas 307–308) | Números das colunas de texto e de quebra | A coluna de quantidade poderia virar texto, e o Excel deixaria de somá-la |
+| Larguras (linha 319) | Ordem das larguras | Só aparência |
+| Formatos por número (linhas 325–326) | Números das colunas de texto e de quebra | A coluna de quantidade poderia virar texto, e o Excel deixaria de somá-la |
 | `_COL_OBS` | Calculado pelo nome, não muda | — |
 | `verificar_planilha` | Usa as mesmas funções, acompanha sozinho | — |
 | Testes | `test_estrutura_completa_do_excel` e `test_coluna_tipo_aba_materiais_e_tabela_oculta` conferem cabeçalhos | O teste falharia — e é bom que falhe, porque avisa |

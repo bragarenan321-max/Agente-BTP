@@ -216,7 +216,7 @@ A defesa já existente é a **re-preparação**: descartar a fonte ("Refazer a f
 
 ### 29.4 Versões e registro de modificações
 
-O projeto usa Git (41 commits de código e documentação entre 01/10/2026 e 29/10/2026, antes dos commits deste livro). Cada rodada de correção é documentada em `docs/relatorio-correcao-raiz.md`, com o diagnóstico, o que mudou, os testes e as limitações. Esse hábito deve ser mantido. A tela exibe uma "versão" que é uma **impressão digital** de todos os arquivos do programa (`servidor.py`: os 10 primeiros caracteres de um *hash* SHA-1), o que permite saber, pela tela, se dois computadores rodam exatamente o mesmo código.
+O projeto usa Git (39 commits de código e documentação entre 01/10/2026 e 29/10/2026, antes dos commits deste livro, mais a correção de 30/10). Cada rodada de correção é documentada em `docs/relatorio-correcao-raiz.md`, com o diagnóstico, o que mudou, os testes e as limitações. Esse hábito deve ser mantido. A tela exibe uma "versão" que é uma **impressão digital** de todos os arquivos do programa (`servidor.py`: os 10 primeiros caracteres de um *hash* SHA-1), o que permite saber, pela tela, se dois computadores rodam exatamente o mesmo código.
 
 ### 29.5 Regressão e versão estável
 

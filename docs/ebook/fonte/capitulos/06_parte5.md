@@ -178,7 +178,7 @@ Os passos abaixo valem para o computador do usuário (Windows), com o navegador 
 
 | Arquivo | Funções de teste | Foco |
 |---|---|---|
-| `test_auditoria.py` | 46 | Auditoria, conversões, planilha, preferências |
+| `test_auditoria.py` | 49 | Auditoria, conversões, planilha, preferências |
 | `test_execucao.py` | 33 | Motor, sessão, retomada, lote, tempos |
 | `test_preparo.py` | 21 | Descoberta e confirmação da fonte |
 | `test_agente.py` | 20 | Cliente, classificação de respostas, paginação |
@@ -186,16 +186,16 @@ Os passos abaixo valem para o computador do usuário (Windows), com o navegador 
 | `test_analisador.py` | 12 | Interpretação de consultas observadas |
 | `test_materiais.py` | 10 | Tabela de valores, aba Materiais |
 | `test_historico.py` | 4 | Histórico e numeração |
-| **Total** | **159 funções** | O pytest conta **164** casos, porque alguns testes são parametrizados (rodam com vários dados) |
+| **Total** | **162 funções** | O pytest conta **167** casos, porque alguns testes são parametrizados (rodam com vários dados) |
 
 ### 24.3 Resultado da execução feita para este livro
 
 ::: evidencia
-Executado em 29/10/2026, sobre o commit em que este livro foi gerado, no ambiente Linux de produção do e-book (não no computador do usuário):
+Executado em 30/10/2026, sobre o commit `0a39d6c` (correção da regra "Estoque indisponível"), no ambiente Linux de produção do e-book (não no computador do usuário):
 
-- `python3 -m pytest -q testes` → **164 passed in 33.85s**.
+- `python3 -m pytest -q testes` → **167 passed in 35.58s**.
 - `testes/e2e/rodar_tela.py` (cópia limpa do projeto) → **136 verificações ok, 0 falharam**.
-- `testes/e2e/rodar_sessao.py` → **RESULTADO: OK** — a sessão caiu com 60 de 500 WOs validadas; 80 WOs em andamento voltaram para a fila e nenhuma virou falha; após o novo login a análise terminou com 500 validadas em 8,8 s.
+- `testes/e2e/rodar_sessao.py` → **RESULTADO: OK** — a sessão caiu com 60 de 500 WOs validadas; 80 WOs em andamento voltaram para a fila e nenhuma virou falha; após o novo login a análise terminou com 500 validadas em 9,4 s.
 - `testes/e2e/rodar_aba.py` → terminou sem erro (código de saída 0), incluindo a preparação pela aba e o apagamento de uma análise do histórico.
 - `testes/e2e/rodar_extensao.py` → terminou sem erro; selo "conectado" na aba sem clique.
 - `testes/e2e/rodar_combinacoes.py` **não** foi executado: exige como argumentos duas pastas de versões diferentes (programa e extensão).
@@ -248,7 +248,7 @@ Uma análise **concluída** é aquela em que todas as WOs passaram pelo motor. U
 | Pergunta | Como o agente verifica | Onde |
 |---|---|---|
 | Os registros esperados foram encontrados? | Cada WO tem uma situação: com itens, sem itens, não consta no Monitor; uma WO "não consta" só é validada se **todas** as leituras concordarem | `processador._concluir`, `auditoria.consolidar` |
-| Os campos foram preenchidos? | Campo vazio → item **Incompleto**, nota "Não obtido no BTP" | `consolidar`, linhas 128–133 |
+| Os campos foram preenchidos? | Campo vazio → item **Incompleto**, nota "Não obtido no BTP" | `consolidar`, linhas 138–143 |
 | As relações estão corretas (item na WO certa)? | Linhas de outra WO numa resposta são descartadas e avisadas; a leitura em lote é comparada com a individual | `ClienteBTP`, `processar_grupo` (equivalência) |
 | Há duplicações indevidas? | Cópias idênticas viram uma linha com a contagem; não somam na aba Materiais | `itens_unicos` |
 | Os valores correspondem à fonte? | Leitura repetida (extração + 2 auditorias); divergência nunca é aprovada sem evidência do BTP | `consolidar`, `_resolver` |
