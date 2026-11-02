@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import json
 import tempfile
@@ -20,6 +21,10 @@ from .config import URL_LAUNCHPAD
 PASTA_WEB = Path(__file__).resolve().parent / "web"
 _u = urlsplit(URL_LAUNCHPAD)
 ORIGEM_SAP = f"{_u.scheme}://{_u.netloc}"
+# O programa só atende pelo próprio endereço: outro nome (DNS rebinding) não lê nem altera nada.
+HOSTS_LOCAIS = {"127.0.0.1", "localhost"}
+METODOS_QUE_ALTERAM = {"POST", "PUT", "PATCH", "DELETE"}
+log = logging.getLogger("agente_btp")
 
 
 def codigo_carregador(origem_local: str) -> str:
@@ -40,8 +45,9 @@ def sincronizar_extensao(codigo_agente: str) -> None:
         if PASTA_EXTENSAO.is_dir() and (not destino.exists()
                                          or destino.read_text(encoding="utf-8") != codigo_agente):
             destino.write_text(codigo_agente, encoding="utf-8")
-    except OSError:
-        pass
+    except OSError as exc:
+        log.warning("Não foi possível atualizar o agente_btp.js da pasta da extensão (%s): %s. "
+                    "A extensão pode continuar com a versão anterior.", destino, exc)
 
 
 def criar_app(agente: Agente) -> Flask:
@@ -55,6 +61,23 @@ def criar_app(agente: Agente) -> Flask:
     versao = digital.hexdigest()[:10]
     agente.ponte.versao_agente = versao
     app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
+
+    @app.errorhandler(413)
+    def grande_demais(_erro):
+        return jsonify(ok=False, erro="Arquivo maior que 20 MB: divida a planilha ou envie só a coluna das WOs."), 413
+
+    @app.before_request
+    def proteger_api_local():
+        # 1) Só pelo próprio endereço (127.0.0.1/localhost): bloqueia DNS rebinding.
+        if (request.host or "").rsplit(":", 1)[0].strip("[]").lower() not in HOSTS_LOCAIS:
+            abort(403)
+        # 2) Pedidos que alteram algo só da própria tela (ou sem navegador). O canal da aba
+        #    (/api/agente/*) tem regra própria: exige a origem do SAP (exigir_origem_sap).
+        origem = request.headers.get("Origin")
+        if (request.method in METODOS_QUE_ALTERAM and origem is not None
+                and not request.path.startswith("/api/agente/")
+                and (urlsplit(origem).hostname or "") not in HOSTS_LOCAIS):
+            abort(403)
 
     @app.get("/")
     def index():
@@ -144,12 +167,12 @@ def criar_app(agente: Agente) -> Flask:
     @app.post("/api/extensao/abrir")
     def abrir_pasta_extensao():
         """Abre no Explorer a pasta da extensão (para 'Carregar sem compactação')."""
-        pasta = PASTA_WEB.parent.parent / "extensao"
+        pasta = PASTA_EXTENSAO
         if os.name == "nt":
             try:
                 os.startfile(str(pasta))  # noqa: S606 — só a pasta do próprio programa
-            except OSError:
-                pass
+            except OSError as exc:
+                log.warning("Não foi possível abrir a pasta da extensão %s: %s", pasta, exc)
         return jsonify(caminho=str(pasta))
 
     @app.get("/api/estado")
@@ -254,7 +277,10 @@ def criar_app(agente: Agente) -> Flask:
 
     @app.get("/api/materiais/tabela")
     def tabela_materiais():
-        tabela = materiais.carregar()
+        try:
+            tabela = materiais.carregar()
+        except materiais.TabelaInvalida as exc:
+            return jsonify(carregada=False, erro=str(exc))
         return jsonify(tabela.resumo() if tabela else {"carregada": False})
 
     @app.post("/api/materiais/tabela")

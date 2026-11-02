@@ -1338,7 +1338,7 @@ function desenharTabela(t, erro) {
     : "Nenhuma tabela importada";
 }
 async function carregarTabela() {
-  try { desenharTabela(await fetch("/api/materiais/tabela").then(r => r.json())); }
+  try { const t = await fetch("/api/materiais/tabela").then(r => r.json()); desenharTabela(t, t.erro); }
   catch (_) { desenharTabela(null, "Não foi possível consultar a tabela (o programa está aberto?)."); }
 }
 $("arqTabela").onchange = async () => {

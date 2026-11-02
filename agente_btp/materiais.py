@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 import unicodedata
 from dataclasses import dataclass
@@ -65,9 +66,14 @@ def _valor(v) -> Decimal | None:
         return Decimal(v)
     if isinstance(v, float):
         return Decimal(repr(v))
-    texto = str(v).strip().replace("R$", "").replace(" ", "")
-    if "," in texto:
-        texto = texto.replace(".", "").replace(",", ".")
+    texto = str(v).strip().replace("R$", "").replace(" ", "").replace("\u00a0", "")
+    if "," in texto and "." in texto:          # o ÚLTIMO separador é o decimal: 1.500,25 e 1,234.56
+        milhar = "." if texto.rfind(",") > texto.rfind(".") else ","
+        texto = texto.replace(milhar, "").replace(",", ".")
+    elif "," in texto:                         # 0,13
+        texto = texto.replace(",", ".")
+    elif re.fullmatch(r"-?\d{1,3}(\.\d{3})+", texto):   # 1.500 e 12.345.678: milhar (padrão brasileiro)
+        texto = texto.replace(".", "")
     try:
         return Decimal(texto) if texto else None
     except InvalidOperation:
@@ -159,8 +165,12 @@ def carregar(origem: Path | None = None) -> TabelaMateriais | None:
     origem = origem or arquivo_tabela()
     if not origem.exists():
         return None
-    dados = json.loads(origem.read_text(encoding="utf-8"))
-    itens = {k: Material(t, None if u is None else Decimal(u)) for k, (t, u) in dados["itens"].items()}
+    try:
+        dados = json.loads(origem.read_text(encoding="utf-8"))
+        itens = {k: Material(t, None if u is None else Decimal(u)) for k, (t, u) in dados["itens"].items()}
+    except (ValueError, KeyError, TypeError, AttributeError, InvalidOperation) as exc:
+        raise TabelaInvalida(f"A tabela de valores gravada ({origem.name}) está ilegível ({exc}). "
+                             "Importe a tabela de novo em Configurações.") from exc
     return TabelaMateriais(itens, dados.get("arquivo", ""), dados.get("importada_em", ""), dados.get("sem_valor", 0))
 
 

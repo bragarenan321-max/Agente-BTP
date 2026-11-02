@@ -27,7 +27,7 @@ fonte para sempre; "Não — vou mostrar no BTP" aprende pela tela (abrir a jane
 Se existir a mensagem do alerta (coluna Mensagem do Monitor), você escolhe qual vai para a planilha.
 
 ### Auditoria (fidelidade dos dados)
-Cada WO é extraída e depois **conferida N vezes** (padrão 5, ajustável na engrenagem ⚙):
+Cada WO é extraída e depois **conferida N vezes** (padrão 2; havendo divergência, até 3 leituras extras — ajustável em Configurações):
 cada auditoria é uma nova leitura no BTP; com "auditorias independentes", as rodadas pares
 releem cada item pelo seu endereço próprio (outro caminho). Os valores são comparados campo a
 campo. Resultado: **Validado**, **Divergente**, **Incompleto** ou **Não concluído**. Uma
