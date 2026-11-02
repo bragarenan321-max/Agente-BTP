@@ -273,3 +273,45 @@ Cada correção recebe um teste que falha antes e passa depois. Ao final, rodam 
 2. **Item sem mensagem própria.**
    - Um item cuja janela Mensagens não tem texto (a planilha mostraria a mensagem do alerta) fica fora da planilha com o filtro "Estoque indisponível".
    - **A confirmar** se esse caso existe no BTP real e como deve ser tratado.
+
+---
+
+## PARTE VIII — Relatório final das correções (02/11/2026)
+
+As correções foram feitas no branch `claude/auditoria-tecnica`. Para cada defeito, o teste foi escrito **antes** da correção e falhou na versão anterior (19 falhas reproduzidas). Todos estão em `testes/test_auditoria_correcoes.py`.
+
+| Erro | Arquivos alterados | O que mudou e por quê | Prova |
+|---|---|---|---|
+| E1 | `servidor.py` | `before_request` recusa (403) os métodos `POST`/`PUT`/`PATCH`/`DELETE` fora de `/api/agente/*` cujo `Origin` não seja `127.0.0.1`/`localhost`, inclusive `Origin: null`. Sem `Origin` (scripts, testes): aceito. O canal da aba mantém a regra própria (`exigir_origem_sap`) | `test_e1_*` (8 casos). No **Chromium 141 real**, uma página em `127.0.0.2` enviou o ataque: na `main`, o resultado foi `200` com auditorias **0** e filtro **vazio**; no branch, **403** e nada mudou |
+| E2 | `servidor.py` | `Host` diferente de `127.0.0.1`/`localhost` → 403 em todas as rotas (bloqueia DNS rebinding) | `test_e2_*` (5 casos) |
+| E3 | `exportacao.py` | `_omitidos` separa os itens não validados omitidos em "com a mensagem do filtro" e "de outra mensagem". A Observação diz "N item(ns) "Estoque indisponível" não validado(s) omitido(s)… conferir no BTP", com destaque amarelo. A aba Análise e a situação por WO só tratam como "só outras mensagens" a WO que de fato não tem item do filtro (`tem_item_do_filtro`) | `test_e3_*` (2 casos), com conferência da planilha gravada |
+| E4 | `historico.py` | O arquivo ilegível é guardado como `historico.corrompido-<data>.json`, e um aviso vai para o log, antes de o histórico recomeçar | `test_e4_*` |
+| E5 | `materiais.py`, `servidor.py`, `web/index.html` | `carregar` converte o erro de leitura em `TabelaInvalida` ("…está ilegível… Importe a tabela de novo em Configurações"). A rota devolve JSON com `erro`, e a tela o exibe | `test_e5_*` |
+| E6 | `materiais.py` | Texto com ponto e vírgula: o último separador é o decimal. Só pontos em grupos de três dígitos: milhar. Células numéricas não mudam | `test_e6_*` (11 casos) |
+| E7 | `servidor.py` | O 413 passa a responder em JSON: "Arquivo maior que 20 MB…" | `test_e7_*` |
+| E8 | `requirements.txt` | `flask>=3.0,<4` e `openpyxl>=3.1,<3.2`, a série testada (3.1.3 e 3.1.5) | Versões instaladas dentro das faixas |
+| E9 | `servidor.py` | `sincronizar_extensao` e `abrir_pasta_extensao` registram o erro no log em vez de ignorá-lo | `test_e9_*` |
+| E10 | `README.md` | "padrão 5" → "padrão 2; havendo divergência, até 3 leituras extras" | — |
+
+### Testes de regressão
+
+- `python -m pytest -q testes` → **196 passed**, rodado duas vezes seguidas: 167 testes anteriores e 29 novos.
+- `pyflakes agente_btp testes` → sem avisos.
+- Testes de navegador numa cópia limpa:
+  - `rodar_tela.py`: 136/136;
+  - `rodar_sessao.py`: OK;
+  - `rodar_aba.py`: OK;
+  - `rodar_extensao.py`: OK.
+
+  A nova proteção não bloqueou nenhum pedido legítimo da tela, da aba ou da extensão.
+
+### Problema encontrado durante as correções (e resolvido)
+
+Na primeira execução, ainda sem a correção, um teste novo de E1 chamou com sucesso `/api/fonte/refazer`. Essa rota gravou `config/fontes_recusadas.json` na pasta real do projeto e fez 3 testes de `test_preparo.py` falharem. O arquivo foi removido, e o fixture dos testes novos passou a redirecionar `api.json` e `fontes_recusadas.json` para uma pasta temporária. Confirmei, rodando os testes contra o código antigo, que nada mais vaza.
+
+### Problemas remanescentes
+
+- Nada foi testado no BTP real nem no Windows.
+- As dúvidas de regra de negócio da Parte VII continuam abertas (divergência explicada pelo BTP; item sem mensagem própria).
+- As melhorias futuras da Parte VI (rotação de log, limpeza da base, colar WOs de várias colunas, pontuação ".;") não foram executadas.
+- O e-book (`docs/ebook/`) descreve a versão `f79dca5`, anterior a estas correções. Os números de linha de `servidor.py`, `exportacao.py`, `materiais.py` e `historico.py` mudaram; a atualização do livro fica para um passo separado.
