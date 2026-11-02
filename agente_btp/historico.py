@@ -7,7 +7,9 @@ resultado, a planilha gerada e o resultado de cada WO. A gravação é atômica
 from __future__ import annotations
 
 import json
+import logging
 import threading
+from datetime import datetime
 from pathlib import Path
 
 from .config import RAIZ
@@ -16,14 +18,26 @@ ARQUIVO = RAIZ / "historico" / "historico.json"
 CONTADOR = RAIZ / "historico" / "contador.txt"
 LIMITE = 300  # análises guardadas (as mais antigas saem)
 _trava = threading.Lock()
+log = logging.getLogger("agente_btp")
 
 
 def _ler(arquivo: Path) -> list[dict]:
     try:
         dados = json.loads(arquivo.read_text(encoding="utf-8"))
-        return dados if isinstance(dados, list) else []
-    except (FileNotFoundError, json.JSONDecodeError):
+    except FileNotFoundError:
         return []
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        dados = None
+    if isinstance(dados, list):
+        return dados
+    # Ilegível: guarda uma cópia ANTES que a próxima gravação o substitua (nunca some calado).
+    copia = arquivo.with_name(f"{arquivo.stem}.corrompido-{datetime.now():%Y%m%d-%H%M%S}{arquivo.suffix}")
+    try:
+        arquivo.replace(copia)
+        log.warning("Histórico ilegível (%s): guardado em %s; o histórico recomeça vazio.", arquivo, copia.name)
+    except OSError as exc:
+        log.warning("Histórico ilegível (%s) e não foi possível guardar uma cópia: %s", arquivo, exc)
+    return []
 
 
 def _pasta_detalhes(arquivo: Path) -> Path:
