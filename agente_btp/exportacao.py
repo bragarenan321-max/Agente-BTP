@@ -203,6 +203,21 @@ def _itens_da_wo(r: ResultadoWO, exportar_incompletos: bool, filtro: str | None)
             [(l, n) for l, n in itens if not entra_na_planilha(l, filtro)])
 
 
+def _omitidos(r: ResultadoWO, exportar_incompletos: bool, filtro: str | None):
+    """Itens NÃO validados que ficaram fora porque a exportação deles está desligada:
+    (com a mensagem do filtro, de outra mensagem), sem as cópias idênticas."""
+    if exportar_incompletos:
+        return [], []
+    itens = itens_unicos([l for l in r.linhas if l.auditoria is not Auditoria.VALIDADO])
+    return ([l for l, _ in itens if entra_na_planilha(l, filtro)],
+            [l for l, _ in itens if not entra_na_planilha(l, filtro)])
+
+
+def tem_item_do_filtro(r: ResultadoWO, filtro: str | None) -> bool:
+    """A WO tem algum item com a mensagem do filtro (validado ou não)?"""
+    return any(entra_na_planilha(l, filtro) for l in r.linhas)
+
+
 def nota_outros(outros, filtro: str) -> str:
     """Os itens da WO com outra mensagem, como o BTP trouxe (material, quantidade e mensagem)."""
     partes = [f"{l.material or '-'} (qtd {_txt(l.quantidade_faltante) or '-'}): {mensagem_do_item(l) or '-'}"
@@ -224,16 +239,24 @@ def _linhas_dados(resultados, exportar_incompletos=True, tabela=None, filtro=FIL
             saida.append((_preencher([l.wo, l.material, _tipo(tabela, l.material), l.fornecedor,
                                       l.quantidade_faltante, l.mensagem, obs, estado]), bool(conferir)))
         if not planilha:
-            obs = SITUACAO[r.status]
-            if outros:
-                obs = f"Nenhum item com \"{filtro}\". " + extra
-            elif r.linhas:   # havia itens, mas não validados e a exportação deles está desligada
-                obs = f"{len(r.linhas)} item(ns) com divergência omitido(s): conferir no BTP"
+            obs, conferir = SITUACAO[r.status], False
+            omit_filtro, omit_outros = _omitidos(r, exportar_incompletos, filtro)
+            sobra = (f" {len(omit_outros)} item(ns) de outra mensagem não validado(s) omitido(s)."
+                     if omit_outros else "")
+            if omit_filtro:     # o item do filtro EXISTE: só foi omitido (exportação de não validados desligada)
+                conferir = True
+                rotulo = f" \"{filtro}\"" if filtro else ""
+                obs = (f"{len(omit_filtro)} item(ns){rotulo} não validado(s) omitido(s) (exportação de não "
+                       f"validados desligada): conferir no BTP." + (" " + extra if extra else "") + sobra)
+            elif outros:
+                obs = f"Nenhum item com \"{filtro}\". " + extra + sobra
+            elif omit_outros:
+                obs = f"Nenhum item com \"{filtro}\"." + sobra
             elif r.status is Status.NAO_PROCESSADA:
                 obs = r.observacao or obs
             elif r.status in STATUS_FALHA and r.observacao and r.observacao != "OK":
                 obs = f"{obs} ({r.observacao})"
-            saida.append((_preencher([r.wo, None, None, None, None, None, obs, estado]), False))
+            saida.append((_preencher([r.wo, None, None, None, None, None, obs, estado]), conferir))
     return saida
 
 
@@ -359,10 +382,11 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
     st = Counter(r.status for r in resultados)
     com_obs = sum(1 for l in linhas if l.auditoria is not Auditoria.VALIDADO)
     wos_planilha = {l.wo for l in linhas}
-    so_outras = sum(1 for r in resultados if r.status is Status.PROCESSADA and r.wo not in wos_planilha)
+    so_outras = sum(1 for r in resultados if r.status is Status.PROCESSADA and r.wo not in wos_planilha
+                    and not tem_item_do_filtro(r, filtro))
     _secao(wa, "Números", ["Indicador", "Quantidade"], [
         ("WOs consultadas", len(resultados)),
-        *([(f"WOs com itens \"{filtro}\" (na planilha)", st[Status.PROCESSADA] - so_outras),
+        *([(f"WOs com itens \"{filtro}\"", st[Status.PROCESSADA] - so_outras),
            ("WOs só com itens de outra mensagem (na Observação)", so_outras)] if filtro
           else [("WOs com itens faltantes", st[Status.PROCESSADA])]),
         ("WOs no Monitor sem itens na janela Mensagens", st[Status.SEM_REGISTROS]),
@@ -401,7 +425,8 @@ def gerar_planilha(resultados: list[ResultadoWO], destino: str | Path, numero: i
         ls = [l for l, _ in _itens_da_wo(r, exportar_incompletos, filtro)[0]]
         obs = "; ".join(o for o in OrderedDict.fromkeys(observacao_item(l) for l in ls) if o)
         situacao = (f"Sem itens \"{filtro}\" (só outras mensagens, na Observação)"
-                    if filtro and r.status is Status.PROCESSADA and not ls and r.linhas else SITUACAO[r.status])
+                    if filtro and r.status is Status.PROCESSADA and not ls and r.linhas
+                    and not tem_item_do_filtro(r, filtro) else SITUACAO[r.status])
         por_wo.append((r.wo, situacao, len(ls),
                        ", ".join(OrderedDict.fromkeys(l.material for l in ls if l.material)),
                        obs or ("" if r.status not in STATUS_FALHA else r.observacao)))
