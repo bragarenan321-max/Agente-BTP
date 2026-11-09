@@ -169,10 +169,10 @@ O resultado é uma planilha Excel que precisa ser, ao mesmo tempo, **fácil de u
 @@codigo agente_btp/exportacao.py _linhas_dados
 
 ::: leitura
-- **Linha 218** — separa os itens da WO em "vão para a planilha" e "outros" (`_itens_da_wo`), já sem as cópias idênticas.
-- **Linha 219** — os "outros" viram uma nota: "Outros itens no BTP, fora da planilha (mensagem diferente de "Estoque indisponível"): <material> (qtd N): <mensagem>; ...".
-- **Linhas 220–225** — cada item vira uma linha. A Observação junta, nesta ordem: o que precisa ser conferido no BTP (`observacao_item`), a nota de repetição e — só na primeira linha da WO — a nota dos outros itens. O segundo valor da tupla (`bool(conferir)`) diz se a célula de Observação deve ser destacada em amarelo: só quando há algo a conferir.
-- **Linhas 226–236** — WO sem nenhum item na planilha: uma linha com "-" nas colunas de item e a explicação (sem alerta no Monitor; nenhum item com a mensagem do filtro; falha de consulta com o motivo; pendente...).
+- **Linha 233** — separa os itens da WO em "vão para a planilha" e "outros" (`_itens_da_wo`), já sem as cópias idênticas.
+- **Linha 234** — os "outros" viram uma nota: "Outros itens no BTP, fora da planilha (mensagem diferente de "Estoque indisponível"): <material> (qtd N): <mensagem>; ...".
+- **Linhas 235–240** — cada item vira uma linha. A Observação junta, nesta ordem: o que precisa ser conferido no BTP (`observacao_item`), a nota de repetição e — só na primeira linha da WO — a nota dos outros itens. O segundo valor da tupla (`bool(conferir)`) diz se a célula de Observação deve ser destacada em amarelo: só quando há algo a conferir.
+- **Linhas 241–259** — WO sem nenhum item na planilha: uma linha com "-" nas colunas de item e a explicação (sem alerta no Monitor; nenhum item com a mensagem do filtro; falha de consulta com o motivo; pendente...). Quando a opção "Exportar resultados não validados" está **desligada**, a linha 243 separa os itens não validados que ficaram de fora (`_omitidos`): se algum deles tem a mensagem do filtro, a Observação diz "N item(ns) "Estoque indisponível" não validado(s) omitido(s)… conferir no BTP", com destaque amarelo (linhas 246–250), e **nunca** "Nenhum item com…" — o item existe, só não foi exportado. Antes da auditoria de 30/10/2026, essa WO era descrita como se não tivesse o item (erro E3 do relatório).
 - `_preencher` troca todo valor vazio por "-": nenhuma célula da aba Dados fica em branco.
 :::
 
@@ -201,15 +201,17 @@ Medição feita sobre as linhas da planilha real de 13.623 WOs enviada pelo usu�
 @@codigo agente_btp/exportacao.py linhas_materiais
 
 ::: leitura
-- **Linhas 267–270** — agrupa os itens pelo **número** do material (`chave_material`: `000000000022056365` e `22056365` são o mesmo material).
-- **Linhas 273–274** — a quantidade total soma só os itens **validados** e com quantidade. Item não conferido fica fora da soma, e a Observação avisa ("1 item(ns) não conferido(s) fora da soma: conferir no BTP").
-- **Linhas 275–277** — o valor unitário vem da tabela importada; o valor total é quantidade × unitário, calculado com `Decimal` (exato).
-- **Linhas 279–284** — material fora da tabela, ou sem preço, ou tabela não importada: "-" e o motivo.
-- **Linha 292** — ordena pelo maior valor total; materiais sem valor ficam no fim.
-- **Linhas 293–296** — a linha Total soma os valores conhecidos e informa quantos materiais ficaram fora.
+- **Linhas 290–293** — agrupa os itens pelo **número** do material (`chave_material`: `000000000022056365` e `22056365` são o mesmo material).
+- **Linhas 296–297** — a quantidade total soma só os itens **validados** e com quantidade. Item não conferido fica fora da soma, e a Observação avisa ("1 item(ns) não conferido(s) fora da soma: conferir no BTP").
+- **Linhas 298–300** — o valor unitário vem da tabela importada; o valor total é quantidade × unitário, calculado com `Decimal` (exato).
+- **Linhas 302–307** — material fora da tabela, ou sem preço, ou tabela não importada: "-" e o motivo.
+- **Linha 315** — ordena pelo maior valor total; materiais sem valor ficam no fim.
+- **Linhas 316–319** — a linha Total soma os valores conhecidos e informa quantos materiais ficaram fora.
 :::
 
 A tabela de valores é importada em Configurações (rota `POST /api/materiais/tabela`). O módulo `materiais.py` procura no cabeçalho as colunas **Material**, **Texto breve material** (vira o Tipo Material) e **Unitário**, recusa a importação se o mesmo material aparecer com tipo ou valor diferentes e guarda o resultado em `config/tabela_materiais.json`, gravado de forma atômica (arquivo temporário + substituição).
+
+O valor unitário de uma célula numérica é usado como está. Quando o valor vem **digitado como texto**, `materiais._valor` decide os separadores: com ponto e vírgula juntos, o último é o decimal (`1.500,25` e `1,234.56`); só com pontos em grupos de três dígitos, é milhar no padrão brasileiro (`1.500` = mil e quinhentos); `0,13` e `12.5` continuam decimais. Se o arquivo gravado da tabela ficar ilegível, `materiais.carregar` informa "…está ilegível… Importe a tabela de novo em Configurações", na tela e na geração da planilha, em vez de uma mensagem técnica.
 
 ### 15.7 Gravar sem interpretar
 
@@ -217,7 +219,7 @@ A tabela de valores é importada em Configurações (rota `POST /api/materiais/t
 
 Duas proteções em poucas linhas:
 
-1. Um texto que começa com `=` seria interpretado pelo Excel como **fórmula**. A linha 531 detecta esse caso e força o tipo "texto". O teste `test_texto_com_igual_e_controle_nao_vira_formula_nem_quebra` verifica com a mensagem `"=> Saldo insuficiente (-2)"`.
+1. Um texto que começa com `=` seria interpretado pelo Excel como **fórmula**. A linha 556 detecta esse caso e força o tipo "texto". O teste `test_texto_com_igual_e_controle_nao_vira_formula_nem_quebra` verifica com a mensagem `"=> Saldo insuficiente (-2)"`.
 2. Caracteres de controle que o formato `.xlsx` não aceita (por exemplo, uma tabulação vertical vinda do BTP) derrubariam a gravação. `_limpar` os remove.
 
 Além disso, as colunas de identificadores recebem o formato de célula `@` (texto), para que o Excel nunca converta o material num número.
@@ -230,7 +232,7 @@ A planilha é gravada no modo *write-only* do openpyxl: cada linha vai direto pa
 
 @@codigo agente_btp/exportacao.py verificar_planilha
 
-A conferência recalcula, a partir dos mesmos resultados, o que **deveria** estar no arquivo e compara com o que **está** gravado, célula a célula, nas abas Dados, Materiais e Tabela de valores. Também acusa qualquer célula gravada como fórmula. O arquivo é aberto em modo somente leitura, que, segundo o comentário das linhas 476–477, reduziu a memória da conferência de cerca de 840 MB para 3 MB com 13 mil WOs. O teste `test_verificacao_detecta_excel_adulterado` altera uma célula do arquivo e confirma que a conferência acusa a diferença.
+A conferência recalcula, a partir dos mesmos resultados, o que **deveria** estar no arquivo e compara com o que **está** gravado, célula a célula, nas abas Dados, Materiais e Tabela de valores. Também acusa qualquer célula gravada como fórmula. O arquivo é aberto em modo somente leitura, que, segundo o comentário das linhas 501–502, reduziu a memória da conferência de cerca de 840 MB para 3 MB com 13 mil WOs. O teste `test_verificacao_detecta_excel_adulterado` altera uma célula do arquivo e confirma que a conferência acusa a diferença.
 
 ### 15.10 Como o usuário sabe que terminou e onde está o arquivo
 
@@ -238,7 +240,7 @@ A tela mostra o selo **Concluída** (ou "Concluída com ressalvas", "Concluída 
 
 ### 15.11 O histórico
 
-Cada análise é registrada em `historico/historico.json` desde o início (como "Em andamento") e atualizada ao final. A lista de WOs, que pode ter dezenas de milhares de itens, fica num arquivo próprio da análise (`historico/analises/<id>.json`), para que o histórico continue leve. A gravação é atômica e o histórico guarda até 300 análises (`LIMITE` em `historico.py`). O número da análise vem de `historico/contador.txt` e nunca se repete, mesmo depois de apagar o histórico.
+Cada análise é registrada em `historico/historico.json` desde o início (como "Em andamento") e atualizada ao final. A lista de WOs, que pode ter dezenas de milhares de itens, fica num arquivo próprio da análise (`historico/analises/<id>.json`), para que o histórico continue leve. A gravação é atômica e o histórico guarda até 300 análises (`LIMITE` em `historico.py`). O número da análise vem de `historico/contador.txt` e nunca se repete, mesmo depois de apagar o histórico. Se `historico.json` ficar ilegível, ele é guardado como `historico.corrompido-<data>.json` (com aviso no registro) antes de o histórico recomeçar: nada some sem rastro.
 
 ## 16. O papel de cada função e módulo importante {#cap16}
 

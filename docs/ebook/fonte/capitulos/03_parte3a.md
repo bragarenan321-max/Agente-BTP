@@ -65,13 +65,13 @@ O método que coloca comandos na fila é `enviar`. Um detalhe de projeto: para o
 
 ### 10.6 A criação do aplicativo web
 
-@@codigo agente_btp/servidor.py criar_app 47-58
+@@codigo agente_btp/servidor.py criar_app 53-63
 
 ::: leitura
-- **Linha 49** — lê o script da aba (`web/agente_btp.js`).
-- **Linha 50** — `sincronizar_extensao`: copia esse script para dentro da pasta `extensao/` se a cópia estiver diferente. A extensão leva sua própria cópia do script (o Chrome não permite que ela execute código baixado), e esta linha garante que a cópia corresponda ao programa aberto.
-- **Linhas 52–55** — calculam a **versão** do programa: uma impressão digital (SHA-1) de todos os arquivos `.py` do pacote e de todos os arquivos da pasta `web/`. Qualquer alteração em qualquer arquivo gera outra versão. A ponte guarda esse valor para detectar abas com script desatualizado.
-- **Linha 57** — limita o tamanho dos pedidos a 20 MB (importação de planilhas).
+- **Linha 55** — lê o script da aba (`web/agente_btp.js`).
+- **Linha 56** — `sincronizar_extensao`: copia esse script para dentro da pasta `extensao/` se a cópia estiver diferente. A extensão leva sua própria cópia do script (o Chrome não permite que ela execute código baixado), e esta linha garante que a cópia corresponda ao programa aberto. Se a cópia falhar (permissão, antivírus), o motivo vai para o registro (`logs/agente_btp.log`).
+- **Linhas 58–61** — calculam a **versão** do programa: uma impressão digital (SHA-1) de todos os arquivos `.py` do pacote e de todos os arquivos da pasta `web/`. Qualquer alteração em qualquer arquivo gera outra versão. A ponte guarda esse valor para detectar abas com script desatualizado.
+- **Linha 63** — limita o tamanho dos pedidos a 20 MB (importação de planilhas). Um arquivo maior recebe a resposta 413 em JSON, com a mensagem "Arquivo maior que 20 MB…", que a tela mostra (linhas 65–67).
 :::
 
 ### 10.7 Configurações ausentes ou inválidas
@@ -84,6 +84,8 @@ O método que coloca comandos na fila é `enviar`. Um detalhe de projeto: para o
 | Preferência fora da faixa permitida | Ajustada ao limite e registrada como problema | `preferencias.validar` |
 | Preferências da versão 1 com valores padrão antigos | Migradas para a política atual, com aviso no registro | `preferencias.migrar` |
 | `config/tabela_materiais.json` não existe | Planilha sem Tipo Material e sem valores ("-") | `materiais.carregar` |
+| `config/tabela_materiais.json` ilegível | Erro claro ("…está ilegível… Importe a tabela de novo em Configurações") na tela e na geração da planilha | `materiais.carregar` (`TabelaInvalida`) |
+| `historico/historico.json` ilegível | Guardado como `historico.corrompido-<data>.json` e aviso no registro; o histórico recomeça vazio | `historico._ler` |
 | Porta 8767 ocupada | O `.bat` encerra o processo que a ocupa antes de iniciar | `Abrir Agente BTP.bat`, linhas 6–7 |
 
 ### 10.8 Como o programa indica que está pronto
@@ -193,19 +195,30 @@ O trabalhador faz o ciclo descrito na [[fig:seq_consulta]] e trata três casos e
 
 Quando o script começa, ele se anuncia com `POST /api/agente/ola`. O servidor responde dizendo quantos trabalhadores abrir:
 
-@@trecho agente_btp/servidor.py 91 99 "rota /api/agente/ola"
+@@trecho agente_btp/servidor.py 114 122 "rota /api/agente/ola"
 
-O número é o **paralelismo** configurado (padrão 4), limitado a 6 pelo limite de conexões do navegador. A linha 95 também avisa o orquestrador de que uma aba se conectou (`aba_conectada`), o que dispara a preparação (se ainda não houver fonte) ou uma sonda de sessão.
+O número é o **paralelismo** configurado (padrão 4), limitado a 6 pelo limite de conexões do navegador. A linha 119 também avisa o orquestrador de que uma aba se conectou (`aba_conectada`), o que dispara a preparação (se ainda não houver fonte) ou uma sonda de sessão.
 
 ### 11.9 Proteções na comunicação
 
-@@trecho agente_btp/servidor.py 66 81 "CORS e verificação de origem"
+@@trecho agente_btp/servidor.py 89 104 "CORS e verificação de origem"
 
 ::: conceito
-**CORS e origem.** Por segurança, um navegador só permite que uma página de um site (origem) leia respostas de outro site se esse outro site autorizar explicitamente. A aba do BTP é de um site; o programa local (`127.0.0.1:8767`) é outro. As linhas 66–75 autorizam **apenas** a origem do Launchpad do BTP (`ORIGEM_SAP`), e apenas nas rotas do canal da aba. As linhas 77–81 vão além: toda rota do canal exige que o cabeçalho `Origin` do pedido seja exatamente a origem do BTP — e o navegador sempre preenche esse cabeçalho sozinho, sem que uma página possa falsificá-lo. Assim, outra página aberta no navegador não consegue se passar pela aba do BTP. Os cabeçalhos `Access-Control-Allow-Private-Network` e `Access-Control-Allow-Local-Network` atendem à política do Chrome que exige autorização para um site público acessar um endereço local.
+**CORS e origem.** Por segurança, um navegador só permite que uma página de um site (origem) leia respostas de outro site se esse outro site autorizar explicitamente. A aba do BTP é de um site; o programa local (`127.0.0.1:8767`) é outro. As linhas 89–98 autorizam **apenas** a origem do Launchpad do BTP (`ORIGEM_SAP`), e apenas nas rotas do canal da aba. As linhas 100–104 vão além: toda rota do canal exige que o cabeçalho `Origin` do pedido seja exatamente a origem do BTP — e o navegador sempre preenche esse cabeçalho sozinho, sem que uma página possa falsificá-lo. Assim, outra página aberta no navegador não consegue se passar pela aba do BTP. Os cabeçalhos `Access-Control-Allow-Private-Network` e `Access-Control-Allow-Local-Network` atendem à política do Chrome que exige autorização para um site público acessar um endereço local.
 :::
 
-### 11.10 Falha do agente ou falha do sistema externo?
+### 11.10 Proteção das rotas da tela
+
+O canal da aba tem a regra da seção anterior. As demais rotas — as da tela, como salvar configurações, iniciar ou parar uma análise e baixar planilhas — são protegidas por uma verificação feita **antes** de qualquer pedido ser atendido:
+
+@@trecho agente_btp/servidor.py 69 80 "proteção da API local"
+
+::: leitura
+- **Linhas 71–73** — o programa só atende pelo próprio endereço (`127.0.0.1` ou `localhost`). Isso bloqueia o *DNS rebinding*: a técnica em que uma página externa faz o próprio domínio apontar para 127.0.0.1 para, passando por "mesma origem", ler as respostas do programa (histórico, diagnóstico, planilhas).
+- **Linhas 76–80** — um pedido que altera algo (`POST`, `PUT`, `PATCH`, `DELETE`) fora do canal da aba só é aceito se o cabeçalho `Origin` for o próprio programa. Sem essa regra, outro site aberto no mesmo navegador conseguia, por exemplo, zerar as auditorias e esvaziar o filtro "Estoque indisponível" — o que foi reproduzido no Chromium na auditoria de 30/10/2026 (`docs/auditoria/relatorio-auditoria-2026-10-30.md`, erro E1). Pedidos sem `Origin` (scripts locais, testes) continuam aceitos, porque não vêm de uma página.
+:::
+
+### 11.11 Falha do agente ou falha do sistema externo?
 
 | Sintoma | Quem falhou | Como o agente sabe | O que faz |
 |---|---|---|---|
@@ -216,7 +229,7 @@ O número é o **paralelismo** configurado (padrão 4), limitado a 6 pelo limite
 | JSON inválido | Serviço devolveu algo inesperado | `odata.extrair_pagina` | Erro da consulta (`parse_falhou`) com evidência |
 | Exceção Python não prevista | O próprio agente | `except Exception` no motor | Falha do grupo com traceback (`excecao_app`); a análise continua |
 
-### 11.11 O estado "honesto" da conexão
+### 11.12 O estado "honesto" da conexão
 
 A tela não mostra "conectado" só porque a aba deu sinal de vida. A função `estado_conexao` distingue quatro situações:
 

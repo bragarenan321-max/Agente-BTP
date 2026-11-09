@@ -62,7 +62,7 @@ A tabela a seguir foi montada a partir de `preferencias.py` (classe `Preferencia
 **Se o arquivo estiver ausente ou ilegível:** `carregar` devolve os padrões (linhas 118–121). **Se um valor estiver fora da faixa:** é ajustado ao limite mais próximo e o problema é relatado à tela (Cap. 19.4). **Migração:** arquivos da versão 1 (5 auditorias fixas) são convertidos para a política atual, mas só quando o valor gravado era igual ao padrão antigo (`migrar`, linhas 99–109) — uma escolha explícita do usuário é preservada.
 
 ::: atencao
-O `README.md` do repositório ainda descreve "padrão 5" auditorias. Esse texto é anterior à versão 2 das preferências; o padrão **atual** é 2 (com escalonamento para até 5 leituras em caso de divergência). Ver Capítulo 30.
+O padrão **atual** é 2 auditorias, com escalonamento para até 5 leituras em caso de divergência. Versões antigas do `README.md` diziam "padrão 5"; o texto foi corrigido na auditoria de 30/10/2026.
 :::
 
 ### 22.4 Variável de ambiente
@@ -71,7 +71,7 @@ O `README.md` do repositório ainda descreve "padrão 5" auditorias. Esse texto 
 **Variável de ambiente** é um valor definido no sistema operacional, fora do programa, que o programa pode ler ao iniciar. Serve para mudar um comportamento sem editar o código.
 :::
 
-O agente lê uma única variável: `AGENTE_BTP_URL` (`config.py`, linhas 21–22). Ela contém o endereço do *launchpad* do SAP e é usada **apenas** para saber de qual site a aba conectada deve vir — o servidor deriva dele a origem permitida (`ORIGEM_SAP`, `servidor.py`, linha 22) e recusa chamadas de outras origens. O agente não abre esse endereço. Quando a variável não está definida, vale o endereço gravado no código, que **não** é reproduzido neste livro por ser um endereço interno da empresa; aqui ele é representado por `<endereço do launchpad>`.
+O agente lê uma única variável: `AGENTE_BTP_URL` (`config.py`, linhas 21–22). Ela contém o endereço do *launchpad* do SAP e é usada **apenas** para saber de qual site a aba conectada deve vir — o servidor deriva dele a origem permitida (`ORIGEM_SAP`, `servidor.py`, linha 23) e recusa chamadas de outras origens. O agente não abre esse endereço. Quando a variável não está definida, vale o endereço gravado no código, que **não** é reproduzido neste livro por ser um endereço interno da empresa; aqui ele é representado por `<endereço do launchpad>`.
 
 ### 22.5 Endereço e porta do programa
 
@@ -186,16 +186,17 @@ Os passos abaixo valem para o computador do usuário (Windows), com o navegador 
 | `test_analisador.py` | 12 | Interpretação de consultas observadas |
 | `test_materiais.py` | 10 | Tabela de valores, aba Materiais |
 | `test_historico.py` | 4 | Histórico e numeração |
-| **Total** | **162 funções** | O pytest conta **167** casos, porque alguns testes são parametrizados (rodam com vários dados) |
+| `test_auditoria_correcoes.py` | 15 | Correções da auditoria de 30/10/2026: proteção da API local, itens omitidos, arquivos ilegíveis, separadores de valor |
+| **Total** | **177 funções** | O pytest conta **196** casos, porque alguns testes são parametrizados (rodam com vários dados) |
 
 ### 24.3 Resultado da execução feita para este livro
 
 ::: evidencia
-Executado em 30/10/2026, sobre o commit `0a39d6c` (correção da regra "Estoque indisponível"), no ambiente Linux de produção do e-book (não no computador do usuário):
+Executado em 09/11/2026, sobre a `main` em `3a27f1e` (após as correções da auditoria), no ambiente Linux de produção do e-book (não no computador do usuário), com Python 3.13, Flask 3.1, openpyxl 3.1.5 e Chromium 153:
 
-- `python3 -m pytest -q testes` → **167 passed in 35.58s**.
+- `python3 -m pytest -q testes` → **196 passed in 33.97s**.
 - `testes/e2e/rodar_tela.py` (cópia limpa do projeto) → **136 verificações ok, 0 falharam**.
-- `testes/e2e/rodar_sessao.py` → **RESULTADO: OK** — a sessão caiu com 60 de 500 WOs validadas; 80 WOs em andamento voltaram para a fila e nenhuma virou falha; após o novo login a análise terminou com 500 validadas em 9,4 s.
+- `testes/e2e/rodar_sessao.py` → **RESULTADO: OK** — a sessão caiu com 60 de 500 WOs validadas; 80 WOs em andamento voltaram para a fila e nenhuma virou falha; após o novo login a análise terminou com 500 validadas em 8,7 s.
 - `testes/e2e/rodar_aba.py` → terminou sem erro (código de saída 0), incluindo a preparação pela aba e o apagamento de uma análise do histórico.
 - `testes/e2e/rodar_extensao.py` → terminou sem erro; selo "conectado" na aba sem clique.
 - `testes/e2e/rodar_combinacoes.py` **não** foi executado: exige como argumentos duas pastas de versões diferentes (programa e extensão).

@@ -417,7 +417,7 @@ O commit `8f69d6f` (22/10) resolve problemas que só apareciam com **13.623 WOs*
 
 Em 27/10, a primeira análise real de 13.623 WOs revelou que todas as WOs ficavam "incompletas". A seção 7 do relatório de correção mostra a causa — a fonte aprendida observando a tela era outra tabela (`RetornoDaBaixa`), com dois campos de quantidade — e a correção (`25ee8e5`): a receita confirmada passa a ter prioridade e configurações antigas são descartadas (`VERSAO_CONFIG = 6` em `agente_btp/config.py`).
 
-Os commits seguintes tratam de uso operacional: retomada em qualquer interrupção (`457e87a`), redesenho da interface com ajuda guiada (`35f0af6`, `4c4973c`, `cc02174`, `080d8de`, `2460ba6`), itens repetidos e células vazias com "-" (`b99c093`), tipo de material e tabela de valores (`b44a9e7`) e, por fim, a regra de listar na planilha apenas os itens "Estoque indisponível" (`1f16b17`, 29/10). Em 30/10, depois dos commits deste livro, essa regra foi revisada (`0a39d6c`): o Status passou a considerar só os itens da planilha, e a mensagem do item passou a ser lida em todas as leituras (Cap. 15.5).
+Os commits seguintes tratam de uso operacional: retomada em qualquer interrupção (`457e87a`), redesenho da interface com ajuda guiada (`35f0af6`, `4c4973c`, `cc02174`, `080d8de`, `2460ba6`), itens repetidos e células vazias com "-" (`b99c093`), tipo de material e tabela de valores (`b44a9e7`) e, por fim, a regra de listar na planilha apenas os itens "Estoque indisponível" (`1f16b17`, 29/10). Em 30/10, depois dos commits deste livro, essa regra foi revisada (`0a39d6c`): o Status passou a considerar só os itens da planilha, e a mensagem do item passou a ser lida em todas as leituras (Cap. 15.5). Em 02/11, uma auditoria técnica completa (`docs/auditoria/relatorio-auditoria-2026-10-30.md`) encontrou e corrigiu 10 problemas, entre eles a falta de proteção das rotas da tela contra outros sites (Caps. 11.10 e 30.2).
 
 ### 5.7 O que o histórico não permite saber
 
@@ -525,6 +525,8 @@ Agente-BTP/
 ├── config/
 │   └── api.exemplo.json
 ├── docs/
+│   ├── auditoria/
+│   │   └── relatorio-auditoria-2026-10-30.md
 │   ├── logo-agente-btp.svg
 │   ├── mapeamento-processo.md
 │   ├── relatorio-correcao-raiz.md
@@ -554,6 +556,7 @@ Agente-BTP/
 │   ├── test_agente.py
 │   ├── test_analisador.py
 │   ├── test_auditoria.py
+│   ├── test_auditoria_correcoes.py
 │   ├── test_execucao.py
 │   ├── test_historico.py
 │   ├── test_materiais.py
@@ -574,11 +577,11 @@ Agente-BTP/
 | `Abrir Agente BTP.bat` | Ponto de partida no Windows: prepara o ambiente e inicia o programa (Capítulo 9) |
 | `FAVORITO - Agente BTP.txt` | Instruções para criar o favorito que conecta a aba, quando a extensão não puder ser usada |
 | `README.md` | Instruções de uso, arquitetura resumida e a especificação original |
-| `requirements.txt` | Dependências Python: `flask>=3.0` e `openpyxl>=3.1` |
+| `requirements.txt` | Dependências Python: `flask>=3.0,<4` e `openpyxl>=3.1,<3.2` (limitadas à série testada) |
 | `.gitignore` | Lista do que não deve ir para o Git (dados locais, saídas, logs, configuração gerada) |
 
 ::: atencao
-O `README.md` está parcialmente desatualizado em relação ao código. Por exemplo, ele diz que cada WO é "conferida N vezes (padrão 5)", mas o padrão atual em `agente_btp/preferencias.py` é `auditorias_por_wo = 2`, com até 3 leituras extras em caso de divergência; também descreve um relatório com abas que mudaram (hoje: Dados, Materiais, Análise, Rastreio e Tabela de valores). Quando houver diferença, vale o código — e este livro descreve o código.
+O `README.md` está parcialmente desatualizado em relação ao código. O número de auditorias (padrão 2, com até 3 leituras extras em caso de divergência) foi corrigido na auditoria de 30/10/2026, mas o texto ainda descreve um relatório com abas que mudaram (hoje: Dados, Materiais, Análise, Rastreio e Tabela de valores). Quando houver diferença, vale o código — e este livro descreve o código.
 :::
 
 ### 7.2 Pasta `agente_btp/` — o programa
@@ -742,7 +745,7 @@ O ponto de partida é um script de lote do Windows. O `__main__.py` também tem 
 | Ferramenta | Tipo | Uso |
 |---|---|---|
 | Git | Controle de versão | Histórico de 39 commits |
-| pytest | Biblioteca de testes | 167 testes automáticos (Capítulo 24) |
+| pytest | Biblioteca de testes | 196 testes automáticos (Capítulo 24) |
 | Playwright + Chromium | Automação de navegador | Somente nos testes de ponta a ponta (`testes/e2e/`) — não é dependência do programa |
 | http.server | Biblioteca padrão | Servidores falsos do BTP nos testes (`testes/e2e/sap_falso.py`) |
 
@@ -1012,29 +1015,28 @@ O método que coloca comandos na fila é `enviar`. Um detalhe de projeto: para o
 ### 10.6 A criação do aplicativo web
 
 
-**Código-fonte — agente_btp/servidor.py · criar_app · linhas 47–58**
+**Código-fonte — agente_btp/servidor.py · criar_app · linhas 53–63**
 
 ```python
-  47  def criar_app(agente: Agente) -> Flask:
-  48      app = Flask(__name__)
-  49      codigo_agente = (PASTA_WEB / "agente_btp.js").read_text(encoding="utf-8")
-  50      sincronizar_extensao(codigo_agente)
-  51      # Versão = impressão digital de todo o programa: qualquer mudança gera outra versão.
-  52      digital = hashlib.sha1()
-  53      for arq in sorted(PASTA_WEB.parent.glob("*.py")) + sorted(PASTA_WEB.glob("*")):
-  54          digital.update(arq.read_bytes())
-  55      versao = digital.hexdigest()[:10]
-  56      agente.ponte.versao_agente = versao
-  57      app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
-  58  
+  53  def criar_app(agente: Agente) -> Flask:
+  54      app = Flask(__name__)
+  55      codigo_agente = (PASTA_WEB / "agente_btp.js").read_text(encoding="utf-8")
+  56      sincronizar_extensao(codigo_agente)
+  57      # Versão = impressão digital de todo o programa: qualquer mudança gera outra versão.
+  58      digital = hashlib.sha1()
+  59      for arq in sorted(PASTA_WEB.parent.glob("*.py")) + sorted(PASTA_WEB.glob("*")):
+  60          digital.update(arq.read_bytes())
+  61      versao = digital.hexdigest()[:10]
+  62      agente.ponte.versao_agente = versao
+  63      app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
 ```
 
 
 ::: leitura
-- **Linha 49** — lê o script da aba (`web/agente_btp.js`).
-- **Linha 50** — `sincronizar_extensao`: copia esse script para dentro da pasta `extensao/` se a cópia estiver diferente. A extensão leva sua própria cópia do script (o Chrome não permite que ela execute código baixado), e esta linha garante que a cópia corresponda ao programa aberto.
-- **Linhas 52–55** — calculam a **versão** do programa: uma impressão digital (SHA-1) de todos os arquivos `.py` do pacote e de todos os arquivos da pasta `web/`. Qualquer alteração em qualquer arquivo gera outra versão. A ponte guarda esse valor para detectar abas com script desatualizado.
-- **Linha 57** — limita o tamanho dos pedidos a 20 MB (importação de planilhas).
+- **Linha 55** — lê o script da aba (`web/agente_btp.js`).
+- **Linha 56** — `sincronizar_extensao`: copia esse script para dentro da pasta `extensao/` se a cópia estiver diferente. A extensão leva sua própria cópia do script (o Chrome não permite que ela execute código baixado), e esta linha garante que a cópia corresponda ao programa aberto. Se a cópia falhar (permissão, antivírus), o motivo vai para o registro (`logs/agente_btp.log`).
+- **Linhas 58–61** — calculam a **versão** do programa: uma impressão digital (SHA-1) de todos os arquivos `.py` do pacote e de todos os arquivos da pasta `web/`. Qualquer alteração em qualquer arquivo gera outra versão. A ponte guarda esse valor para detectar abas com script desatualizado.
+- **Linha 63** — limita o tamanho dos pedidos a 20 MB (importação de planilhas). Um arquivo maior recebe a resposta 413 em JSON, com a mensagem "Arquivo maior que 20 MB…", que a tela mostra (linhas 65–67).
 :::
 
 ### 10.7 Configurações ausentes ou inválidas
@@ -1047,6 +1049,8 @@ O método que coloca comandos na fila é `enviar`. Um detalhe de projeto: para o
 | Preferência fora da faixa permitida | Ajustada ao limite e registrada como problema | `preferencias.validar` |
 | Preferências da versão 1 com valores padrão antigos | Migradas para a política atual, com aviso no registro | `preferencias.migrar` |
 | `config/tabela_materiais.json` não existe | Planilha sem Tipo Material e sem valores ("-") | `materiais.carregar` |
+| `config/tabela_materiais.json` ilegível | Erro claro ("…está ilegível… Importe a tabela de novo em Configurações") na tela e na geração da planilha | `materiais.carregar` (`TabelaInvalida`) |
+| `historico/historico.json` ilegível | Guardado como `historico.corrompido-<data>.json` e aviso no registro; o histórico recomeça vazio | `historico._ler` |
 | Porta 8767 ocupada | O `.bat` encerra o processo que a ocupa antes de iniciar | `Abrir Agente BTP.bat`, linhas 6–7 |
 
 ### 10.8 Como o programa indica que está pronto
@@ -1350,53 +1354,81 @@ O trabalhador faz o ciclo descrito na Figura 11.2 e trata três casos especiais:
 Quando o script começa, ele se anuncia com `POST /api/agente/ola`. O servidor responde dizendo quantos trabalhadores abrir:
 
 
-**Código-fonte — agente_btp/servidor.py · rota /api/agente/ola · linhas 91–99**
+**Código-fonte — agente_btp/servidor.py · rota /api/agente/ola · linhas 114–122**
 
 ```python
-  91      @app.post("/api/agente/ola")
-  92      def agente_ola():
-  93          exigir_origem_sap()
-  94          dados = request.get_json(force=True, silent=True) or {}
-  95          agente.ponte.registrar_agente(str(dados.get("agente", "")), str(dados.get("pagina", "")))
-  96          agente.aba_conectada()
-  97          # Trabalhadores na aba = paralelismo configurado (até o limite de conexões do navegador).
-  98          paralelo = max(1, min(preferencias.carregar().concorrencia, LIMITE_TRABALHADORES_ABA))
-  99          return jsonify(ok=True, trabalhadores=paralelo)
+ 114      @app.post("/api/agente/ola")
+ 115      def agente_ola():
+ 116          exigir_origem_sap()
+ 117          dados = request.get_json(force=True, silent=True) or {}
+ 118          agente.ponte.registrar_agente(str(dados.get("agente", "")), str(dados.get("pagina", "")))
+ 119          agente.aba_conectada()
+ 120          # Trabalhadores na aba = paralelismo configurado (até o limite de conexões do navegador).
+ 121          paralelo = max(1, min(preferencias.carregar().concorrencia, LIMITE_TRABALHADORES_ABA))
+ 122          return jsonify(ok=True, trabalhadores=paralelo)
 ```
 
 
-O número é o **paralelismo** configurado (padrão 4), limitado a 6 pelo limite de conexões do navegador. A linha 95 também avisa o orquestrador de que uma aba se conectou (`aba_conectada`), o que dispara a preparação (se ainda não houver fonte) ou uma sonda de sessão.
+O número é o **paralelismo** configurado (padrão 4), limitado a 6 pelo limite de conexões do navegador. A linha 119 também avisa o orquestrador de que uma aba se conectou (`aba_conectada`), o que dispara a preparação (se ainda não houver fonte) ou uma sonda de sessão.
 
 ### 11.9 Proteções na comunicação
 
 
-**Código-fonte — agente_btp/servidor.py · CORS e verificação de origem · linhas 66–81**
+**Código-fonte — agente_btp/servidor.py · CORS e verificação de origem · linhas 89–104**
 
 ```python
-  66      @app.after_request
-  67      def cors(resposta):
-  68          if request.path == "/agente_btp.js" or request.path.startswith("/api/agente/"):
-  69              resposta.headers["Access-Control-Allow-Origin"] = ORIGEM_SAP
-  70              resposta.headers["Access-Control-Allow-Private-Network"] = "true"
-  71              resposta.headers["Access-Control-Allow-Local-Network"] = "true"
-  72              resposta.headers["Access-Control-Allow-Headers"] = "Content-Type"
-  73              resposta.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-  74              resposta.headers["Vary"] = "Origin"
-  75          return resposta
-  76  
-  77      def exigir_origem_sap():
-  78          # O navegador sempre envia Origin em pedidos de outra origem; nenhum outro
-  79          # site consegue se passar pela aba do SAP.
-  80          if request.headers.get("Origin") != ORIGEM_SAP:
-  81              abort(403)
+  89      @app.after_request
+  90      def cors(resposta):
+  91          if request.path == "/agente_btp.js" or request.path.startswith("/api/agente/"):
+  92              resposta.headers["Access-Control-Allow-Origin"] = ORIGEM_SAP
+  93              resposta.headers["Access-Control-Allow-Private-Network"] = "true"
+  94              resposta.headers["Access-Control-Allow-Local-Network"] = "true"
+  95              resposta.headers["Access-Control-Allow-Headers"] = "Content-Type"
+  96              resposta.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+  97              resposta.headers["Vary"] = "Origin"
+  98          return resposta
+  99  
+ 100      def exigir_origem_sap():
+ 101          # O navegador sempre envia Origin em pedidos de outra origem; nenhum outro
+ 102          # site consegue se passar pela aba do SAP.
+ 103          if request.headers.get("Origin") != ORIGEM_SAP:
+ 104              abort(403)
 ```
 
 
 ::: conceito
-**CORS e origem.** Por segurança, um navegador só permite que uma página de um site (origem) leia respostas de outro site se esse outro site autorizar explicitamente. A aba do BTP é de um site; o programa local (`127.0.0.1:8767`) é outro. As linhas 66–75 autorizam **apenas** a origem do Launchpad do BTP (`ORIGEM_SAP`), e apenas nas rotas do canal da aba. As linhas 77–81 vão além: toda rota do canal exige que o cabeçalho `Origin` do pedido seja exatamente a origem do BTP — e o navegador sempre preenche esse cabeçalho sozinho, sem que uma página possa falsificá-lo. Assim, outra página aberta no navegador não consegue se passar pela aba do BTP. Os cabeçalhos `Access-Control-Allow-Private-Network` e `Access-Control-Allow-Local-Network` atendem à política do Chrome que exige autorização para um site público acessar um endereço local.
+**CORS e origem.** Por segurança, um navegador só permite que uma página de um site (origem) leia respostas de outro site se esse outro site autorizar explicitamente. A aba do BTP é de um site; o programa local (`127.0.0.1:8767`) é outro. As linhas 89–98 autorizam **apenas** a origem do Launchpad do BTP (`ORIGEM_SAP`), e apenas nas rotas do canal da aba. As linhas 100–104 vão além: toda rota do canal exige que o cabeçalho `Origin` do pedido seja exatamente a origem do BTP — e o navegador sempre preenche esse cabeçalho sozinho, sem que uma página possa falsificá-lo. Assim, outra página aberta no navegador não consegue se passar pela aba do BTP. Os cabeçalhos `Access-Control-Allow-Private-Network` e `Access-Control-Allow-Local-Network` atendem à política do Chrome que exige autorização para um site público acessar um endereço local.
 :::
 
-### 11.10 Falha do agente ou falha do sistema externo?
+### 11.10 Proteção das rotas da tela
+
+O canal da aba tem a regra da seção anterior. As demais rotas — as da tela, como salvar configurações, iniciar ou parar uma análise e baixar planilhas — são protegidas por uma verificação feita **antes** de qualquer pedido ser atendido:
+
+
+**Código-fonte — agente_btp/servidor.py · proteção da API local · linhas 69–80**
+
+```python
+  69      @app.before_request
+  70      def proteger_api_local():
+  71          # 1) Só pelo próprio endereço (127.0.0.1/localhost): bloqueia DNS rebinding.
+  72          if (request.host or "").rsplit(":", 1)[0].strip("[]").lower() not in HOSTS_LOCAIS:
+  73              abort(403)
+  74          # 2) Pedidos que alteram algo só da própria tela (ou sem navegador). O canal da aba
+  75          #    (/api/agente/*) tem regra própria: exige a origem do SAP (exigir_origem_sap).
+  76          origem = request.headers.get("Origin")
+  77          if (request.method in METODOS_QUE_ALTERAM and origem is not None
+  78                  and not request.path.startswith("/api/agente/")
+  79                  and (urlsplit(origem).hostname or "") not in HOSTS_LOCAIS):
+  80              abort(403)
+```
+
+
+::: leitura
+- **Linhas 71–73** — o programa só atende pelo próprio endereço (`127.0.0.1` ou `localhost`). Isso bloqueia o *DNS rebinding*: a técnica em que uma página externa faz o próprio domínio apontar para 127.0.0.1 para, passando por "mesma origem", ler as respostas do programa (histórico, diagnóstico, planilhas).
+- **Linhas 76–80** — um pedido que altera algo (`POST`, `PUT`, `PATCH`, `DELETE`) fora do canal da aba só é aceito se o cabeçalho `Origin` for o próprio programa. Sem essa regra, outro site aberto no mesmo navegador conseguia, por exemplo, zerar as auditorias e esvaziar o filtro "Estoque indisponível" — o que foi reproduzido no Chromium na auditoria de 30/10/2026 (`docs/auditoria/relatorio-auditoria-2026-10-30.md`, erro E1). Pedidos sem `Origin` (scripts locais, testes) continuam aceitos, porque não vêm de uma página.
+:::
+
+### 11.11 Falha do agente ou falha do sistema externo?
 
 | Sintoma | Quem falhou | Como o agente sabe | O que faz |
 |---|---|---|---|
@@ -1407,7 +1439,7 @@ O número é o **paralelismo** configurado (padrão 4), limitado a 6 pelo limite
 | JSON inválido | Serviço devolveu algo inesperado | `odata.extrair_pagina` | Erro da consulta (`parse_falhou`) com evidência |
 | Exceção Python não prevista | O próprio agente | `except Exception` no motor | Falha do grupo com traceback (`excecao_app`); a análise continua |
 
-### 11.11 O estado "honesto" da conexão
+### 11.12 O estado "honesto" da conexão
 
 A tela não mostra "conectado" só porque a aba deu sinal de vida. A função `estado_conexao` distingue quatro situações:
 
@@ -2718,42 +2750,50 @@ O resultado é uma planilha Excel que precisa ser, ao mesmo tempo, **fácil de u
 ### 15.4 As regras de preenchimento da aba Dados
 
 
-**Código-fonte — agente_btp/exportacao.py · _linhas_dados · linhas 213–237**
+**Código-fonte — agente_btp/exportacao.py · _linhas_dados · linhas 228–260**
 
 ```python
- 213  def _linhas_dados(resultados, exportar_incompletos=True, tabela=None, filtro=FILTRO_PADRAO):
- 214      """[(linha, destacar)]: destaca a Observação só quando há algo a conferir no BTP."""
- 215      saida = []
- 216      for r in resultados:
- 217          estado = estado_rotulo(r, filtro)
- 218          planilha, outros = _itens_da_wo(r, exportar_incompletos, filtro)
- 219          extra = nota_outros(outros, filtro) if outros else ""
- 220          for i, (l, n) in enumerate(planilha):
- 221              conferir = observacao_item(l)
- 222              obs = "; ".join(o for o in (conferir, NOTA_REPETIDO.format(n=n) if n > 1 else "",
- 223                                          extra if i == 0 else "") if o)
- 224              saida.append((_preencher([l.wo, l.material, _tipo(tabela, l.material), l.fornecedor,
- 225                                        l.quantidade_faltante, l.mensagem, obs, estado]), bool(conferir)))
- 226          if not planilha:
- 227              obs = SITUACAO[r.status]
- 228              if outros:
- 229                  obs = f"Nenhum item com \"{filtro}\". " + extra
- 230              elif r.linhas:   # havia itens, mas não validados e a exportação deles está desligada
- 231                  obs = f"{len(r.linhas)} item(ns) com divergência omitido(s): conferir no BTP"
- 232              elif r.status is Status.NAO_PROCESSADA:
- 233                  obs = r.observacao or obs
- 234              elif r.status in STATUS_FALHA and r.observacao and r.observacao != "OK":
- 235                  obs = f"{obs} ({r.observacao})"
- 236              saida.append((_preencher([r.wo, None, None, None, None, None, obs, estado]), False))
- 237      return saida
+ 228  def _linhas_dados(resultados, exportar_incompletos=True, tabela=None, filtro=FILTRO_PADRAO):
+ 229      """[(linha, destacar)]: destaca a Observação só quando há algo a conferir no BTP."""
+ 230      saida = []
+ 231      for r in resultados:
+ 232          estado = estado_rotulo(r, filtro)
+ 233          planilha, outros = _itens_da_wo(r, exportar_incompletos, filtro)
+ 234          extra = nota_outros(outros, filtro) if outros else ""
+ 235          for i, (l, n) in enumerate(planilha):
+ 236              conferir = observacao_item(l)
+ 237              obs = "; ".join(o for o in (conferir, NOTA_REPETIDO.format(n=n) if n > 1 else "",
+ 238                                          extra if i == 0 else "") if o)
+ 239              saida.append((_preencher([l.wo, l.material, _tipo(tabela, l.material), l.fornecedor,
+ 240                                        l.quantidade_faltante, l.mensagem, obs, estado]), bool(conferir)))
+ 241          if not planilha:
+ 242              obs, conferir = SITUACAO[r.status], False
+ 243              omit_filtro, omit_outros = _omitidos(r, exportar_incompletos, filtro)
+ 244              sobra = (f" {len(omit_outros)} item(ns) de outra mensagem não validado(s) omitido(s)."
+ 245                       if omit_outros else "")
+ 246              if omit_filtro:     # o item do filtro EXISTE: só foi omitido (exportação de não validados desligada)
+ 247                  conferir = True
+ 248                  rotulo = f" \"{filtro}\"" if filtro else ""
+ 249                  obs = (f"{len(omit_filtro)} item(ns){rotulo} não validado(s) omitido(s) (exportação de não "
+ 250                         f"validados desligada): conferir no BTP." + (" " + extra if extra else "") + sobra)
+ 251              elif outros:
+ 252                  obs = f"Nenhum item com \"{filtro}\". " + extra + sobra
+ 253              elif omit_outros:
+ 254                  obs = f"Nenhum item com \"{filtro}\"." + sobra
+ 255              elif r.status is Status.NAO_PROCESSADA:
+ 256                  obs = r.observacao or obs
+ 257              elif r.status in STATUS_FALHA and r.observacao and r.observacao != "OK":
+ 258                  obs = f"{obs} ({r.observacao})"
+ 259              saida.append((_preencher([r.wo, None, None, None, None, None, obs, estado]), conferir))
+ 260      return saida
 ```
 
 
 ::: leitura
-- **Linha 218** — separa os itens da WO em "vão para a planilha" e "outros" (`_itens_da_wo`), já sem as cópias idênticas.
-- **Linha 219** — os "outros" viram uma nota: "Outros itens no BTP, fora da planilha (mensagem diferente de "Estoque indisponível"): <material> (qtd N): <mensagem>; ...".
-- **Linhas 220–225** — cada item vira uma linha. A Observação junta, nesta ordem: o que precisa ser conferido no BTP (`observacao_item`), a nota de repetição e — só na primeira linha da WO — a nota dos outros itens. O segundo valor da tupla (`bool(conferir)`) diz se a célula de Observação deve ser destacada em amarelo: só quando há algo a conferir.
-- **Linhas 226–236** — WO sem nenhum item na planilha: uma linha com "-" nas colunas de item e a explicação (sem alerta no Monitor; nenhum item com a mensagem do filtro; falha de consulta com o motivo; pendente...).
+- **Linha 233** — separa os itens da WO em "vão para a planilha" e "outros" (`_itens_da_wo`), já sem as cópias idênticas.
+- **Linha 234** — os "outros" viram uma nota: "Outros itens no BTP, fora da planilha (mensagem diferente de "Estoque indisponível"): <material> (qtd N): <mensagem>; ...".
+- **Linhas 235–240** — cada item vira uma linha. A Observação junta, nesta ordem: o que precisa ser conferido no BTP (`observacao_item`), a nota de repetição e — só na primeira linha da WO — a nota dos outros itens. O segundo valor da tupla (`bool(conferir)`) diz se a célula de Observação deve ser destacada em amarelo: só quando há algo a conferir.
+- **Linhas 241–259** — WO sem nenhum item na planilha: uma linha com "-" nas colunas de item e a explicação (sem alerta no Monitor; nenhum item com a mensagem do filtro; falha de consulta com o motivo; pendente...). Quando a opção "Exportar resultados não validados" está **desligada**, a linha 243 separa os itens não validados que ficaram de fora (`_omitidos`): se algum deles tem a mensagem do filtro, a Observação diz "N item(ns) "Estoque indisponível" não validado(s) omitido(s)… conferir no BTP", com destaque amarelo (linhas 246–250), e **nunca** "Nenhum item com…" — o item existe, só não foi exportado. Antes da auditoria de 30/10/2026, essa WO era descrita como se não tivesse o item (erro E3 do relatório).
 - `_preencher` troca todo valor vazio por "-": nenhuma célula da aba Dados fica em branco.
 :::
 
@@ -2809,89 +2849,91 @@ Medição feita sobre as linhas da planilha real de 13.623 WOs enviada pelo usu�
 ### 15.6 A aba Materiais e a tabela de valores
 
 
-**Código-fonte — agente_btp/exportacao.py · linhas_materiais · linhas 261–297**
+**Código-fonte — agente_btp/exportacao.py · linhas_materiais · linhas 284–320**
 
 ```python
- 261  def linhas_materiais(itens: list[LinhaMensagem], tabela: TabelaMateriais | None) -> tuple[list[list], list]:
- 262      """Aba Materiais: um material SAP por linha (todas as WOs juntas) e a linha de total.
- 263  
- 264      Quantidade total = soma da quantidade faltante dos itens CONFERIDOS (os mesmos da aba Dados,
- 265      sem as cópias). Item não conferido ou sem quantidade fica fora da soma e é avisado.
- 266      Valor total = quantidade total × valor unitário da tabela. Sem valor na tabela: "-"."""
- 267      grupos: dict[str, list[LinhaMensagem]] = OrderedDict()
- 268      for l in itens:
- 269          if l.material:
- 270              grupos.setdefault(chave_material(l.material), []).append(l)
- 271      linhas = []
- 272      for ls in grupos.values():
- 273          somados = [l for l in ls if l.auditoria is Auditoria.VALIDADO and l.quantidade_faltante is not None]
- 274          quantidade = sum((_decimal(l.quantidade_faltante) for l in somados), Decimal(0)) if somados else None
- 275          achado = tabela.buscar(ls[0].material) if tabela else None
- 276          unitario = achado.unitario if achado else None
- 277          total = quantidade * unitario if quantidade is not None and unitario is not None else None
- 278          obs = []
- 279          if tabela is None:
- 280              obs.append("Tabela de valores não importada (Configurações)")
- 281          elif achado is None:
- 282              obs.append("Material fora da tabela de valores")
- 283          elif unitario is None:
- 284              obs.append("Sem valor unitário na tabela de valores")
- 285          fora = len(ls) - len(somados)
- 286          if fora:
- 287              obs.append(f"{fora} item(ns) não conferido(s) fora da soma: conferir no BTP")
- 288          linhas.append(_preencher([ls[0].material, achado.tipo if achado else None,
- 289                                    None if quantidade is None else _numero(quantidade),
- 290                                    None if total is None else _numero(total),
- 291                                    None if unitario is None else _numero(unitario), "; ".join(obs) + ("." if obs else "")]))
- 292      linhas.sort(key=lambda l: (l[3] == SEM_INFO, -(l[3] if l[3] != SEM_INFO else 0), l[0]))
- 293      sem_valor = sum(1 for l in linhas if l[3] == SEM_INFO)
- 294      soma = sum((_decimal(l[3]) for l in linhas if l[3] != SEM_INFO), Decimal(0))
- 295      total = _preencher(["Total", None, None, _numero(soma) if len(linhas) > sem_valor else None, None,
- 296                          f"{sem_valor} material(is) sem valor ficaram fora do total." if sem_valor else None])
- 297      return linhas, total
+ 284  def linhas_materiais(itens: list[LinhaMensagem], tabela: TabelaMateriais | None) -> tuple[list[list], list]:
+ 285      """Aba Materiais: um material SAP por linha (todas as WOs juntas) e a linha de total.
+ 286  
+ 287      Quantidade total = soma da quantidade faltante dos itens CONFERIDOS (os mesmos da aba Dados,
+ 288      sem as cópias). Item não conferido ou sem quantidade fica fora da soma e é avisado.
+ 289      Valor total = quantidade total × valor unitário da tabela. Sem valor na tabela: "-"."""
+ 290      grupos: dict[str, list[LinhaMensagem]] = OrderedDict()
+ 291      for l in itens:
+ 292          if l.material:
+ 293              grupos.setdefault(chave_material(l.material), []).append(l)
+ 294      linhas = []
+ 295      for ls in grupos.values():
+ 296          somados = [l for l in ls if l.auditoria is Auditoria.VALIDADO and l.quantidade_faltante is not None]
+ 297          quantidade = sum((_decimal(l.quantidade_faltante) for l in somados), Decimal(0)) if somados else None
+ 298          achado = tabela.buscar(ls[0].material) if tabela else None
+ 299          unitario = achado.unitario if achado else None
+ 300          total = quantidade * unitario if quantidade is not None and unitario is not None else None
+ 301          obs = []
+ 302          if tabela is None:
+ 303              obs.append("Tabela de valores não importada (Configurações)")
+ 304          elif achado is None:
+ 305              obs.append("Material fora da tabela de valores")
+ 306          elif unitario is None:
+ 307              obs.append("Sem valor unitário na tabela de valores")
+ 308          fora = len(ls) - len(somados)
+ 309          if fora:
+ 310              obs.append(f"{fora} item(ns) não conferido(s) fora da soma: conferir no BTP")
+ 311          linhas.append(_preencher([ls[0].material, achado.tipo if achado else None,
+ 312                                    None if quantidade is None else _numero(quantidade),
+ 313                                    None if total is None else _numero(total),
+ 314                                    None if unitario is None else _numero(unitario), "; ".join(obs) + ("." if obs else "")]))
+ 315      linhas.sort(key=lambda l: (l[3] == SEM_INFO, -(l[3] if l[3] != SEM_INFO else 0), l[0]))
+ 316      sem_valor = sum(1 for l in linhas if l[3] == SEM_INFO)
+ 317      soma = sum((_decimal(l[3]) for l in linhas if l[3] != SEM_INFO), Decimal(0))
+ 318      total = _preencher(["Total", None, None, _numero(soma) if len(linhas) > sem_valor else None, None,
+ 319                          f"{sem_valor} material(is) sem valor ficaram fora do total." if sem_valor else None])
+ 320      return linhas, total
 ```
 
 
 ::: leitura
-- **Linhas 267–270** — agrupa os itens pelo **número** do material (`chave_material`: `000000000022056365` e `22056365` são o mesmo material).
-- **Linhas 273–274** — a quantidade total soma só os itens **validados** e com quantidade. Item não conferido fica fora da soma, e a Observação avisa ("1 item(ns) não conferido(s) fora da soma: conferir no BTP").
-- **Linhas 275–277** — o valor unitário vem da tabela importada; o valor total é quantidade × unitário, calculado com `Decimal` (exato).
-- **Linhas 279–284** — material fora da tabela, ou sem preço, ou tabela não importada: "-" e o motivo.
-- **Linha 292** — ordena pelo maior valor total; materiais sem valor ficam no fim.
-- **Linhas 293–296** — a linha Total soma os valores conhecidos e informa quantos materiais ficaram fora.
+- **Linhas 290–293** — agrupa os itens pelo **número** do material (`chave_material`: `000000000022056365` e `22056365` são o mesmo material).
+- **Linhas 296–297** — a quantidade total soma só os itens **validados** e com quantidade. Item não conferido fica fora da soma, e a Observação avisa ("1 item(ns) não conferido(s) fora da soma: conferir no BTP").
+- **Linhas 298–300** — o valor unitário vem da tabela importada; o valor total é quantidade × unitário, calculado com `Decimal` (exato).
+- **Linhas 302–307** — material fora da tabela, ou sem preço, ou tabela não importada: "-" e o motivo.
+- **Linha 315** — ordena pelo maior valor total; materiais sem valor ficam no fim.
+- **Linhas 316–319** — a linha Total soma os valores conhecidos e informa quantos materiais ficaram fora.
 :::
 
 A tabela de valores é importada em Configurações (rota `POST /api/materiais/tabela`). O módulo `materiais.py` procura no cabeçalho as colunas **Material**, **Texto breve material** (vira o Tipo Material) e **Unitário**, recusa a importação se o mesmo material aparecer com tipo ou valor diferentes e guarda o resultado em `config/tabela_materiais.json`, gravado de forma atômica (arquivo temporário + substituição).
 
+O valor unitário de uma célula numérica é usado como está. Quando o valor vem **digitado como texto**, `materiais._valor` decide os separadores: com ponto e vírgula juntos, o último é o decimal (`1.500,25` e `1,234.56`); só com pontos em grupos de três dígitos, é milhar no padrão brasileiro (`1.500` = mil e quinhentos); `0,13` e `12.5` continuam decimais. Se o arquivo gravado da tabela ficar ilegível, `materiais.carregar` informa "…está ilegível… Importe a tabela de novo em Configurações", na tela e na geração da planilha, em vez de uma mensagem técnica.
+
 ### 15.7 Gravar sem interpretar
 
 
-**Código-fonte — agente_btp/exportacao.py · _celula · linhas 527–543**
+**Código-fonte — agente_btp/exportacao.py · _celula · linhas 552–568**
 
 ```python
- 527  def _celula(ws, valor, fonte=None, fundo=None, alinhamento=None, borda=None, formato=None) -> WriteOnlyCell:
- 528      """Uma célula gravada SEM interpretar nada: texto que começa com "=" fica texto (nunca
- 529      fórmula); caracteres de controle que o .xlsx não aceita são removidos."""
- 530      c = WriteOnlyCell(ws, value=_limpar(valor))
- 531      if isinstance(c.value, str) and c.data_type == "f":
- 532          c.data_type = "s"
- 533      if fonte:
- 534          c.font = fonte
- 535      if fundo:
- 536          c.fill = fundo
- 537      if alinhamento:
- 538          c.alignment = alinhamento
- 539      if borda:
- 540          c.border = borda
- 541      if formato:
- 542          c.number_format = formato
- 543      return c
+ 552  def _celula(ws, valor, fonte=None, fundo=None, alinhamento=None, borda=None, formato=None) -> WriteOnlyCell:
+ 553      """Uma célula gravada SEM interpretar nada: texto que começa com "=" fica texto (nunca
+ 554      fórmula); caracteres de controle que o .xlsx não aceita são removidos."""
+ 555      c = WriteOnlyCell(ws, value=_limpar(valor))
+ 556      if isinstance(c.value, str) and c.data_type == "f":
+ 557          c.data_type = "s"
+ 558      if fonte:
+ 559          c.font = fonte
+ 560      if fundo:
+ 561          c.fill = fundo
+ 562      if alinhamento:
+ 563          c.alignment = alinhamento
+ 564      if borda:
+ 565          c.border = borda
+ 566      if formato:
+ 567          c.number_format = formato
+ 568      return c
 ```
 
 
 Duas proteções em poucas linhas:
 
-1. Um texto que começa com `=` seria interpretado pelo Excel como **fórmula**. A linha 531 detecta esse caso e força o tipo "texto". O teste `test_texto_com_igual_e_controle_nao_vira_formula_nem_quebra` verifica com a mensagem `"=> Saldo insuficiente (-2)"`.
+1. Um texto que começa com `=` seria interpretado pelo Excel como **fórmula**. A linha 556 detecta esse caso e força o tipo "texto". O teste `test_texto_com_igual_e_controle_nao_vira_formula_nem_quebra` verifica com a mensagem `"=> Saldo insuficiente (-2)"`.
 2. Caracteres de controle que o formato `.xlsx` não aceita (por exemplo, uma tabulação vertical vinda do BTP) derrubariam a gravação. `_limpar` os remove.
 
 Além disso, as colunas de identificadores recebem o formato de célula `@` (texto), para que o Excel nunca converta o material num número.
@@ -2903,37 +2945,37 @@ A planilha é gravada no modo *write-only* do openpyxl: cada linha vai direto pa
 ### 15.9 A conferência depois de gravar
 
 
-**Código-fonte — agente_btp/exportacao.py · verificar_planilha · linhas 469–492**
+**Código-fonte — agente_btp/exportacao.py · verificar_planilha · linhas 494–517**
 
 ```python
- 469  def verificar_planilha(destino: str | Path, resultados: list[ResultadoWO],
- 470                         exportar_incompletos: bool = True, tabela: TabelaMateriais | None = None,
- 471                         filtro: str | None = FILTRO_PADRAO) -> list[str]:
- 472      """Reabre o arquivo gravado e confere as abas Dados e Materiais, célula a célula."""
- 473      esperadas = linhas_dados(resultados, exportar_incompletos, tabela, filtro)
- 474      itens = itens_planilha(resultados, exportar_incompletos, filtro)
- 475      mats, total = linhas_materiais(itens, tabela)
- 476      # Somente leitura: lê célula a célula sem montar a planilha inteira na memória (13 mil WOs:
- 477      # 3 MB em vez de ~840 MB) e ainda informa o TIPO de cada célula (fórmula = "f").
- 478      wb = load_workbook(destino, read_only=True)
- 479      try:
- 480          if wb.sheetnames != ABAS:
- 481              return [f"Abas fora da ordem esperada: {wb.sheetnames}"]
- 482          problemas: list[str] = []
- 483          dados = _ler_aba(wb[ABAS[0]], len(COLUNAS_DADOS), problemas)
- 484          materiais = _ler_aba(wb[ABAS[1]], len(COLUNAS_MATERIAIS), problemas)
- 485          tabela_gravada = _ler_aba(wb[ABAS[4]], len(COLUNAS_TABELA), problemas)
- 486      finally:
- 487          wb.close()
- 488      problemas += _comparar("Dados", COLUNAS_DADOS, dados, esperadas)
- 489      problemas += _comparar("Materiais", COLUNAS_MATERIAIS, materiais,
- 490                             mats + ([[None] * len(COLUNAS_MATERIAIS), total]))
- 491      problemas += _comparar("Tabela de valores", COLUNAS_TABELA, tabela_gravada, linhas_tabela(tabela))
- 492      return problemas
+ 494  def verificar_planilha(destino: str | Path, resultados: list[ResultadoWO],
+ 495                         exportar_incompletos: bool = True, tabela: TabelaMateriais | None = None,
+ 496                         filtro: str | None = FILTRO_PADRAO) -> list[str]:
+ 497      """Reabre o arquivo gravado e confere as abas Dados e Materiais, célula a célula."""
+ 498      esperadas = linhas_dados(resultados, exportar_incompletos, tabela, filtro)
+ 499      itens = itens_planilha(resultados, exportar_incompletos, filtro)
+ 500      mats, total = linhas_materiais(itens, tabela)
+ 501      # Somente leitura: lê célula a célula sem montar a planilha inteira na memória (13 mil WOs:
+ 502      # 3 MB em vez de ~840 MB) e ainda informa o TIPO de cada célula (fórmula = "f").
+ 503      wb = load_workbook(destino, read_only=True)
+ 504      try:
+ 505          if wb.sheetnames != ABAS:
+ 506              return [f"Abas fora da ordem esperada: {wb.sheetnames}"]
+ 507          problemas: list[str] = []
+ 508          dados = _ler_aba(wb[ABAS[0]], len(COLUNAS_DADOS), problemas)
+ 509          materiais = _ler_aba(wb[ABAS[1]], len(COLUNAS_MATERIAIS), problemas)
+ 510          tabela_gravada = _ler_aba(wb[ABAS[4]], len(COLUNAS_TABELA), problemas)
+ 511      finally:
+ 512          wb.close()
+ 513      problemas += _comparar("Dados", COLUNAS_DADOS, dados, esperadas)
+ 514      problemas += _comparar("Materiais", COLUNAS_MATERIAIS, materiais,
+ 515                             mats + ([[None] * len(COLUNAS_MATERIAIS), total]))
+ 516      problemas += _comparar("Tabela de valores", COLUNAS_TABELA, tabela_gravada, linhas_tabela(tabela))
+ 517      return problemas
 ```
 
 
-A conferência recalcula, a partir dos mesmos resultados, o que **deveria** estar no arquivo e compara com o que **está** gravado, célula a célula, nas abas Dados, Materiais e Tabela de valores. Também acusa qualquer célula gravada como fórmula. O arquivo é aberto em modo somente leitura, que, segundo o comentário das linhas 476–477, reduziu a memória da conferência de cerca de 840 MB para 3 MB com 13 mil WOs. O teste `test_verificacao_detecta_excel_adulterado` altera uma célula do arquivo e confirma que a conferência acusa a diferença.
+A conferência recalcula, a partir dos mesmos resultados, o que **deveria** estar no arquivo e compara com o que **está** gravado, célula a célula, nas abas Dados, Materiais e Tabela de valores. Também acusa qualquer célula gravada como fórmula. O arquivo é aberto em modo somente leitura, que, segundo o comentário das linhas 501–502, reduziu a memória da conferência de cerca de 840 MB para 3 MB com 13 mil WOs. O teste `test_verificacao_detecta_excel_adulterado` altera uma célula do arquivo e confirma que a conferência acusa a diferença.
 
 ### 15.10 Como o usuário sabe que terminou e onde está o arquivo
 
@@ -2941,7 +2983,7 @@ A tela mostra o selo **Concluída** (ou "Concluída com ressalvas", "Concluída 
 
 ### 15.11 O histórico
 
-Cada análise é registrada em `historico/historico.json` desde o início (como "Em andamento") e atualizada ao final. A lista de WOs, que pode ter dezenas de milhares de itens, fica num arquivo próprio da análise (`historico/analises/<id>.json`), para que o histórico continue leve. A gravação é atômica e o histórico guarda até 300 análises (`LIMITE` em `historico.py`). O número da análise vem de `historico/contador.txt` e nunca se repete, mesmo depois de apagar o histórico.
+Cada análise é registrada em `historico/historico.json` desde o início (como "Em andamento") e atualizada ao final. A lista de WOs, que pode ter dezenas de milhares de itens, fica num arquivo próprio da análise (`historico/analises/<id>.json`), para que o histórico continue leve. A gravação é atômica e o histórico guarda até 300 análises (`LIMITE` em `historico.py`). O número da análise vem de `historico/contador.txt` e nunca se repete, mesmo depois de apagar o histórico. Se `historico.json` ficar ilegível, ele é guardado como `historico.corrompido-<data>.json` (com aviso no registro) antes de o histórico recomeçar: nada some sem rastro.
 
 ## 16. O papel de cada função e módulo importante {#cap16}
 
@@ -3180,7 +3222,7 @@ No Agente BTP, as constantes concentram os números que governam o comportamento
 | `GRUPOS_VERIFICADOS_POR_INTEIRO` | `motor.py`, linha 36 | 3 | Grupos de lote conferidos WO a WO contra a consulta individual |
 | `LIMITE_TRABALHADORES_ABA` | `ponte.py`, linha 29 | 6 | Consultas simultâneas máximas dentro da aba |
 | `VERSAO_CONFIG` | `config.py` | 6 | Versão mínima aceita da fonte gravada |
-| `LIMITE` | `historico.py`, linha 17 | 300 | Análises guardadas no histórico |
+| `LIMITE` | `historico.py`, linha 19 | 300 | Análises guardadas no histórico |
 | `FILTRO_PADRAO` | `exportacao.py`, linha 167 | "Estoque indisponível" | Mensagem padrão dos itens da planilha |
 
 ::: atencao
@@ -3347,17 +3389,17 @@ Uma **exceção** é a forma de um trecho de código avisar "não consegui conti
 | Registro de eventos | `__main__.configurar_log` | Arquivo `logs/agente_btp.log`, nunca na janela preta |
 | Relatório | `exportacao.gerar_planilha` | `.xlsx` em `saidas/` |
 
-O padrão de gravação atômica aparece em três módulos. Em `historico.py`, linhas 38–42:
+O padrão de gravação atômica aparece em três módulos. Em `historico.py`, linhas 52–56:
 
 
-**Código-fonte — agente_btp/historico.py · gravação atômica · linhas 38–42**
+**Código-fonte — agente_btp/historico.py · gravação atômica · linhas 52–56**
 
 ```python
-  38  def _gravar(caminho: Path, dados) -> None:
-  39      caminho.parent.mkdir(parents=True, exist_ok=True)
-  40      tmp = caminho.with_suffix(".tmp")
-  41      tmp.write_text(json.dumps(dados, ensure_ascii=False, indent=1), encoding="utf-8")
-  42      tmp.replace(caminho)
+  52  def _gravar(caminho: Path, dados) -> None:
+  53      caminho.parent.mkdir(parents=True, exist_ok=True)
+  54      tmp = caminho.with_suffix(".tmp")
+  55      tmp.write_text(json.dumps(dados, ensure_ascii=False, indent=1), encoding="utf-8")
+  56      tmp.replace(caminho)
 ```
 
 
@@ -3757,7 +3799,7 @@ O esqueleto acima está em **pseudocódigo** (as reticências indicam o que aind
 **Cenário hipotético** (não implementado): o usuário pede que "Tipo Material" fique depois de "Fornecedor SAP" na aba Dados.
 :::
 
-**O que existe hoje** <span class="confirmado">CONFIRMADO</span>: a ordem das colunas está em `COLUNAS_DADOS` (`exportacao.py`, linhas 40–41), e a linha de cada item é montada em `_linhas_dados` (linhas 224–225) na mesma ordem. A gravação aplica formato de texto às colunas `(1, 2, 3, 4, 6, 7, 8)` e quebra de linha às colunas `(6, 7)` pelo **número** da coluna (linhas 325–326), e as larguras são uma lista posicional `[18, 22, 34, 16, 12, 55, 55, 13]` (linha 319).
+**O que existe hoje** <span class="confirmado">CONFIRMADO</span>: a ordem das colunas está em `COLUNAS_DADOS` (`exportacao.py`, linhas 40–41), e a linha de cada item é montada em `_linhas_dados` (linhas 239–240) na mesma ordem. A gravação aplica formato de texto às colunas `(1, 2, 3, 4, 6, 7, 8)` e quebra de linha às colunas `(6, 7)` pelo **número** da coluna (linhas 348–349), e as larguras são uma lista posicional `[18, 22, 34, 16, 12, 55, 55, 13]` (linha 342).
 
 **Onde a mudança se propaga:**
 
@@ -3765,8 +3807,8 @@ O esqueleto acima está em **pseudocódigo** (as reticências indicam o que aind
 |---|---|---|
 | `COLUNAS_DADOS` | Ordem dos nomes | Cabeçalho errado |
 | `_linhas_dados` (duas listas) | Ordem dos valores | Valor sob o cabeçalho errado |
-| Larguras (linha 319) | Ordem das larguras | Só aparência |
-| Formatos por número (linhas 325–326) | Números das colunas de texto e de quebra | A coluna de quantidade poderia virar texto, e o Excel deixaria de somá-la |
+| Larguras (linha 342) | Ordem das larguras | Só aparência |
+| Formatos por número (linhas 348–349) | Números das colunas de texto e de quebra | A coluna de quantidade poderia virar texto, e o Excel deixaria de somá-la |
 | `_COL_OBS` | Calculado pelo nome, não muda | — |
 | `verificar_planilha` | Usa as mesmas funções, acompanha sozinho | — |
 | Testes | `test_estrutura_completa_do_excel` e `test_coluna_tipo_aba_materiais_e_tabela_oculta` conferem cabeçalhos | O teste falharia — e é bom que falhe, porque avisa |
@@ -3841,7 +3883,7 @@ A tabela a seguir foi montada a partir de `preferencias.py` (classe `Preferencia
 **Se o arquivo estiver ausente ou ilegível:** `carregar` devolve os padrões (linhas 118–121). **Se um valor estiver fora da faixa:** é ajustado ao limite mais próximo e o problema é relatado à tela (Cap. 19.4). **Migração:** arquivos da versão 1 (5 auditorias fixas) são convertidos para a política atual, mas só quando o valor gravado era igual ao padrão antigo (`migrar`, linhas 99–109) — uma escolha explícita do usuário é preservada.
 
 ::: atencao
-O `README.md` do repositório ainda descreve "padrão 5" auditorias. Esse texto é anterior à versão 2 das preferências; o padrão **atual** é 2 (com escalonamento para até 5 leituras em caso de divergência). Ver Capítulo 30.
+O padrão **atual** é 2 auditorias, com escalonamento para até 5 leituras em caso de divergência. Versões antigas do `README.md` diziam "padrão 5"; o texto foi corrigido na auditoria de 30/10/2026.
 :::
 
 ### 22.4 Variável de ambiente
@@ -3850,7 +3892,7 @@ O `README.md` do repositório ainda descreve "padrão 5" auditorias. Esse texto 
 **Variável de ambiente** é um valor definido no sistema operacional, fora do programa, que o programa pode ler ao iniciar. Serve para mudar um comportamento sem editar o código.
 :::
 
-O agente lê uma única variável: `AGENTE_BTP_URL` (`config.py`, linhas 21–22). Ela contém o endereço do *launchpad* do SAP e é usada **apenas** para saber de qual site a aba conectada deve vir — o servidor deriva dele a origem permitida (`ORIGEM_SAP`, `servidor.py`, linha 22) e recusa chamadas de outras origens. O agente não abre esse endereço. Quando a variável não está definida, vale o endereço gravado no código, que **não** é reproduzido neste livro por ser um endereço interno da empresa; aqui ele é representado por `<endereço do launchpad>`.
+O agente lê uma única variável: `AGENTE_BTP_URL` (`config.py`, linhas 21–22). Ela contém o endereço do *launchpad* do SAP e é usada **apenas** para saber de qual site a aba conectada deve vir — o servidor deriva dele a origem permitida (`ORIGEM_SAP`, `servidor.py`, linha 23) e recusa chamadas de outras origens. O agente não abre esse endereço. Quando a variável não está definida, vale o endereço gravado no código, que **não** é reproduzido neste livro por ser um endereço interno da empresa; aqui ele é representado por `<endereço do launchpad>`.
 
 ### 22.5 Endereço e porta do programa
 
@@ -3967,16 +4009,17 @@ Os passos abaixo valem para o computador do usuário (Windows), com o navegador 
 | `test_analisador.py` | 12 | Interpretação de consultas observadas |
 | `test_materiais.py` | 10 | Tabela de valores, aba Materiais |
 | `test_historico.py` | 4 | Histórico e numeração |
-| **Total** | **162 funções** | O pytest conta **167** casos, porque alguns testes são parametrizados (rodam com vários dados) |
+| `test_auditoria_correcoes.py` | 15 | Correções da auditoria de 30/10/2026: proteção da API local, itens omitidos, arquivos ilegíveis, separadores de valor |
+| **Total** | **177 funções** | O pytest conta **196** casos, porque alguns testes são parametrizados (rodam com vários dados) |
 
 ### 24.3 Resultado da execução feita para este livro
 
 ::: evidencia
-Executado em 30/10/2026, sobre o commit `0a39d6c` (correção da regra "Estoque indisponível"), no ambiente Linux de produção do e-book (não no computador do usuário):
+Executado em 09/11/2026, sobre a `main` em `3a27f1e` (após as correções da auditoria), no ambiente Linux de produção do e-book (não no computador do usuário), com Python 3.13, Flask 3.1, openpyxl 3.1.5 e Chromium 153:
 
-- `python3 -m pytest -q testes` → **167 passed in 35.58s**.
+- `python3 -m pytest -q testes` → **196 passed in 33.97s**.
 - `testes/e2e/rodar_tela.py` (cópia limpa do projeto) → **136 verificações ok, 0 falharam**.
-- `testes/e2e/rodar_sessao.py` → **RESULTADO: OK** — a sessão caiu com 60 de 500 WOs validadas; 80 WOs em andamento voltaram para a fila e nenhuma virou falha; após o novo login a análise terminou com 500 validadas em 9,4 s.
+- `testes/e2e/rodar_sessao.py` → **RESULTADO: OK** — a sessão caiu com 60 de 500 WOs validadas; 80 WOs em andamento voltaram para a fila e nenhuma virou falha; após o novo login a análise terminou com 500 validadas em 8,7 s.
 - `testes/e2e/rodar_aba.py` → terminou sem erro (código de saída 0), incluindo a preparação pela aba e o apagamento de uma análise do histórico.
 - `testes/e2e/rodar_extensao.py` → terminou sem erro; selo "conectado" na aba sem clique.
 - `testes/e2e/rodar_combinacoes.py` **não** foi executado: exige como argumentos duas pastas de versões diferentes (programa e extensão).
@@ -4156,7 +4199,7 @@ A base guarda cada WO assim que termina. Por isso:
 
 | Situação | Comportamento atual | Classificação |
 |---|---|---|
-| Falha ao copiar o `agente_btp.js` para a pasta da extensão | `sincronizar_extensao` ignora `OSError` em silêncio (`servidor.py`, linhas 41–44); a extensão pode ficar com cópia antiga | <span class="confirmado">CONFIRMADO</span> no código |
+| Falha ao copiar o `agente_btp.js` para a pasta da extensão | `sincronizar_extensao` registra o motivo no log (`servidor.py`, linhas 48–50), mas a tela não avisa; a extensão pode ficar com cópia antiga até ser recarregada | <span class="confirmado">CONFIRMADO</span> no código |
 | Porta 8767 ocupada por outro programa | O `.bat` encerra o processo; se o agente for iniciado sem o `.bat`, o Flask falha ao abrir a porta e a janela mostra o erro | <span class="interpretacao">INTERPRETAÇÃO TÉCNICA</span> |
 | Disco cheio | Gravações de base, histórico ou Excel falham com exceção; o Excel tem tratamento, a base não tem tratamento específico | <span class="hipotese">HIPÓTESE</span> — não reproduzido |
 | Mudança de formato no BTP que continue devolvendo JSON válido com os mesmos nomes de campo, mas significado diferente | Não detectável pelo agente | <span class="interpretacao">INTERPRETAÇÃO TÉCNICA</span> |
@@ -4171,6 +4214,7 @@ As tabelas abaixo estão separadas por área. A coluna "Base" indica se o proble
 |---|---|---|---|---|---|
 | Janela preta abre e fecha | Python ausente; erro no `pip` | Abrir o Prompt de Comando na pasta e rodar `py -3 --version` e o `.bat` dali, para ler a mensagem | Instalar Python com "Add to PATH"; garantir internet na 1ª execução | A tela abre em `127.0.0.1:8767` | Risco plausível |
 | "No module named flask" | `.venv` corrompido ou instalação interrompida | Ver a mensagem na janela | Apagar a pasta `.venv` e abrir o `.bat` de novo | A janela não mostra erro | Risco plausível |
+| A tela responde "403 Forbidden" | A tela foi aberta por um endereço que não é `127.0.0.1` nem `localhost` (por exemplo, o nome ou o IP da máquina), ou outra página tentou alterar o programa | O endereço na barra do navegador | Abrir `http://127.0.0.1:8767` | A tela carrega | Confirmado (proteção da API local, Cap. 11.10) |
 | Navegador não abre sozinho | Navegador padrão não configurado | A janela preta continua aberta sem erro | Abrir manualmente `http://127.0.0.1:8767` | Tela carrega | Risco plausível |
 | A análise "congela" em Windows ao clicar na janela preta | Modo de seleção do console congela escritas | — | Corrigido: o registro vai só para arquivo e o modo de seleção é desligado (`desligar_selecao_da_janela`) | — | Confirmado (comentário de `__main__.py`, linhas 17–21: "a análise parava no meio, ex.: 391 de 499 WOs") |
 
@@ -4232,10 +4276,12 @@ As tabelas abaixo estão separadas por área. A coluna "Base" indica se o proble
 | Credenciais | O agente **não** pede, não lê e não grava senha, cookie ou *token*. A autenticação é a do próprio navegador do usuário | `preferencias.py` (linhas 1–5); campos de `ApiConfig`; descrição do manifesto da extensão: "Não faz login, não lê cookies, não guarda dados." |
 | Somente leitura | O transporte só faz `GET` (`agente_btp.js`, linha 196: `method: 'GET'`); não há código para "Reprocessar" ou "Efetuar Baixa" | <span class="confirmado">CONFIRMADO</span> |
 | Acesso ao programa | Escuta só em `127.0.0.1` (o próprio computador) | `__main__.py`, linha 13 |
-| Canal com a aba | Rotas `/api/agente/*` exigem o cabeçalho `Origin` igual ao do *launchpad* (`exigir_origem_sap`); CORS liberado só para essa origem | `servidor.py`, linhas 66–81 |
+| Canal com a aba | Rotas `/api/agente/*` exigem o cabeçalho `Origin` igual ao do *launchpad* (`exigir_origem_sap`); CORS liberado só para essa origem | `servidor.py`, linhas 89–104 |
+| Rotas da tela | Pedidos que alteram algo, vindos de outro site, recebem 403; o programa só atende pelo próprio endereço (bloqueia *DNS rebinding*) | `servidor.py`, linhas 69–80 (Cap. 11.10); testes `test_e1_*` e `test_e2_*` |
 | Arquivos baixados | Download restrito à pasta `saidas/` | `caminho_saida` (Cap. 19.7) |
 | Evidências do diagnóstico | Segredos conhecidos removidos; corpo limitado a 800 caracteres | `diagnostico.sanitizar` (Cap. 19.6) |
-| Tamanho de envio | Pedidos ao programa limitados a 20 MB | `servidor.py`, `MAX_CONTENT_LENGTH` |
+| Tamanho de envio | Pedidos ao programa limitados a 20 MB, com resposta clara quando o limite é passado | `servidor.py`, `MAX_CONTENT_LENGTH` e tratamento do 413 |
+| Dependências | Limitadas à série testada (`flask>=3.0,<4`, `openpyxl>=3.1,<3.2`) | `requirements.txt` |
 | Permissões da extensão | `scripting` e `tabs`, só no endereço do *launchpad* | `extensao/manifest.json` |
 | Dados locais fora do Git | `.gitignore` exclui `config/api.json`, preferências, tabela, histórico, `dados/`, `saidas/`, `logs/` | `.gitignore` |
 
@@ -4253,26 +4299,24 @@ As tabelas abaixo estão separadas por área. A coluna "Base" indica se o proble
 Ao enviar um "diagnóstico" para análise, ele contém WOs, URLs internas e trechos de respostas (já sem segredos conhecidos). Compartilhe apenas com quem pode ver esses dados.
 :::
 
-### 28.3 Riscos e recomendações (não implementadas)
+### 28.3 Riscos que permanecem e recomendações (não implementadas)
 
 | Risco | Explicação | Classificação |
 |---|---|---|
-| Pedidos de outros sites para as rotas da tela | As rotas da tela (por exemplo, `POST /api/parar`, que não tem corpo) não verificam a origem. Em tese, uma página maliciosa aberta no mesmo navegador poderia enviar um pedido simples a `127.0.0.1:8767`. Navegadores recentes aplicam proteções de acesso à rede local que tendem a bloquear isso | <span class="hipotese">HIPÓTESE</span> — não testado |
 | Endereço interno no código | O endereço do *launchpad* está gravado em `config.py` e no manifesto da extensão | <span class="confirmado">CONFIRMADO</span>; baixo impacto, pois não dá acesso sem login |
-| Dependências externas | `flask` e `openpyxl` são instalados sem versão máxima (`>=`); uma versão nova incompatível ou comprometida seria instalada automaticamente na próxima abertura do `.bat` | <span class="confirmado">CONFIRMADO</span> (`requirements.txt`) |
+| Dependências externas | O `.bat` instala a versão mais nova **dentro** da série permitida a cada abertura; uma versão nova da mesma série com defeito ainda chegaria sem aviso | <span class="interpretacao">INTERPRETAÇÃO TÉCNICA</span> |
 | Planilhas com dados operacionais | Ficam em `saidas/` sem prazo de expiração | <span class="confirmado">CONFIRMADO</span> |
 
 ::: proposta
-1. Exigir um cabeçalho próprio (por exemplo `X-Agente-BTP: 1`) nas rotas de alteração da tela — pedidos com cabeçalho customizado exigem verificação prévia (*preflight*) do navegador, que outro site não passa.
-2. Fixar as versões em `requirements.txt` (por exemplo `flask==3.0.3`) e atualizá-las de forma deliberada, após rodar os testes.
-3. Oferecer em Configurações a limpeza de análises e planilhas antigas.
+1. Oferecer em Configurações a limpeza de análises e planilhas antigas.
+2. Fixar a versão exata das dependências no pacote entregue ao usuário (por exemplo, com um arquivo de versões travadas gerado depois dos testes).
 :::
 
 ## 29. Manutenção e evolução {#cap29}
 
 ### 29.1 Dependências
 
-`requirements.txt` declara apenas `flask>=3.0` e `openpyxl>=3.1`. Para saber o que está instalado: `.venv\Scripts\python -m pip list`. Para ver se há versões novas: `.venv\Scripts\python -m pip list --outdated`.
+`requirements.txt` declara apenas `flask>=3.0,<4` e `openpyxl>=3.1,<3.2`: o `.bat` aceita correções dentro da série testada, mas não uma versão principal nova. Para saber o que está instalado: `.venv\Scripts\python -m pip list`. Para ver se há versões novas: `.venv\Scripts\python -m pip list --outdated`.
 
 Antes de aceitar uma atualização: ler as notas de versão (Apêndice D), atualizar numa cópia, rodar `python -m pytest -q testes` e os roteiros de navegador, e gerar uma planilha de uma análise conhecida para comparar.
 
@@ -4320,20 +4364,22 @@ O projeto usa Git (39 commits de código e documentação entre 01/10/2026 e 29/
 | Auditoria mede estabilidade, não correção na origem | Um valor errado e constante no BTP passa como validado |
 | Testes não usam o BTP real | Mudanças no BTP só aparecem em uso |
 | Só Windows tem lançador (`.bat`) | Outros sistemas exigem rodar `python -m agente_btp` manualmente |
-| README desatualizado ("padrão 5" auditorias, menções antigas) | Pode confundir quem lê o repositório |
+| README com trechos antigos (abas do relatório, especificação original) | Pode confundir quem lê o repositório |
 | `config/api.exemplo.json` não reflete a fonte atual | Idem |
-| Exceção ignorada em `sincronizar_extensao` | Extensão pode ficar com cópia antiga sem aviso |
+| Falha em `sincronizar_extensao` só vai para o log | Extensão pode ficar com cópia antiga sem aviso na tela |
 
-### 30.2 Propostas classificadas
+### 30.2 O que a auditoria de 30/10/2026 já corrigiu
+
+Dez problemas encontrados na auditoria técnica foram corrigidos e testados: as rotas da tela agora recusam pedidos de outros sites e de outros endereços (E1, E2); a planilha não descreve mais como inexistente um item "Estoque indisponível" omitido por estar divergente (E3); histórico e tabela de valores ilegíveis deixaram de ser descartados ou de derrubar a tela (E4, E5); valores digitados como texto são lidos com os separadores corretos (E6); o limite de upload responde com mensagem (E7); as dependências foram limitadas (E8); a falha ao atualizar a extensão é registrada (E9); e o README foi corrigido (E10). Detalhes, provas e testes: `docs/auditoria/relatorio-auditoria-2026-10-30.md`.
+
+### 30.3 Propostas classificadas
 
 Critério: **Alta** = afeta a correção dos dados ou a segurança; **Média** = afeta a manutenção ou o diagnóstico; **Baixa** = conforto ou clareza.
 
 | Prioridade | Proposta (não implementada) | Justificativa |
 |---|---|---|
-| Alta | Fixar versões das dependências | Evita que uma atualização automática quebre o programa na abertura |
-| Alta | Cabeçalho obrigatório nas rotas de alteração da tela | Fecha o risco de pedidos de outros sites (28.3) |
 | Alta | Roteiro de teste manual versionado no BTP real (5 WOs conhecidas) | Única forma de detectar mudança no BTP antes de uma análise grande |
-| Média | Avisar na tela quando `sincronizar_extensao` falhar | Remove a única exceção silenciosa encontrada |
+| Média | Avisar na tela quando `sincronizar_extensao` falhar | Hoje a falha só aparece no log |
 | Média | Atualizar `README.md` e `api.exemplo.json` | Coerência da documentação do repositório |
 | Média | Migração de esquema da base | Permite evoluir a base sem perder análises antigas |
 | Média | Painel de tendências entre análises (taxa de validadas, motivos) | Monitoramento: uma piora súbita indica mudança no BTP |
@@ -4500,7 +4546,7 @@ Ver o exemplo completo do Capítulo 21.2. Pontos de atenção: `COLUNAS_DADOS`, 
 | Validação | Auditoria por item, transação por WO, conferência célula a célula do arquivo | Caps. 14, 25 |
 | Execução | `.bat` → tela → conectar aba → WOs → amostra → acompanhar → baixar | Cap. 23 |
 | Diagnóstico | Taxonomia de 24 motivos em três categorias, com evidência sem segredos e próxima ação | Caps. 26–27 |
-| Manutenção | Testes (167 casos + roteiros de navegador), relatório de rodadas, Git, `VERSAO_CONFIG` | Caps. 24, 29 |
+| Manutenção | Testes (196 casos + roteiros de navegador), relatório de rodadas, Git, `VERSAO_CONFIG` | Caps. 24, 29 |
 
 ::: resumo
 O Agente BTP não "raspa" a tela: ele pede ao próprio navegador logado que faça consultas somente leitura ao serviço de dados por trás do Monitor de Alertas. Lê cada WO mais de uma vez, só afirma o que se repetiu, grava cada resultado assim que termina e entrega uma planilha que ele mesmo confere depois de gravar. Quando algo dá errado, ele diz de quem é o problema e o que fazer.
@@ -4510,7 +4556,7 @@ O Agente BTP não "raspa" a tela: ele pede ao próprio navegador logado que faç
 
 ## Apêndice A — Rotas do programa local {#apA}
 
-Rotas definidas em `agente_btp/servidor.py` (função `criar_app`). As rotas `/api/agente/*` são usadas apenas pela aba do BTP e exigem a origem do *launchpad*; as demais são usadas pela tela.
+Rotas definidas em `agente_btp/servidor.py` (função `criar_app`). As rotas `/api/agente/*` são usadas apenas pela aba do BTP e exigem a origem do *launchpad*; as demais são usadas pela tela e só aceitam pedidos de alteração vindos da própria tela. Todas exigem que o programa seja chamado por `127.0.0.1` ou `localhost` (Cap. 11.10).
 
 | Método | Rota | Função |
 |---|---|---|
@@ -4585,9 +4631,10 @@ Tabela gerada a partir do dicionário `TAXONOMIA` de `agente_btp/diagnostico.py`
 | Fonte | Uso neste livro |
 |---|---|
 | Código-fonte em `agente_btp/` (25 módulos Python), `agente_btp/web/` e `extensao/` | Fonte principal de todas as descrições de funcionamento; cada trecho citado foi extraído automaticamente do arquivo, com as linhas indicadas |
-| `testes/` e `testes/e2e/` | Comportamentos garantidos; resultados da execução de 30/10/2026 (Cap. 24.3) |
+| `testes/` e `testes/e2e/` | Comportamentos garantidos; resultados da execução de 09/11/2026 (Cap. 24.3) |
 | Histórico Git do repositório | Cronologia (Cap. 5) |
 | `docs/relatorio-correcao-raiz.md` | Medições de desempenho e memória, números das análises reais citadas |
+| `docs/auditoria/relatorio-auditoria-2026-10-30.md` | Auditoria técnica, defeitos encontrados, provas e correções (Caps. 11.10, 15, 28 e 30) |
 | `README.md`, `config/api.exemplo.json` | Documentação anterior (parcialmente desatualizada, ver Cap. 30) |
 | Diagnóstico e planilha de uma análise real, enviados pelo usuário durante o desenvolvimento (não versionados) | Números agregados citados nos Caps. 1, 15 e 27; nenhum dado identificável foi reproduzido |
 
