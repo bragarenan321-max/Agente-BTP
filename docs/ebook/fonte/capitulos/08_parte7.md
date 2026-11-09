@@ -150,7 +150,7 @@ Ver o exemplo completo do Capítulo 21.2. Pontos de atenção: `COLUNAS_DADOS`, 
 | Validação | Auditoria por item, transação por WO, conferência célula a célula do arquivo | Caps. 14, 25 |
 | Execução | `.bat` → tela → conectar aba → WOs → amostra → acompanhar → baixar | Cap. 23 |
 | Diagnóstico | Taxonomia de 24 motivos em três categorias, com evidência sem segredos e próxima ação | Caps. 26–27 |
-| Manutenção | Testes (167 casos + roteiros de navegador), relatório de rodadas, Git, `VERSAO_CONFIG` | Caps. 24, 29 |
+| Manutenção | Testes (196 casos + roteiros de navegador), relatório de rodadas, Git, `VERSAO_CONFIG` | Caps. 24, 29 |
 
 ::: resumo
 O Agente BTP não "raspa" a tela: ele pede ao próprio navegador logado que faça consultas somente leitura ao serviço de dados por trás do Monitor de Alertas. Lê cada WO mais de uma vez, só afirma o que se repetiu, grava cada resultado assim que termina e entrega uma planilha que ele mesmo confere depois de gravar. Quando algo dá errado, ele diz de quem é o problema e o que fazer.
@@ -160,7 +160,7 @@ O Agente BTP não "raspa" a tela: ele pede ao próprio navegador logado que faç
 
 ## Apêndice A — Rotas do programa local {#apA}
 
-Rotas definidas em `agente_btp/servidor.py` (função `criar_app`). As rotas `/api/agente/*` são usadas apenas pela aba do BTP e exigem a origem do *launchpad*; as demais são usadas pela tela.
+Rotas definidas em `agente_btp/servidor.py` (função `criar_app`). As rotas `/api/agente/*` são usadas apenas pela aba do BTP e exigem a origem do *launchpad*; as demais são usadas pela tela e só aceitam pedidos de alteração vindos da própria tela. Todas exigem que o programa seja chamado por `127.0.0.1` ou `localhost` (Cap. 11.10).
 
 | Método | Rota | Função |
 |---|---|---|
@@ -235,9 +235,10 @@ Tabela gerada a partir do dicionário `TAXONOMIA` de `agente_btp/diagnostico.py`
 | Fonte | Uso neste livro |
 |---|---|
 | Código-fonte em `agente_btp/` (25 módulos Python), `agente_btp/web/` e `extensao/` | Fonte principal de todas as descrições de funcionamento; cada trecho citado foi extraído automaticamente do arquivo, com as linhas indicadas |
-| `testes/` e `testes/e2e/` | Comportamentos garantidos; resultados da execução de 30/10/2026 (Cap. 24.3) |
+| `testes/` e `testes/e2e/` | Comportamentos garantidos; resultados da execução de 09/11/2026 (Cap. 24.3) |
 | Histórico Git do repositório | Cronologia (Cap. 5) |
 | `docs/relatorio-correcao-raiz.md` | Medições de desempenho e memória, números das análises reais citadas |
+| `docs/auditoria/relatorio-auditoria-2026-10-30.md` | Auditoria técnica, defeitos encontrados, provas e correções (Caps. 11.10, 15, 28 e 30) |
 | `README.md`, `config/api.exemplo.json` | Documentação anterior (parcialmente desatualizada, ver Cap. 30) |
 | Diagnóstico e planilha de uma análise real, enviados pelo usuário durante o desenvolvimento (não versionados) | Números agregados citados nos Caps. 1, 15 e 27; nenhum dado identificável foi reproduzido |
 

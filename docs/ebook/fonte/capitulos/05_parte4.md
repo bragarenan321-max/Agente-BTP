@@ -23,7 +23,7 @@ No Agente BTP, as constantes concentram os números que governam o comportamento
 | `GRUPOS_VERIFICADOS_POR_INTEIRO` | `motor.py`, linha 36 | 3 | Grupos de lote conferidos WO a WO contra a consulta individual |
 | `LIMITE_TRABALHADORES_ABA` | `ponte.py`, linha 29 | 6 | Consultas simultâneas máximas dentro da aba |
 | `VERSAO_CONFIG` | `config.py` | 6 | Versão mínima aceita da fonte gravada |
-| `LIMITE` | `historico.py`, linha 17 | 300 | Análises guardadas no histórico |
+| `LIMITE` | `historico.py`, linha 19 | 300 | Análises guardadas no histórico |
 | `FILTRO_PADRAO` | `exportacao.py`, linha 167 | "Estoque indisponível" | Mensagem padrão dos itens da planilha |
 
 ::: atencao
@@ -144,9 +144,9 @@ Uma **exceção** é a forma de um trecho de código avisar "não consegui conti
 | Registro de eventos | `__main__.configurar_log` | Arquivo `logs/agente_btp.log`, nunca na janela preta |
 | Relatório | `exportacao.gerar_planilha` | `.xlsx` em `saidas/` |
 
-O padrão de gravação atômica aparece em três módulos. Em `historico.py`, linhas 38–42:
+O padrão de gravação atômica aparece em três módulos. Em `historico.py`, linhas 52–56:
 
-@@trecho agente_btp/historico.py 38 42 "gravação atômica"
+@@trecho agente_btp/historico.py 52 56 "gravação atômica"
 
 Se o computador desligar no meio, o arquivo antigo continua intacto, porque a substituição (`replace`) é uma operação única do sistema operacional.
 
@@ -361,7 +361,7 @@ O esqueleto acima está em **pseudocódigo** (as reticências indicam o que aind
 **Cenário hipotético** (não implementado): o usuário pede que "Tipo Material" fique depois de "Fornecedor SAP" na aba Dados.
 :::
 
-**O que existe hoje** <span class="confirmado">CONFIRMADO</span>: a ordem das colunas está em `COLUNAS_DADOS` (`exportacao.py`, linhas 40–41), e a linha de cada item é montada em `_linhas_dados` (linhas 224–225) na mesma ordem. A gravação aplica formato de texto às colunas `(1, 2, 3, 4, 6, 7, 8)` e quebra de linha às colunas `(6, 7)` pelo **número** da coluna (linhas 325–326), e as larguras são uma lista posicional `[18, 22, 34, 16, 12, 55, 55, 13]` (linha 319).
+**O que existe hoje** <span class="confirmado">CONFIRMADO</span>: a ordem das colunas está em `COLUNAS_DADOS` (`exportacao.py`, linhas 40–41), e a linha de cada item é montada em `_linhas_dados` (linhas 239–240) na mesma ordem. A gravação aplica formato de texto às colunas `(1, 2, 3, 4, 6, 7, 8)` e quebra de linha às colunas `(6, 7)` pelo **número** da coluna (linhas 348–349), e as larguras são uma lista posicional `[18, 22, 34, 16, 12, 55, 55, 13]` (linha 342).
 
 **Onde a mudança se propaga:**
 
@@ -369,8 +369,8 @@ O esqueleto acima está em **pseudocódigo** (as reticências indicam o que aind
 |---|---|---|
 | `COLUNAS_DADOS` | Ordem dos nomes | Cabeçalho errado |
 | `_linhas_dados` (duas listas) | Ordem dos valores | Valor sob o cabeçalho errado |
-| Larguras (linha 319) | Ordem das larguras | Só aparência |
-| Formatos por número (linhas 325–326) | Números das colunas de texto e de quebra | A coluna de quantidade poderia virar texto, e o Excel deixaria de somá-la |
+| Larguras (linha 342) | Ordem das larguras | Só aparência |
+| Formatos por número (linhas 348–349) | Números das colunas de texto e de quebra | A coluna de quantidade poderia virar texto, e o Excel deixaria de somá-la |
 | `_COL_OBS` | Calculado pelo nome, não muda | — |
 | `verificar_planilha` | Usa as mesmas funções, acompanha sozinho | — |
 | Testes | `test_estrutura_completa_do_excel` e `test_coluna_tipo_aba_materiais_e_tabela_oculta` conferem cabeçalhos | O teste falharia — e é bom que falhe, porque avisa |

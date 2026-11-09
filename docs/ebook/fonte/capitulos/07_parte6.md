@@ -77,7 +77,7 @@ A base guarda cada WO assim que termina. Por isso:
 
 | Situação | Comportamento atual | Classificação |
 |---|---|---|
-| Falha ao copiar o `agente_btp.js` para a pasta da extensão | `sincronizar_extensao` ignora `OSError` em silêncio (`servidor.py`, linhas 41–44); a extensão pode ficar com cópia antiga | <span class="confirmado">CONFIRMADO</span> no código |
+| Falha ao copiar o `agente_btp.js` para a pasta da extensão | `sincronizar_extensao` registra o motivo no log (`servidor.py`, linhas 48–50), mas a tela não avisa; a extensão pode ficar com cópia antiga até ser recarregada | <span class="confirmado">CONFIRMADO</span> no código |
 | Porta 8767 ocupada por outro programa | O `.bat` encerra o processo; se o agente for iniciado sem o `.bat`, o Flask falha ao abrir a porta e a janela mostra o erro | <span class="interpretacao">INTERPRETAÇÃO TÉCNICA</span> |
 | Disco cheio | Gravações de base, histórico ou Excel falham com exceção; o Excel tem tratamento, a base não tem tratamento específico | <span class="hipotese">HIPÓTESE</span> — não reproduzido |
 | Mudança de formato no BTP que continue devolvendo JSON válido com os mesmos nomes de campo, mas significado diferente | Não detectável pelo agente | <span class="interpretacao">INTERPRETAÇÃO TÉCNICA</span> |
@@ -92,6 +92,7 @@ As tabelas abaixo estão separadas por área. A coluna "Base" indica se o proble
 |---|---|---|---|---|---|
 | Janela preta abre e fecha | Python ausente; erro no `pip` | Abrir o Prompt de Comando na pasta e rodar `py -3 --version` e o `.bat` dali, para ler a mensagem | Instalar Python com "Add to PATH"; garantir internet na 1ª execução | A tela abre em `127.0.0.1:8767` | Risco plausível |
 | "No module named flask" | `.venv` corrompido ou instalação interrompida | Ver a mensagem na janela | Apagar a pasta `.venv` e abrir o `.bat` de novo | A janela não mostra erro | Risco plausível |
+| A tela responde "403 Forbidden" | A tela foi aberta por um endereço que não é `127.0.0.1` nem `localhost` (por exemplo, o nome ou o IP da máquina), ou outra página tentou alterar o programa | O endereço na barra do navegador | Abrir `http://127.0.0.1:8767` | A tela carrega | Confirmado (proteção da API local, Cap. 11.10) |
 | Navegador não abre sozinho | Navegador padrão não configurado | A janela preta continua aberta sem erro | Abrir manualmente `http://127.0.0.1:8767` | Tela carrega | Risco plausível |
 | A análise "congela" em Windows ao clicar na janela preta | Modo de seleção do console congela escritas | — | Corrigido: o registro vai só para arquivo e o modo de seleção é desligado (`desligar_selecao_da_janela`) | — | Confirmado (comentário de `__main__.py`, linhas 17–21: "a análise parava no meio, ex.: 391 de 499 WOs") |
 
@@ -153,10 +154,12 @@ As tabelas abaixo estão separadas por área. A coluna "Base" indica se o proble
 | Credenciais | O agente **não** pede, não lê e não grava senha, cookie ou *token*. A autenticação é a do próprio navegador do usuário | `preferencias.py` (linhas 1–5); campos de `ApiConfig`; descrição do manifesto da extensão: "Não faz login, não lê cookies, não guarda dados." |
 | Somente leitura | O transporte só faz `GET` (`agente_btp.js`, linha 196: `method: 'GET'`); não há código para "Reprocessar" ou "Efetuar Baixa" | <span class="confirmado">CONFIRMADO</span> |
 | Acesso ao programa | Escuta só em `127.0.0.1` (o próprio computador) | `__main__.py`, linha 13 |
-| Canal com a aba | Rotas `/api/agente/*` exigem o cabeçalho `Origin` igual ao do *launchpad* (`exigir_origem_sap`); CORS liberado só para essa origem | `servidor.py`, linhas 66–81 |
+| Canal com a aba | Rotas `/api/agente/*` exigem o cabeçalho `Origin` igual ao do *launchpad* (`exigir_origem_sap`); CORS liberado só para essa origem | `servidor.py`, linhas 89–104 |
+| Rotas da tela | Pedidos que alteram algo, vindos de outro site, recebem 403; o programa só atende pelo próprio endereço (bloqueia *DNS rebinding*) | `servidor.py`, linhas 69–80 (Cap. 11.10); testes `test_e1_*` e `test_e2_*` |
 | Arquivos baixados | Download restrito à pasta `saidas/` | `caminho_saida` (Cap. 19.7) |
 | Evidências do diagnóstico | Segredos conhecidos removidos; corpo limitado a 800 caracteres | `diagnostico.sanitizar` (Cap. 19.6) |
-| Tamanho de envio | Pedidos ao programa limitados a 20 MB | `servidor.py`, `MAX_CONTENT_LENGTH` |
+| Tamanho de envio | Pedidos ao programa limitados a 20 MB, com resposta clara quando o limite é passado | `servidor.py`, `MAX_CONTENT_LENGTH` e tratamento do 413 |
+| Dependências | Limitadas à série testada (`flask>=3.0,<4`, `openpyxl>=3.1,<3.2`) | `requirements.txt` |
 | Permissões da extensão | `scripting` e `tabs`, só no endereço do *launchpad* | `extensao/manifest.json` |
 | Dados locais fora do Git | `.gitignore` exclui `config/api.json`, preferências, tabela, histórico, `dados/`, `saidas/`, `logs/` | `.gitignore` |
 
@@ -174,26 +177,24 @@ As tabelas abaixo estão separadas por área. A coluna "Base" indica se o proble
 Ao enviar um "diagnóstico" para análise, ele contém WOs, URLs internas e trechos de respostas (já sem segredos conhecidos). Compartilhe apenas com quem pode ver esses dados.
 :::
 
-### 28.3 Riscos e recomendações (não implementadas)
+### 28.3 Riscos que permanecem e recomendações (não implementadas)
 
 | Risco | Explicação | Classificação |
 |---|---|---|
-| Pedidos de outros sites para as rotas da tela | As rotas da tela (por exemplo, `POST /api/parar`, que não tem corpo) não verificam a origem. Em tese, uma página maliciosa aberta no mesmo navegador poderia enviar um pedido simples a `127.0.0.1:8767`. Navegadores recentes aplicam proteções de acesso à rede local que tendem a bloquear isso | <span class="hipotese">HIPÓTESE</span> — não testado |
 | Endereço interno no código | O endereço do *launchpad* está gravado em `config.py` e no manifesto da extensão | <span class="confirmado">CONFIRMADO</span>; baixo impacto, pois não dá acesso sem login |
-| Dependências externas | `flask` e `openpyxl` são instalados sem versão máxima (`>=`); uma versão nova incompatível ou comprometida seria instalada automaticamente na próxima abertura do `.bat` | <span class="confirmado">CONFIRMADO</span> (`requirements.txt`) |
+| Dependências externas | O `.bat` instala a versão mais nova **dentro** da série permitida a cada abertura; uma versão nova da mesma série com defeito ainda chegaria sem aviso | <span class="interpretacao">INTERPRETAÇÃO TÉCNICA</span> |
 | Planilhas com dados operacionais | Ficam em `saidas/` sem prazo de expiração | <span class="confirmado">CONFIRMADO</span> |
 
 ::: proposta
-1. Exigir um cabeçalho próprio (por exemplo `X-Agente-BTP: 1`) nas rotas de alteração da tela — pedidos com cabeçalho customizado exigem verificação prévia (*preflight*) do navegador, que outro site não passa.
-2. Fixar as versões em `requirements.txt` (por exemplo `flask==3.0.3`) e atualizá-las de forma deliberada, após rodar os testes.
-3. Oferecer em Configurações a limpeza de análises e planilhas antigas.
+1. Oferecer em Configurações a limpeza de análises e planilhas antigas.
+2. Fixar a versão exata das dependências no pacote entregue ao usuário (por exemplo, com um arquivo de versões travadas gerado depois dos testes).
 :::
 
 ## 29. Manutenção e evolução {#cap29}
 
 ### 29.1 Dependências
 
-`requirements.txt` declara apenas `flask>=3.0` e `openpyxl>=3.1`. Para saber o que está instalado: `.venv\Scripts\python -m pip list`. Para ver se há versões novas: `.venv\Scripts\python -m pip list --outdated`.
+`requirements.txt` declara apenas `flask>=3.0,<4` e `openpyxl>=3.1,<3.2`: o `.bat` aceita correções dentro da série testada, mas não uma versão principal nova. Para saber o que está instalado: `.venv\Scripts\python -m pip list`. Para ver se há versões novas: `.venv\Scripts\python -m pip list --outdated`.
 
 Antes de aceitar uma atualização: ler as notas de versão (Apêndice D), atualizar numa cópia, rodar `python -m pytest -q testes` e os roteiros de navegador, e gerar uma planilha de uma análise conhecida para comparar.
 
@@ -241,20 +242,22 @@ O projeto usa Git (39 commits de código e documentação entre 01/10/2026 e 29/
 | Auditoria mede estabilidade, não correção na origem | Um valor errado e constante no BTP passa como validado |
 | Testes não usam o BTP real | Mudanças no BTP só aparecem em uso |
 | Só Windows tem lançador (`.bat`) | Outros sistemas exigem rodar `python -m agente_btp` manualmente |
-| README desatualizado ("padrão 5" auditorias, menções antigas) | Pode confundir quem lê o repositório |
+| README com trechos antigos (abas do relatório, especificação original) | Pode confundir quem lê o repositório |
 | `config/api.exemplo.json` não reflete a fonte atual | Idem |
-| Exceção ignorada em `sincronizar_extensao` | Extensão pode ficar com cópia antiga sem aviso |
+| Falha em `sincronizar_extensao` só vai para o log | Extensão pode ficar com cópia antiga sem aviso na tela |
 
-### 30.2 Propostas classificadas
+### 30.2 O que a auditoria de 30/10/2026 já corrigiu
+
+Dez problemas encontrados na auditoria técnica foram corrigidos e testados: as rotas da tela agora recusam pedidos de outros sites e de outros endereços (E1, E2); a planilha não descreve mais como inexistente um item "Estoque indisponível" omitido por estar divergente (E3); histórico e tabela de valores ilegíveis deixaram de ser descartados ou de derrubar a tela (E4, E5); valores digitados como texto são lidos com os separadores corretos (E6); o limite de upload responde com mensagem (E7); as dependências foram limitadas (E8); a falha ao atualizar a extensão é registrada (E9); e o README foi corrigido (E10). Detalhes, provas e testes: `docs/auditoria/relatorio-auditoria-2026-10-30.md`.
+
+### 30.3 Propostas classificadas
 
 Critério: **Alta** = afeta a correção dos dados ou a segurança; **Média** = afeta a manutenção ou o diagnóstico; **Baixa** = conforto ou clareza.
 
 | Prioridade | Proposta (não implementada) | Justificativa |
 |---|---|---|
-| Alta | Fixar versões das dependências | Evita que uma atualização automática quebre o programa na abertura |
-| Alta | Cabeçalho obrigatório nas rotas de alteração da tela | Fecha o risco de pedidos de outros sites (28.3) |
 | Alta | Roteiro de teste manual versionado no BTP real (5 WOs conhecidas) | Única forma de detectar mudança no BTP antes de uma análise grande |
-| Média | Avisar na tela quando `sincronizar_extensao` falhar | Remove a única exceção silenciosa encontrada |
+| Média | Avisar na tela quando `sincronizar_extensao` falhar | Hoje a falha só aparece no log |
 | Média | Atualizar `README.md` e `api.exemplo.json` | Coerência da documentação do repositório |
 | Média | Migração de esquema da base | Permite evoluir a base sem perder análises antigas |
 | Média | Painel de tendências entre análises (taxa de validadas, motivos) | Monitoramento: uma piora súbita indica mudança no BTP |

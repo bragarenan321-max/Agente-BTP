@@ -43,8 +43,8 @@
  },
  {
   "arquivo": "agente_btp/servidor.py",
-  "inicio": 47,
-  "fim": 58,
+  "inicio": 53,
+  "fim": 63,
   "rotulo": "criar_app"
  },
  {
@@ -85,15 +85,21 @@
  },
  {
   "arquivo": "agente_btp/servidor.py",
-  "inicio": 91,
-  "fim": 99,
+  "inicio": 114,
+  "fim": 122,
   "rotulo": "rota /api/agente/ola"
  },
  {
   "arquivo": "agente_btp/servidor.py",
-  "inicio": 66,
-  "fim": 81,
+  "inicio": 89,
+  "fim": 104,
   "rotulo": "CORS e verificação de origem"
+ },
+ {
+  "arquivo": "agente_btp/servidor.py",
+  "inicio": 69,
+  "fim": 80,
+  "rotulo": "proteção da API local"
  },
  {
   "arquivo": "agente_btp/agente.py",
@@ -283,8 +289,8 @@
  },
  {
   "arquivo": "agente_btp/exportacao.py",
-  "inicio": 213,
-  "fim": 237,
+  "inicio": 228,
+  "fim": 260,
   "rotulo": "_linhas_dados"
  },
  {
@@ -301,20 +307,20 @@
  },
  {
   "arquivo": "agente_btp/exportacao.py",
-  "inicio": 261,
-  "fim": 297,
+  "inicio": 284,
+  "fim": 320,
   "rotulo": "linhas_materiais"
  },
  {
   "arquivo": "agente_btp/exportacao.py",
-  "inicio": 527,
-  "fim": 543,
+  "inicio": 552,
+  "fim": 568,
   "rotulo": "_celula"
  },
  {
   "arquivo": "agente_btp/exportacao.py",
-  "inicio": 469,
-  "fim": 492,
+  "inicio": 494,
+  "fim": 517,
   "rotulo": "verificar_planilha"
  },
  {
@@ -331,8 +337,8 @@
  },
  {
   "arquivo": "agente_btp/historico.py",
-  "inicio": 38,
-  "fim": 42,
+  "inicio": 52,
+  "fim": 56,
   "rotulo": "gravação atômica"
  },
  {
